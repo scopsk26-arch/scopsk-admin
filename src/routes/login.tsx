@@ -120,9 +120,6 @@ function LoginPage() {
               {loading ? "Signing you in…" : "Sign in"}
             </Button>
 
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="h-3.5 w-3.5 text-success" /> MFA verified · SOC 2 Type II
-            </div>
           </form>
 
 
