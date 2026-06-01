@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { ChefHat, ShieldCheck, KeyRound, Fingerprint, Sparkles } from "lucide-react";
+import { ChefHat, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -125,20 +125,6 @@ function LoginPage() {
             </div>
           </form>
 
-          <div className="my-6 flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">or continue with</span>
-            <Separator className="flex-1" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" onClick={() => { setLoading(true); setTimeout(() => navigate({ to: "/dashboard" }), 500); }}>
-              <KeyRound className="h-4 w-4 mr-2" /> SSO
-            </Button>
-            <Button variant="outline" onClick={() => toast.info("Passkey prompt opened")}>
-              <Fingerprint className="h-4 w-4 mr-2" /> Passkey
-            </Button>
-          </div>
 
           <p className="text-xs text-muted-foreground text-center mt-8">
             Need access? <Link to="/dashboard" className="text-primary hover:underline">Contact your admin</Link>
