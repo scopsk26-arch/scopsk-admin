@@ -9,38 +9,413 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminSupportRouteImport } from './routes/_admin/support'
+import { Route as AdminSuppliersRouteImport } from './routes/_admin/suppliers'
+import { Route as AdminSubscriptionsRouteImport } from './routes/_admin/subscriptions'
+import { Route as AdminSettingsRouteImport } from './routes/_admin/settings'
+import { Route as AdminRolesRouteImport } from './routes/_admin/roles'
+import { Route as AdminRfqsRouteImport } from './routes/_admin/rfqs'
+import { Route as AdminRestaurantsRouteImport } from './routes/_admin/restaurants'
+import { Route as AdminReportsRouteImport } from './routes/_admin/reports'
+import { Route as AdminQuotationsRouteImport } from './routes/_admin/quotations'
+import { Route as AdminPurchaseOrdersRouteImport } from './routes/_admin/purchase-orders'
+import { Route as AdminPaymentsRouteImport } from './routes/_admin/payments'
+import { Route as AdminNotificationsRouteImport } from './routes/_admin/notifications'
+import { Route as AdminMarketingRouteImport } from './routes/_admin/marketing'
+import { Route as AdminKycRouteImport } from './routes/_admin/kyc'
+import { Route as AdminInvoicesRouteImport } from './routes/_admin/invoices'
+import { Route as AdminFraudRouteImport } from './routes/_admin/fraud'
+import { Route as AdminFilesRouteImport } from './routes/_admin/files'
+import { Route as AdminDeliveriesRouteImport } from './routes/_admin/deliveries'
+import { Route as AdminDashboardRouteImport } from './routes/_admin/dashboard'
+import { Route as AdminCommunicationsRouteImport } from './routes/_admin/communications'
+import { Route as AdminCommissionsRouteImport } from './routes/_admin/commissions'
+import { Route as AdminCmsRouteImport } from './routes/_admin/cms'
+import { Route as AdminCategoriesRouteImport } from './routes/_admin/categories'
+import { Route as AdminCatalogRouteImport } from './routes/_admin/catalog'
+import { Route as AdminAuditLogsRouteImport } from './routes/_admin/audit-logs'
+import { Route as AdminApiRouteImport } from './routes/_admin/api'
+import { Route as AdminAiCenterRouteImport } from './routes/_admin/ai-center'
+import { Route as AdminActivityRouteImport } from './routes/_admin/activity'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/_admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSuppliersRoute = AdminSuppliersRouteImport.update({
+  id: '/suppliers',
+  path: '/suppliers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRolesRoute = AdminRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRfqsRoute = AdminRfqsRouteImport.update({
+  id: '/rfqs',
+  path: '/rfqs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRestaurantsRoute = AdminRestaurantsRouteImport.update({
+  id: '/restaurants',
+  path: '/restaurants',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminQuotationsRoute = AdminQuotationsRouteImport.update({
+  id: '/quotations',
+  path: '/quotations',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPurchaseOrdersRoute = AdminPurchaseOrdersRouteImport.update({
+  id: '/purchase-orders',
+  path: '/purchase-orders',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMarketingRoute = AdminMarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminKycRoute = AdminKycRouteImport.update({
+  id: '/kyc',
+  path: '/kyc',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFraudRoute = AdminFraudRouteImport.update({
+  id: '/fraud',
+  path: '/fraud',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFilesRoute = AdminFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDeliveriesRoute = AdminDeliveriesRouteImport.update({
+  id: '/deliveries',
+  path: '/deliveries',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCommunicationsRoute = AdminCommunicationsRouteImport.update({
+  id: '/communications',
+  path: '/communications',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCommissionsRoute = AdminCommissionsRouteImport.update({
+  id: '/commissions',
+  path: '/commissions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCmsRoute = AdminCmsRouteImport.update({
+  id: '/cms',
+  path: '/cms',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCatalogRoute = AdminCatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditLogsRoute = AdminAuditLogsRouteImport.update({
+  id: '/audit-logs',
+  path: '/audit-logs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminApiRoute = AdminApiRouteImport.update({
+  id: '/api',
+  path: '/api',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAiCenterRoute = AdminAiCenterRouteImport.update({
+  id: '/ai-center',
+  path: '/ai-center',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminActivityRoute = AdminActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/activity': typeof AdminActivityRoute
+  '/ai-center': typeof AdminAiCenterRoute
+  '/api': typeof AdminApiRoute
+  '/audit-logs': typeof AdminAuditLogsRoute
+  '/catalog': typeof AdminCatalogRoute
+  '/categories': typeof AdminCategoriesRoute
+  '/cms': typeof AdminCmsRoute
+  '/commissions': typeof AdminCommissionsRoute
+  '/communications': typeof AdminCommunicationsRoute
+  '/dashboard': typeof AdminDashboardRoute
+  '/deliveries': typeof AdminDeliveriesRoute
+  '/files': typeof AdminFilesRoute
+  '/fraud': typeof AdminFraudRoute
+  '/invoices': typeof AdminInvoicesRoute
+  '/kyc': typeof AdminKycRoute
+  '/marketing': typeof AdminMarketingRoute
+  '/notifications': typeof AdminNotificationsRoute
+  '/payments': typeof AdminPaymentsRoute
+  '/purchase-orders': typeof AdminPurchaseOrdersRoute
+  '/quotations': typeof AdminQuotationsRoute
+  '/reports': typeof AdminReportsRoute
+  '/restaurants': typeof AdminRestaurantsRoute
+  '/rfqs': typeof AdminRfqsRoute
+  '/roles': typeof AdminRolesRoute
+  '/settings': typeof AdminSettingsRoute
+  '/subscriptions': typeof AdminSubscriptionsRoute
+  '/suppliers': typeof AdminSuppliersRoute
+  '/support': typeof AdminSupportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/activity': typeof AdminActivityRoute
+  '/ai-center': typeof AdminAiCenterRoute
+  '/api': typeof AdminApiRoute
+  '/audit-logs': typeof AdminAuditLogsRoute
+  '/catalog': typeof AdminCatalogRoute
+  '/categories': typeof AdminCategoriesRoute
+  '/cms': typeof AdminCmsRoute
+  '/commissions': typeof AdminCommissionsRoute
+  '/communications': typeof AdminCommunicationsRoute
+  '/dashboard': typeof AdminDashboardRoute
+  '/deliveries': typeof AdminDeliveriesRoute
+  '/files': typeof AdminFilesRoute
+  '/fraud': typeof AdminFraudRoute
+  '/invoices': typeof AdminInvoicesRoute
+  '/kyc': typeof AdminKycRoute
+  '/marketing': typeof AdminMarketingRoute
+  '/notifications': typeof AdminNotificationsRoute
+  '/payments': typeof AdminPaymentsRoute
+  '/purchase-orders': typeof AdminPurchaseOrdersRoute
+  '/quotations': typeof AdminQuotationsRoute
+  '/reports': typeof AdminReportsRoute
+  '/restaurants': typeof AdminRestaurantsRoute
+  '/rfqs': typeof AdminRfqsRoute
+  '/roles': typeof AdminRolesRoute
+  '/settings': typeof AdminSettingsRoute
+  '/subscriptions': typeof AdminSubscriptionsRoute
+  '/suppliers': typeof AdminSuppliersRoute
+  '/support': typeof AdminSupportRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_admin': typeof AdminRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_admin/activity': typeof AdminActivityRoute
+  '/_admin/ai-center': typeof AdminAiCenterRoute
+  '/_admin/api': typeof AdminApiRoute
+  '/_admin/audit-logs': typeof AdminAuditLogsRoute
+  '/_admin/catalog': typeof AdminCatalogRoute
+  '/_admin/categories': typeof AdminCategoriesRoute
+  '/_admin/cms': typeof AdminCmsRoute
+  '/_admin/commissions': typeof AdminCommissionsRoute
+  '/_admin/communications': typeof AdminCommunicationsRoute
+  '/_admin/dashboard': typeof AdminDashboardRoute
+  '/_admin/deliveries': typeof AdminDeliveriesRoute
+  '/_admin/files': typeof AdminFilesRoute
+  '/_admin/fraud': typeof AdminFraudRoute
+  '/_admin/invoices': typeof AdminInvoicesRoute
+  '/_admin/kyc': typeof AdminKycRoute
+  '/_admin/marketing': typeof AdminMarketingRoute
+  '/_admin/notifications': typeof AdminNotificationsRoute
+  '/_admin/payments': typeof AdminPaymentsRoute
+  '/_admin/purchase-orders': typeof AdminPurchaseOrdersRoute
+  '/_admin/quotations': typeof AdminQuotationsRoute
+  '/_admin/reports': typeof AdminReportsRoute
+  '/_admin/restaurants': typeof AdminRestaurantsRoute
+  '/_admin/rfqs': typeof AdminRfqsRoute
+  '/_admin/roles': typeof AdminRolesRoute
+  '/_admin/settings': typeof AdminSettingsRoute
+  '/_admin/subscriptions': typeof AdminSubscriptionsRoute
+  '/_admin/suppliers': typeof AdminSuppliersRoute
+  '/_admin/support': typeof AdminSupportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/activity'
+    | '/ai-center'
+    | '/api'
+    | '/audit-logs'
+    | '/catalog'
+    | '/categories'
+    | '/cms'
+    | '/commissions'
+    | '/communications'
+    | '/dashboard'
+    | '/deliveries'
+    | '/files'
+    | '/fraud'
+    | '/invoices'
+    | '/kyc'
+    | '/marketing'
+    | '/notifications'
+    | '/payments'
+    | '/purchase-orders'
+    | '/quotations'
+    | '/reports'
+    | '/restaurants'
+    | '/rfqs'
+    | '/roles'
+    | '/settings'
+    | '/subscriptions'
+    | '/suppliers'
+    | '/support'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/activity'
+    | '/ai-center'
+    | '/api'
+    | '/audit-logs'
+    | '/catalog'
+    | '/categories'
+    | '/cms'
+    | '/commissions'
+    | '/communications'
+    | '/dashboard'
+    | '/deliveries'
+    | '/files'
+    | '/fraud'
+    | '/invoices'
+    | '/kyc'
+    | '/marketing'
+    | '/notifications'
+    | '/payments'
+    | '/purchase-orders'
+    | '/quotations'
+    | '/reports'
+    | '/restaurants'
+    | '/rfqs'
+    | '/roles'
+    | '/settings'
+    | '/subscriptions'
+    | '/suppliers'
+    | '/support'
+  id:
+    | '__root__'
+    | '/'
+    | '/_admin'
+    | '/login'
+    | '/_admin/activity'
+    | '/_admin/ai-center'
+    | '/_admin/api'
+    | '/_admin/audit-logs'
+    | '/_admin/catalog'
+    | '/_admin/categories'
+    | '/_admin/cms'
+    | '/_admin/commissions'
+    | '/_admin/communications'
+    | '/_admin/dashboard'
+    | '/_admin/deliveries'
+    | '/_admin/files'
+    | '/_admin/fraud'
+    | '/_admin/invoices'
+    | '/_admin/kyc'
+    | '/_admin/marketing'
+    | '/_admin/notifications'
+    | '/_admin/payments'
+    | '/_admin/purchase-orders'
+    | '/_admin/quotations'
+    | '/_admin/reports'
+    | '/_admin/restaurants'
+    | '/_admin/rfqs'
+    | '/_admin/roles'
+    | '/_admin/settings'
+    | '/_admin/subscriptions'
+    | '/_admin/suppliers'
+    | '/_admin/support'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_admin': {
+      id: '/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +423,273 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_admin/support': {
+      id: '/_admin/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/suppliers': {
+      id: '/_admin/suppliers'
+      path: '/suppliers'
+      fullPath: '/suppliers'
+      preLoaderRoute: typeof AdminSuppliersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/subscriptions': {
+      id: '/_admin/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/subscriptions'
+      preLoaderRoute: typeof AdminSubscriptionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/settings': {
+      id: '/_admin/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/roles': {
+      id: '/_admin/roles'
+      path: '/roles'
+      fullPath: '/roles'
+      preLoaderRoute: typeof AdminRolesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/rfqs': {
+      id: '/_admin/rfqs'
+      path: '/rfqs'
+      fullPath: '/rfqs'
+      preLoaderRoute: typeof AdminRfqsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/restaurants': {
+      id: '/_admin/restaurants'
+      path: '/restaurants'
+      fullPath: '/restaurants'
+      preLoaderRoute: typeof AdminRestaurantsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/reports': {
+      id: '/_admin/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/quotations': {
+      id: '/_admin/quotations'
+      path: '/quotations'
+      fullPath: '/quotations'
+      preLoaderRoute: typeof AdminQuotationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/purchase-orders': {
+      id: '/_admin/purchase-orders'
+      path: '/purchase-orders'
+      fullPath: '/purchase-orders'
+      preLoaderRoute: typeof AdminPurchaseOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/payments': {
+      id: '/_admin/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/notifications': {
+      id: '/_admin/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AdminNotificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/marketing': {
+      id: '/_admin/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof AdminMarketingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/kyc': {
+      id: '/_admin/kyc'
+      path: '/kyc'
+      fullPath: '/kyc'
+      preLoaderRoute: typeof AdminKycRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/invoices': {
+      id: '/_admin/invoices'
+      path: '/invoices'
+      fullPath: '/invoices'
+      preLoaderRoute: typeof AdminInvoicesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/fraud': {
+      id: '/_admin/fraud'
+      path: '/fraud'
+      fullPath: '/fraud'
+      preLoaderRoute: typeof AdminFraudRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/files': {
+      id: '/_admin/files'
+      path: '/files'
+      fullPath: '/files'
+      preLoaderRoute: typeof AdminFilesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/deliveries': {
+      id: '/_admin/deliveries'
+      path: '/deliveries'
+      fullPath: '/deliveries'
+      preLoaderRoute: typeof AdminDeliveriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/dashboard': {
+      id: '/_admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/communications': {
+      id: '/_admin/communications'
+      path: '/communications'
+      fullPath: '/communications'
+      preLoaderRoute: typeof AdminCommunicationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/commissions': {
+      id: '/_admin/commissions'
+      path: '/commissions'
+      fullPath: '/commissions'
+      preLoaderRoute: typeof AdminCommissionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/cms': {
+      id: '/_admin/cms'
+      path: '/cms'
+      fullPath: '/cms'
+      preLoaderRoute: typeof AdminCmsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/categories': {
+      id: '/_admin/categories'
+      path: '/categories'
+      fullPath: '/categories'
+      preLoaderRoute: typeof AdminCategoriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/catalog': {
+      id: '/_admin/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof AdminCatalogRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/audit-logs': {
+      id: '/_admin/audit-logs'
+      path: '/audit-logs'
+      fullPath: '/audit-logs'
+      preLoaderRoute: typeof AdminAuditLogsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/api': {
+      id: '/_admin/api'
+      path: '/api'
+      fullPath: '/api'
+      preLoaderRoute: typeof AdminApiRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/ai-center': {
+      id: '/_admin/ai-center'
+      path: '/ai-center'
+      fullPath: '/ai-center'
+      preLoaderRoute: typeof AdminAiCenterRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/activity': {
+      id: '/_admin/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof AdminActivityRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminActivityRoute: typeof AdminActivityRoute
+  AdminAiCenterRoute: typeof AdminAiCenterRoute
+  AdminApiRoute: typeof AdminApiRoute
+  AdminAuditLogsRoute: typeof AdminAuditLogsRoute
+  AdminCatalogRoute: typeof AdminCatalogRoute
+  AdminCategoriesRoute: typeof AdminCategoriesRoute
+  AdminCmsRoute: typeof AdminCmsRoute
+  AdminCommissionsRoute: typeof AdminCommissionsRoute
+  AdminCommunicationsRoute: typeof AdminCommunicationsRoute
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminDeliveriesRoute: typeof AdminDeliveriesRoute
+  AdminFilesRoute: typeof AdminFilesRoute
+  AdminFraudRoute: typeof AdminFraudRoute
+  AdminInvoicesRoute: typeof AdminInvoicesRoute
+  AdminKycRoute: typeof AdminKycRoute
+  AdminMarketingRoute: typeof AdminMarketingRoute
+  AdminNotificationsRoute: typeof AdminNotificationsRoute
+  AdminPaymentsRoute: typeof AdminPaymentsRoute
+  AdminPurchaseOrdersRoute: typeof AdminPurchaseOrdersRoute
+  AdminQuotationsRoute: typeof AdminQuotationsRoute
+  AdminReportsRoute: typeof AdminReportsRoute
+  AdminRestaurantsRoute: typeof AdminRestaurantsRoute
+  AdminRfqsRoute: typeof AdminRfqsRoute
+  AdminRolesRoute: typeof AdminRolesRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute
+  AdminSuppliersRoute: typeof AdminSuppliersRoute
+  AdminSupportRoute: typeof AdminSupportRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminActivityRoute: AdminActivityRoute,
+  AdminAiCenterRoute: AdminAiCenterRoute,
+  AdminApiRoute: AdminApiRoute,
+  AdminAuditLogsRoute: AdminAuditLogsRoute,
+  AdminCatalogRoute: AdminCatalogRoute,
+  AdminCategoriesRoute: AdminCategoriesRoute,
+  AdminCmsRoute: AdminCmsRoute,
+  AdminCommissionsRoute: AdminCommissionsRoute,
+  AdminCommunicationsRoute: AdminCommunicationsRoute,
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminDeliveriesRoute: AdminDeliveriesRoute,
+  AdminFilesRoute: AdminFilesRoute,
+  AdminFraudRoute: AdminFraudRoute,
+  AdminInvoicesRoute: AdminInvoicesRoute,
+  AdminKycRoute: AdminKycRoute,
+  AdminMarketingRoute: AdminMarketingRoute,
+  AdminNotificationsRoute: AdminNotificationsRoute,
+  AdminPaymentsRoute: AdminPaymentsRoute,
+  AdminPurchaseOrdersRoute: AdminPurchaseOrdersRoute,
+  AdminQuotationsRoute: AdminQuotationsRoute,
+  AdminReportsRoute: AdminReportsRoute,
+  AdminRestaurantsRoute: AdminRestaurantsRoute,
+  AdminRfqsRoute: AdminRfqsRoute,
+  AdminRolesRoute: AdminRolesRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminSubscriptionsRoute: AdminSubscriptionsRoute,
+  AdminSuppliersRoute: AdminSuppliersRoute,
+  AdminSupportRoute: AdminSupportRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
