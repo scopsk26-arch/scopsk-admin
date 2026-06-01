@@ -12,7 +12,17 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminSuppliersRouteImport } from './routes/_admin/suppliers'
+import { Route as AdminRfqsRouteImport } from './routes/_admin/rfqs'
+import { Route as AdminRestaurantsRouteImport } from './routes/_admin/restaurants'
+import { Route as AdminQuotationsRouteImport } from './routes/_admin/quotations'
+import { Route as AdminPurchaseOrdersRouteImport } from './routes/_admin/purchase-orders'
+import { Route as AdminPaymentsRouteImport } from './routes/_admin/payments'
+import { Route as AdminKycRouteImport } from './routes/_admin/kyc'
+import { Route as AdminInvoicesRouteImport } from './routes/_admin/invoices'
+import { Route as AdminDeliveriesRouteImport } from './routes/_admin/deliveries'
 import { Route as AdminDashboardRouteImport } from './routes/_admin/dashboard'
+import { Route as AdminActivityRouteImport } from './routes/_admin/activity'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -28,35 +38,156 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSuppliersRoute = AdminSuppliersRouteImport.update({
+  id: '/suppliers',
+  path: '/suppliers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRfqsRoute = AdminRfqsRouteImport.update({
+  id: '/rfqs',
+  path: '/rfqs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRestaurantsRoute = AdminRestaurantsRouteImport.update({
+  id: '/restaurants',
+  path: '/restaurants',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminQuotationsRoute = AdminQuotationsRouteImport.update({
+  id: '/quotations',
+  path: '/quotations',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPurchaseOrdersRoute = AdminPurchaseOrdersRouteImport.update({
+  id: '/purchase-orders',
+  path: '/purchase-orders',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminKycRoute = AdminKycRouteImport.update({
+  id: '/kyc',
+  path: '/kyc',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDeliveriesRoute = AdminDeliveriesRouteImport.update({
+  id: '/deliveries',
+  path: '/deliveries',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminActivityRoute = AdminActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => AdminRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/activity': typeof AdminActivityRoute
   '/dashboard': typeof AdminDashboardRoute
+  '/deliveries': typeof AdminDeliveriesRoute
+  '/invoices': typeof AdminInvoicesRoute
+  '/kyc': typeof AdminKycRoute
+  '/payments': typeof AdminPaymentsRoute
+  '/purchase-orders': typeof AdminPurchaseOrdersRoute
+  '/quotations': typeof AdminQuotationsRoute
+  '/restaurants': typeof AdminRestaurantsRoute
+  '/rfqs': typeof AdminRfqsRoute
+  '/suppliers': typeof AdminSuppliersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/activity': typeof AdminActivityRoute
   '/dashboard': typeof AdminDashboardRoute
+  '/deliveries': typeof AdminDeliveriesRoute
+  '/invoices': typeof AdminInvoicesRoute
+  '/kyc': typeof AdminKycRoute
+  '/payments': typeof AdminPaymentsRoute
+  '/purchase-orders': typeof AdminPurchaseOrdersRoute
+  '/quotations': typeof AdminQuotationsRoute
+  '/restaurants': typeof AdminRestaurantsRoute
+  '/rfqs': typeof AdminRfqsRoute
+  '/suppliers': typeof AdminSuppliersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/_admin/activity': typeof AdminActivityRoute
   '/_admin/dashboard': typeof AdminDashboardRoute
+  '/_admin/deliveries': typeof AdminDeliveriesRoute
+  '/_admin/invoices': typeof AdminInvoicesRoute
+  '/_admin/kyc': typeof AdminKycRoute
+  '/_admin/payments': typeof AdminPaymentsRoute
+  '/_admin/purchase-orders': typeof AdminPurchaseOrdersRoute
+  '/_admin/quotations': typeof AdminQuotationsRoute
+  '/_admin/restaurants': typeof AdminRestaurantsRoute
+  '/_admin/rfqs': typeof AdminRfqsRoute
+  '/_admin/suppliers': typeof AdminSuppliersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/activity'
+    | '/dashboard'
+    | '/deliveries'
+    | '/invoices'
+    | '/kyc'
+    | '/payments'
+    | '/purchase-orders'
+    | '/quotations'
+    | '/restaurants'
+    | '/rfqs'
+    | '/suppliers'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboard'
-  id: '__root__' | '/' | '/_admin' | '/login' | '/_admin/dashboard'
+  to:
+    | '/'
+    | '/login'
+    | '/activity'
+    | '/dashboard'
+    | '/deliveries'
+    | '/invoices'
+    | '/kyc'
+    | '/payments'
+    | '/purchase-orders'
+    | '/quotations'
+    | '/restaurants'
+    | '/rfqs'
+    | '/suppliers'
+  id:
+    | '__root__'
+    | '/'
+    | '/_admin'
+    | '/login'
+    | '/_admin/activity'
+    | '/_admin/dashboard'
+    | '/_admin/deliveries'
+    | '/_admin/invoices'
+    | '/_admin/kyc'
+    | '/_admin/payments'
+    | '/_admin/purchase-orders'
+    | '/_admin/quotations'
+    | '/_admin/restaurants'
+    | '/_admin/rfqs'
+    | '/_admin/suppliers'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,6 +219,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_admin/suppliers': {
+      id: '/_admin/suppliers'
+      path: '/suppliers'
+      fullPath: '/suppliers'
+      preLoaderRoute: typeof AdminSuppliersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/rfqs': {
+      id: '/_admin/rfqs'
+      path: '/rfqs'
+      fullPath: '/rfqs'
+      preLoaderRoute: typeof AdminRfqsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/restaurants': {
+      id: '/_admin/restaurants'
+      path: '/restaurants'
+      fullPath: '/restaurants'
+      preLoaderRoute: typeof AdminRestaurantsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/quotations': {
+      id: '/_admin/quotations'
+      path: '/quotations'
+      fullPath: '/quotations'
+      preLoaderRoute: typeof AdminQuotationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/purchase-orders': {
+      id: '/_admin/purchase-orders'
+      path: '/purchase-orders'
+      fullPath: '/purchase-orders'
+      preLoaderRoute: typeof AdminPurchaseOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/payments': {
+      id: '/_admin/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/kyc': {
+      id: '/_admin/kyc'
+      path: '/kyc'
+      fullPath: '/kyc'
+      preLoaderRoute: typeof AdminKycRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/invoices': {
+      id: '/_admin/invoices'
+      path: '/invoices'
+      fullPath: '/invoices'
+      preLoaderRoute: typeof AdminInvoicesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/deliveries': {
+      id: '/_admin/deliveries'
+      path: '/deliveries'
+      fullPath: '/deliveries'
+      preLoaderRoute: typeof AdminDeliveriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/dashboard': {
       id: '/_admin/dashboard'
       path: '/dashboard'
@@ -95,15 +289,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/activity': {
+      id: '/_admin/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof AdminActivityRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminActivityRoute: typeof AdminActivityRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminDeliveriesRoute: typeof AdminDeliveriesRoute
+  AdminInvoicesRoute: typeof AdminInvoicesRoute
+  AdminKycRoute: typeof AdminKycRoute
+  AdminPaymentsRoute: typeof AdminPaymentsRoute
+  AdminPurchaseOrdersRoute: typeof AdminPurchaseOrdersRoute
+  AdminQuotationsRoute: typeof AdminQuotationsRoute
+  AdminRestaurantsRoute: typeof AdminRestaurantsRoute
+  AdminRfqsRoute: typeof AdminRfqsRoute
+  AdminSuppliersRoute: typeof AdminSuppliersRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminActivityRoute: AdminActivityRoute,
   AdminDashboardRoute: AdminDashboardRoute,
+  AdminDeliveriesRoute: AdminDeliveriesRoute,
+  AdminInvoicesRoute: AdminInvoicesRoute,
+  AdminKycRoute: AdminKycRoute,
+  AdminPaymentsRoute: AdminPaymentsRoute,
+  AdminPurchaseOrdersRoute: AdminPurchaseOrdersRoute,
+  AdminQuotationsRoute: AdminQuotationsRoute,
+  AdminRestaurantsRoute: AdminRestaurantsRoute,
+  AdminRfqsRoute: AdminRfqsRoute,
+  AdminSuppliersRoute: AdminSuppliersRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
@@ -116,3 +337,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
