@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_admin/dashboard")({
   component: Dashboard,
 });
 
-const fmtMoney = (n: number) => `$${(n / 1000).toFixed(n >= 1_000_000 ? 2 : 0)}${n >= 1_000_000 ? "M" : "K"}`;
+const fmtMoney = (n: number) => `AED ${(n / 1000).toFixed(n >= 1_000_000 ? 2 : 0)}${n >= 1_000_000 ? "M" : "K"}`;
 
 function Dashboard() {
   return (
@@ -109,7 +109,7 @@ function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <ChartCard title="Revenue & Commission" subtitle="Monthly, USD" to="/payments" className="xl:col-span-2">
+        <ChartCard title="Revenue & Commission" subtitle="Monthly, AED" to="/payments" className="xl:col-span-2">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={revenueTrend} margin={{ top: 5, right: 8, left: -16, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />

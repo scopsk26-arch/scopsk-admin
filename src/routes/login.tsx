@@ -60,7 +60,7 @@ function LoginPage() {
             {[
               { v: "2,847", l: "Restaurants" },
               { v: "1,293", l: "Suppliers" },
-              { v: "$28.4M", l: "Volume" },
+              { v: "AED 28.4M", l: "Volume" },
             ].map((s) => (
               <div key={s.l} className="glass rounded-xl p-3">
                 <div className="font-display text-xl font-semibold">{s.v}</div>
@@ -86,7 +86,18 @@ function LoginPage() {
             Use your enterprise credentials to access the command center.
           </p>
 
-          <form onSubmit={onSubmit} className="mt-7 space-y-4">
+          <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-3.5 text-xs">
+            <div className="flex items-center gap-1.5 font-medium text-primary mb-1.5">
+              <Sparkles className="h-3.5 w-3.5" /> Demo credentials
+            </div>
+            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-muted-foreground">
+              <span className="text-foreground/70">Email</span><span>sarah@primeplate.io</span>
+              <span className="text-foreground/70">Password</span><span>demo-password</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2 font-sans">Fields are pre-filled — just click Sign in.</p>
+          </div>
+
+          <form onSubmit={onSubmit} className="mt-5 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Work email</Label>
               <Input id="email" type="email" placeholder="sarah@primeplate.io" defaultValue="sarah@primeplate.io" required />
