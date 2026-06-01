@@ -109,7 +109,7 @@ function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <ChartCard title="Revenue & Commission" subtitle="Monthly, USD" to="/payments" className="xl:col-span-2">
+        <ChartCard title="Revenue & Commission" subtitle="Monthly, AED" to="/payments" className="xl:col-span-2">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={revenueTrend} margin={{ top: 5, right: 8, left: -16, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
