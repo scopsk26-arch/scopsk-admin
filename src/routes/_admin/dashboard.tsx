@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_admin/dashboard")({
   component: Dashboard,
 });
 
-const fmtMoney = (n: number) => `$${(n / 1000).toFixed(n >= 1_000_000 ? 2 : 0)}${n >= 1_000_000 ? "M" : "K"}`;
+const fmtMoney = (n: number) => `AED ${(n / 1000).toFixed(n >= 1_000_000 ? 2 : 0)}${n >= 1_000_000 ? "M" : "K"}`;
 
 function Dashboard() {
   return (
