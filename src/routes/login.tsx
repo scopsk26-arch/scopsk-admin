@@ -60,7 +60,7 @@ function LoginPage() {
             {[
               { v: "2,847", l: "Restaurants" },
               { v: "1,293", l: "Suppliers" },
-              { v: "$28.4M", l: "Volume" },
+              { v: "AED 28.4M", l: "Volume" },
             ].map((s) => (
               <div key={s.l} className="glass rounded-xl p-3">
                 <div className="font-display text-xl font-semibold">{s.v}</div>
