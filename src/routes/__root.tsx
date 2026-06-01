@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Prime plate - admin" },
+      { name: "description", content: "Prime Command Center is an enterprise SaaS admin panel for managing a B2B procurement marketplace." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Prime plate - admin" },
+      { property: "og:description", content: "Prime Command Center is an enterprise SaaS admin panel for managing a B2B procurement marketplace." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Prime plate - admin" },
+      { name: "twitter:description", content: "Prime Command Center is an enterprise SaaS admin panel for managing a B2B procurement marketplace." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/dd10eaf9-d99d-4f99-a85d-d288ac425551/id-preview-9ea9500b--096cfc2a-cddd-485f-8abe-ddea06869d50.lovable.app-1780318563144.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/dd10eaf9-d99d-4f99-a85d-d288ac425551/id-preview-9ea9500b--096cfc2a-cddd-485f-8abe-ddea06869d50.lovable.app-1780318563144.png" },
     ],
     links: [
       {
