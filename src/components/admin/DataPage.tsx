@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Download, Plus, Filter, Pencil, Trash2, MoreHorizontal } from "lucide-react";
@@ -296,7 +296,7 @@ function RecordDialog({
   const [form, setForm] = useState<Record<string, any>>({});
 
   // Reset form when dialog opens
-  useMemo(() => {
+  useEffect(() => {
     if (open) {
       const init: Record<string, any> = {};
       fields.forEach((f) => { init[f.key] = initial?.[f.key] ?? (f.type === "number" ? 0 : ""); });
