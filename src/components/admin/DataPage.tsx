@@ -45,7 +45,7 @@ export function DataPage<T extends Record<string, any>>({
   emptyHint,
   formFields,
   idKey = "id",
-  entityName = "Record",
+  entityName,
   disableCrud = false,
 }: {
   title: string;
@@ -62,6 +62,8 @@ export function DataPage<T extends Record<string, any>>({
   entityName?: string;
   disableCrud?: boolean;
 }) {
+  // Derive a friendly singular entity name from the page title when not provided.
+  const entity = entityName ?? title.replace(/s$/i, "").replace(/\s*&\s*.*$/, "").trim() || "Item";
   const [rows, setRows] = useState<T[]>(initialRows);
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<T | null>(null);
