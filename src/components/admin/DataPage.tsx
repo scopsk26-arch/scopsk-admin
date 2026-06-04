@@ -296,7 +296,7 @@ function RecordDialog({
   const [form, setForm] = useState<Record<string, any>>({});
 
   // Reset form when dialog opens
-  useMemo(() => {
+  useEffect(() => {
     if (open) {
       const init: Record<string, any> = {};
       fields.forEach((f) => { init[f.key] = initial?.[f.key] ?? (f.type === "number" ? 0 : ""); });
