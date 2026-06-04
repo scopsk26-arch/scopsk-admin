@@ -45,7 +45,7 @@ export function DataPage<T extends Record<string, any>>({
   emptyHint,
   formFields,
   idKey = "id",
-  entityName,
+  entityName: entityNameProp,
   disableCrud = false,
 }: {
   title: string;
@@ -59,11 +59,11 @@ export function DataPage<T extends Record<string, any>>({
   emptyHint?: string;
   formFields?: FormField[];
   idKey?: string;
-  entityName?: string;
+  entity?: string;
   disableCrud?: boolean;
 }) {
   // Derive a friendly singular entity name from the page title when not provided.
-  const entity = entityName ?? title.replace(/s$/i, "").replace(/\s*&\s*.*$/, "").trim() || "Item";
+  const entity = entity ?? title.replace(/s$/i, "").replace(/\s*&\s*.*$/, "").trim() || "Item";
   const [rows, setRows] = useState<T[]>(initialRows);
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<T | null>(null);
@@ -96,14 +96,14 @@ export function DataPage<T extends Record<string, any>>({
 
   const handleSave = (data: Record<string, any>, isNew: boolean) => {
     if (isNew) {
-      const id = data[idKey] || `${entityName.slice(0, 3).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+      const id = data[idKey] || `${entity.slice(0, 3).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
       const newRow = { ...data, [idKey]: id } as T;
       setRows((prev) => [newRow, ...prev]);
-      toast.success(`${entityName} created`, { description: String(id) });
+      toast.success(`${entity} created`, { description: String(id) });
       setCreating(false);
     } else {
       setRows((prev) => prev.map((r) => (r[idKey as keyof T] === editing?.[idKey as keyof T] ? ({ ...r, ...data } as T) : r)));
-      toast.success(`${entityName} updated`);
+      toast.success(`${entity} updated`);
       setEditing(null);
     }
   };
@@ -111,7 +111,7 @@ export function DataPage<T extends Record<string, any>>({
   const handleDelete = () => {
     if (!deleting) return;
     setRows((prev) => prev.filter((r) => r[idKey as keyof T] !== deleting[idKey as keyof T]));
-    toast.success(`${entityName} deleted`, { description: String(deleting[idKey as keyof T]) });
+    toast.success(`${entity} deleted`, { description: String(deleting[idKey as keyof T]) });
     setDeleting(null);
   };
 
@@ -155,7 +155,7 @@ export function DataPage<T extends Record<string, any>>({
           <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1.5" />Export</Button>
           {!disableCrud && (
             <Button size="sm" onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4 mr-1.5" />New {entityName}
+              <Plus className="h-4 w-4 mr-1.5" />New {entity}
             </Button>
           )}
         </div>
@@ -257,7 +257,7 @@ export function DataPage<T extends Record<string, any>>({
       <RecordDialog
         open={creating || editing !== null}
         onOpenChange={(o) => { if (!o) { setCreating(false); setEditing(null); } }}
-        entityName={entityName}
+        entity={entity}
         fields={fields}
         initial={editing ?? undefined}
         onSubmit={(data) => handleSave(data, creating)}
@@ -267,7 +267,7 @@ export function DataPage<T extends Record<string, any>>({
       <AlertDialog open={deleting !== null} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {entityName.toLowerCase()}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {entity.toLowerCase()}?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently remove <span className="font-mono">{deleting ? String(deleting[idKey as keyof T]) : ""}</span>. This action cannot be undone.
             </AlertDialogDescription>
@@ -283,11 +283,11 @@ export function DataPage<T extends Record<string, any>>({
 }
 
 function RecordDialog({
-  open, onOpenChange, entityName, fields, initial, onSubmit,
+  open, onOpenChange, entity, fields, initial, onSubmit,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  entityName: string;
+  entity: string;
   fields: FormField[];
   initial?: Record<string, any>;
   onSubmit: (data: Record<string, any>) => void;
@@ -313,9 +313,9 @@ function RecordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? `Edit ${entityName.toLowerCase()}` : `New ${entityName.toLowerCase()}`}</DialogTitle>
+          <DialogTitle>{isEdit ? `Edit ${entity.toLowerCase()}` : `New ${entity.toLowerCase()}`}</DialogTitle>
           <DialogDescription>
-            {isEdit ? "Update fields and save changes." : `Add a new ${entityName.toLowerCase()} to the system.`}
+            {isEdit ? "Update fields and save changes." : `Add a new ${entity.toLowerCase()} to the system.`}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
@@ -348,7 +348,7 @@ function RecordDialog({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">{isEdit ? "Save changes" : `Create ${entityName.toLowerCase()}`}</Button>
+            <Button type="submit">{isEdit ? "Save changes" : `Create ${entity.toLowerCase()}`}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
