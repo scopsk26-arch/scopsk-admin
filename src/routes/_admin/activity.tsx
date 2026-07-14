@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { activityFeed } from "@/lib/mock-data-extra";
+import { useQuery } from "@tanstack/react-query";
 import { Activity, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EMPTY_LIST, fetchActivityFeed } from "@/lib/api/resources";
 
 export const Route = createFileRoute("/_admin/activity")({
   head: () => ({ meta: [{ title: "Activity Feed — Prime Plate" }] }),
@@ -9,6 +10,11 @@ export const Route = createFileRoute("/_admin/activity")({
 });
 
 function ActivityPage() {
+  const { data: activityFeed = EMPTY_LIST, isLoading, isError } = useQuery({
+    queryKey: ["admin", "activity"],
+    queryFn: fetchActivityFeed,
+  });
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -28,27 +34,36 @@ function ActivityPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card shadow-soft p-2">
-        <ul>
-          {activityFeed.map((e, i) => (
-            <li key={e.id} className="flex items-start gap-4 px-4 py-3.5 border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-              <div className="relative mt-1.5">
-                <span className="h-2 w-2 rounded-full bg-primary block" />
-                {i < activityFeed.length - 1 && <span className="absolute left-1/2 top-3 -translate-x-1/2 h-12 w-px bg-border" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm">
-                  <span className="font-medium">{e.actor}</span>{" "}
-                  <span className="text-muted-foreground">{e.text}</span>
+        {isLoading && <p className="text-sm text-muted-foreground px-4 py-6">Loading activity…</p>}
+        {isError && !isLoading && activityFeed.length === 0 && (
+          <p className="text-sm text-muted-foreground px-4 py-6">Failed to load activity.</p>
+        )}
+        {!isLoading && activityFeed.length === 0 && !isError && (
+          <p className="text-sm text-muted-foreground px-4 py-6">No activity yet.</p>
+        )}
+        {activityFeed.length > 0 && (
+          <ul>
+            {activityFeed.map((e: any, i: number) => (
+              <li key={e.id} className="flex items-start gap-4 px-4 py-3.5 border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                <div className="relative mt-1.5">
+                  <span className="h-2 w-2 rounded-full bg-primary block" />
+                  {i < activityFeed.length - 1 && <span className="absolute left-1/2 top-3 -translate-x-1/2 h-12 w-px bg-border" />}
                 </div>
-                <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="font-mono">{e.type}</span>
-                  <span>•</span>
-                  <span>{e.time}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm">
+                    <span className="font-medium">{e.actor}</span>{" "}
+                    <span className="text-muted-foreground">{e.text}</span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="font-mono">{e.type}</span>
+                    <span>•</span>
+                    <span>{e.time}</span>
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

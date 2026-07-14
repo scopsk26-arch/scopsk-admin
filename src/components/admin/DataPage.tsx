@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Download, Plus, Filter, Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import { Search, Download, Plus, Filter, Pencil, Trash2, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { SearchableSelect, type SelectOption } from "@/components/admin/SearchableSelect";
 
 export type Column<T> = {
   key: keyof T | string;
@@ -28,10 +29,47 @@ export type Kpi = { label: string; value: string; hint?: string; tone?: "default
 export type FormField = {
   key: string;
   label: string;
-  type?: "text" | "number" | "select";
+  type?: "text" | "number" | "select" | "searchable";
+  /** Plain select options (string values). */
   options?: string[];
+  /** Searchable dropdown options (value/label). */
+  selectOptions?: SelectOption[];
   placeholder?: string;
+  allowClear?: boolean;
 };
+
+/** Relation-like column keys that should prefer searchable dropdowns. */
+const SEARCHABLE_KEYS = new Set([
+  "category", "categories", "parent", "parentId", "categoryId",
+  "supplier", "supplierId", "supplierOrgId", "restaurant", "restaurantId",
+  "buyer", "buyerOrgId", "party", "organization", "organizationId",
+  "unit", "unitId", "brand", "brandId", "rfq", "rfqId", "po", "purchaseOrderId",
+  "invoice", "invoiceId", "driver", "visibility", "method", "scope", "role",
+]);
+
+const ENUM_KEYS = new Set(["status", "type", "tone", "priority"]);
+
+function uniqueFromRows(rows: Record<string, any>[], key: string): string[] {
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const v = r?.[key];
+    if (v == null || v === "" || v === "—") continue;
+    if (Array.isArray(v)) {
+      v.forEach((x) => {
+        const s = String(x).trim();
+        if (s && s !== "—") seen.add(s);
+      });
+    } else {
+      const s = String(v).trim();
+      if (s) seen.add(s);
+    }
+  }
+  return Array.from(seen).sort((a, b) => a.localeCompare(b));
+}
+
+function toSelectOptions(values: string[]): SelectOption[] {
+  return values.map((v) => ({ value: v, label: v }));
+}
 
 export function DataPage<T extends Record<string, any>>({
   title,
@@ -44,9 +82,13 @@ export function DataPage<T extends Record<string, any>>({
   filters,
   emptyHint,
   formFields,
+  lookups,
   idKey = "id",
   entityName: entityNameProp,
   disableCrud = false,
+  onCreate,
+  onUpdate,
+  onDelete,
 }: {
   title: string;
   description: string;
@@ -58,30 +100,71 @@ export function DataPage<T extends Record<string, any>>({
   filters?: ReactNode;
   emptyHint?: string;
   formFields?: FormField[];
+  /** Prefetched dropdown options keyed by form field name (e.g. category, parent, supplier). */
+  lookups?: Record<string, SelectOption[]>;
   idKey?: string;
   entityName?: string;
   disableCrud?: boolean;
+  onCreate?: (data: Record<string, any>) => Promise<T | void> | T | void;
+  onUpdate?: (id: string, data: Record<string, any>, row: T) => Promise<T | void> | T | void;
+  onDelete?: (id: string, row: T) => Promise<void> | void;
 }) {
   // Derive a friendly singular entity name from the page title when not provided.
   const entity = entityNameProp ?? (title.replace(/s$/i, "").replace(/\s*&\s*.*$/, "").trim() || "Item");
   const [rows, setRows] = useState<T[]>(initialRows);
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<T | null>(null);
+  const [viewing, setViewing] = useState<T | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<T | null>(null);
 
-  // Auto-derive form fields from columns when not provided.
+  // Sync when parent rows change (react-query). Avoid looping on unstable `[]` defaults.
+  const rowsSyncKey = useMemo(
+    () => `${initialRows.length}:${initialRows.map((r) => String(r?.[idKey as keyof T] ?? "")).join(",")}`,
+    [initialRows, idKey],
+  );
+  useEffect(() => {
+    setRows(initialRows);
+    // rowsSyncKey encodes identity of the incoming rows
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowsSyncKey]);
+
+  // Auto-derive form fields from columns when not provided — relation fields become searchable.
   const fields: FormField[] = useMemo(() => {
-    if (formFields) return formFields;
+    const enrich = (f: FormField): FormField => {
+      if (f.selectOptions?.length || (f.options?.length && f.type === "select")) return f;
+      const fromLookup = lookups?.[f.key];
+      if (fromLookup?.length) {
+        return { ...f, type: "searchable", selectOptions: fromLookup, allowClear: f.allowClear ?? true };
+      }
+      if (SEARCHABLE_KEYS.has(f.key) || ENUM_KEYS.has(f.key)) {
+        const values = uniqueFromRows(initialRows as Record<string, any>[], f.key);
+        if (values.length) {
+          if (ENUM_KEYS.has(f.key) && values.length <= 12) {
+            return { ...f, type: "select", options: values };
+          }
+          return { ...f, type: "searchable", selectOptions: toSelectOptions(values), allowClear: f.allowClear ?? true };
+        }
+      }
+      return f;
+    };
+
+    if (formFields) return formFields.map(enrich);
+
     const sample = initialRows[0] ?? {};
     return columns
       .filter((c) => typeof c.key === "string" && c.key !== "actions" && c.key in sample)
       .map((c) => {
-        const v = sample[c.key as keyof typeof sample];
-        const type: FormField["type"] = typeof v === "number" ? "number" : "text";
-        return { key: c.key as string, label: c.label, type };
+        const key = c.key as string;
+        const v = sample[key as keyof typeof sample];
+        const base: FormField = {
+          key,
+          label: c.label,
+          type: typeof v === "number" ? "number" : "text",
+        };
+        return enrich(base);
       });
-  }, [columns, formFields, initialRows]);
+  }, [columns, formFields, initialRows, lookups]);
 
   const filtered = useMemo(() => {
     if (!q.trim()) return rows;
@@ -94,25 +177,44 @@ export function DataPage<T extends Record<string, any>>({
     );
   }, [q, rows, searchKeys]);
 
-  const handleSave = (data: Record<string, any>, isNew: boolean) => {
-    if (isNew) {
-      const id = data[idKey] || `${entity.slice(0, 3).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
-      const newRow = { ...data, [idKey]: id } as T;
-      setRows((prev) => [newRow, ...prev]);
-      toast.success(`${entity} created`, { description: String(id) });
-      setCreating(false);
-    } else {
-      setRows((prev) => prev.map((r) => (r[idKey as keyof T] === editing?.[idKey as keyof T] ? ({ ...r, ...data } as T) : r)));
-      toast.success(`${entity} updated`);
-      setEditing(null);
+  const handleSave = async (data: Record<string, any>, isNew: boolean) => {
+    try {
+      if (isNew) {
+        const created = await onCreate?.(data);
+        const id = (created as T | undefined)?.[idKey as keyof T]
+          ?? data[idKey]
+          ?? `${entity.slice(0, 3).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+        const newRow = { ...(created ?? data), [idKey]: id } as T;
+        setRows((prev) => [newRow, ...prev]);
+        toast.success(`${entity} created`, { description: String(id) });
+        setCreating(false);
+      } else {
+        const rowId = String(editing?.[idKey as keyof T] ?? "");
+        const updated = await onUpdate?.(rowId, data, editing as T);
+        setRows((prev) => prev.map((r) => (
+          r[idKey as keyof T] === editing?.[idKey as keyof T]
+            ? ({ ...r, ...(updated ?? data) } as T)
+            : r
+        )));
+        toast.success(`${entity} updated`);
+        setEditing(null);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Failed to save ${entity.toLowerCase()}`);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleting) return;
-    setRows((prev) => prev.filter((r) => r[idKey as keyof T] !== deleting[idKey as keyof T]));
-    toast.success(`${entity} deleted`, { description: String(deleting[idKey as keyof T]) });
-    setDeleting(null);
+    try {
+      const rowId = String(deleting[idKey as keyof T] ?? "");
+      await onDelete?.(rowId, deleting);
+      setRows((prev) => prev.filter((r) => r[idKey as keyof T] !== deleting[idKey as keyof T]));
+      toast.success(`${entity} deleted`, { description: rowId });
+      setDeleting(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Failed to delete ${entity.toLowerCase()}`);
+    }
   };
 
   const handleExport = () => {
@@ -231,8 +333,8 @@ export function DataPage<T extends Record<string, any>>({
                           <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleting(row)} aria-label="Delete">
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="More">
-                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setViewing(row)} aria-label="View">
+                            <Eye className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </td>
@@ -262,6 +364,37 @@ export function DataPage<T extends Record<string, any>>({
         initial={editing ?? undefined}
         onSubmit={(data) => handleSave(data, creating)}
       />
+
+      {/* View dialog */}
+      <Dialog open={viewing !== null} onOpenChange={(o) => { if (!o) setViewing(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>View {entity.toLowerCase()}</DialogTitle>
+            <DialogDescription>Read-only details for this record.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2 py-2">
+            {fields.map((f) => (
+              <div key={f.key} className={cn(fields.length === 1 && "sm:col-span-2")}>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider">{f.label}</div>
+                <div className="mt-1 text-sm font-medium break-words">
+                  {(() => {
+                    const raw = viewing?.[f.key];
+                    if (raw == null || raw === "") return "—";
+                    const opt = f.selectOptions?.find((o) => o.value === String(raw) || o.label === String(raw));
+                    return opt?.label ?? String(raw);
+                  })()}
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setViewing(null)}>Close</Button>
+            <Button type="button" onClick={() => { setEditing(viewing); setViewing(null); }}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation */}
       <AlertDialog open={deleting !== null} onOpenChange={(o) => !o && setDeleting(null)}>
@@ -323,7 +456,15 @@ function RecordDialog({
             {fields.map((f) => (
               <div key={f.key} className={cn(fields.length === 1 && "sm:col-span-2")}>
                 <Label htmlFor={f.key} className="text-xs">{f.label}</Label>
-                {f.type === "select" && f.options ? (
+                {f.type === "searchable" || (f.selectOptions && f.selectOptions.length > 0) ? (
+                  <SearchableSelect
+                    value={String(form[f.key] ?? "")}
+                    onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
+                    options={f.selectOptions ?? []}
+                    placeholder={f.placeholder ?? `Search ${f.label.toLowerCase()}…`}
+                    allowClear={f.allowClear !== false}
+                  />
+                ) : f.type === "select" && f.options ? (
                   <Select value={String(form[f.key] ?? "")} onValueChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}>
                     <SelectTrigger className="mt-1"><SelectValue placeholder={`Select ${f.label.toLowerCase()}`} /></SelectTrigger>
                     <SelectContent>

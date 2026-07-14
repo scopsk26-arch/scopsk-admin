@@ -7,6 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChefHat, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { login } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — Prime Plate Command Center" }] }),
@@ -16,14 +18,31 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState("sarah@primeplate.io");
+  const [password, setPassword] = useState("ChangeMeNow!123");
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      toast.success("Welcome back, Sarah");
+    setError(null);
+    try {
+      const result = await login(email.trim(), password);
+      const name = result.user?.firstName || "there";
+      toast.success(`Welcome back, ${name}`);
       navigate({ to: "/dashboard" });
-    }, 700);
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Sign in failed";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -92,7 +111,7 @@ function LoginPage() {
             </div>
             <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-muted-foreground">
               <span className="text-foreground/70">Email</span><span>sarah@primeplate.io</span>
-              <span className="text-foreground/70">Password</span><span>demo-password</span>
+              <span className="text-foreground/70">Password</span><span>ChangeMeNow!123</span>
             </div>
             <p className="text-[11px] text-muted-foreground mt-2 font-sans">Fields are pre-filled — just click Sign in.</p>
           </div>
@@ -100,7 +119,14 @@ function LoginPage() {
           <form onSubmit={onSubmit} className="mt-5 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Work email</Label>
-              <Input id="email" type="email" placeholder="sarah@primeplate.io" defaultValue="sarah@primeplate.io" required />
+              <Input
+                id="email"
+                type="email"
+                placeholder="sarah@primeplate.io"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -109,12 +135,23 @@ function LoginPage() {
                   Forgot?
                 </button>
               </div>
-              <Input id="password" type="password" placeholder="••••••••" defaultValue="demo-password" required />
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
             </div>
             <div className="flex items-center gap-2">
               <Checkbox id="remember" defaultChecked />
               <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground">Remember me on this device</Label>
             </div>
+
+            {error && (
+              <p className="text-sm text-destructive" role="alert">{error}</p>
+            )}
 
             <Button type="submit" className="w-full h-10" disabled={loading}>
               {loading ? "Signing you in…" : "Sign in"}

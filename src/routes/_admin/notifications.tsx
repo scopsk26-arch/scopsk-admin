@@ -1,24 +1,49 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { DataPage } from "@/components/admin/DataPage";
-import { notifications } from "@/lib/mock-data-extra";
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fetchList } from "@/lib/api/resources";
+import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/notifications")({
   head: () => ({ meta: [{ title: "Notifications — Prime Plate" }] }),
-  component: () => (
+  component: NotificationsPage,
+});
+
+function NotificationsPage() {
+  const { data: rows = [], isLoading, isError } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const list = await fetchList("/notifications");
+      return list.map((r: any) => ({
+        id: str(r.id),
+        category: str(r.category ?? r.type, "System"),
+        title: str(r.title, "—"),
+        body: str(r.body ?? r.message, "—"),
+        time: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 16) : "—",
+        read: Boolean(r.readAt ?? r.read ?? r.isRead),
+      }));
+    },
+  });
+
+  const unread = rows.filter((r) => !r.read).length;
+
+  return (
     <DataPage
       title="Notifications"
       description="System and operational notifications for the admin team."
       icon={<Bell className="h-5 w-5 text-primary" />}
+      disableCrud
       kpis={[
-        { label: "Unread", value: "3", tone: "warning" },
-        { label: "Today", value: "42" },
-        { label: "Approval queue", value: "8", tone: "info" },
-        { label: "Critical (24h)", value: "2", tone: "destructive" },
+        { label: "Unread", value: String(unread), tone: "warning" },
+        { label: "Total", value: String(rows.length) },
+        { label: "Approval queue", value: String(rows.filter((r) => /approv/i.test(r.category)).length), tone: "info" },
+        { label: "Critical", value: String(rows.filter((r) => /fraud|critical/i.test(r.category)).length), tone: "destructive" },
       ]}
-      rows={notifications}
+      rows={rows}
       searchKeys={["id", "title", "body", "category"]}
+      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load notifications." : "No notifications."}
       columns={[
         { key: "category", label: "Category" },
         { key: "title", label: "Title", render: (r) => (
@@ -33,5 +58,5 @@ export const Route = createFileRoute("/_admin/notifications")({
         ) },
       ]}
     />
-  ),
-});
+  );
+}

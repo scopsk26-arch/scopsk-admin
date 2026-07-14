@@ -1,23 +1,46 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { DataPage } from "@/components/admin/DataPage";
-import { auditLogs } from "@/lib/mock-data-extra";
 import { ScrollText } from "lucide-react";
+import { fetchList } from "@/lib/api/resources";
+import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/audit-logs")({
   head: () => ({ meta: [{ title: "Audit Logs — Prime Plate" }] }),
-  component: () => (
+  component: AuditLogsPage,
+});
+
+function AuditLogsPage() {
+  const { data: rows = [], isLoading, isError } = useQuery({
+    queryKey: ["admin", "audit-logs"],
+    queryFn: async () => {
+      const list = await fetchList("/admin/audit-logs");
+      return list.map((r: any) => ({
+        id: str(r.id),
+        time: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 19) : "—",
+        actor: str(r.actor?.email ?? r.actorId, "system"),
+        action: str(r.action, "—"),
+        target: str(r.entityType ? `${r.entityType}:${r.entityId ?? ""}` : r.target ?? r.resource, "—"),
+        ip: str(r.ip ?? r.ipAddress, "—"),
+      }));
+    },
+  });
+
+  return (
     <DataPage
       title="Audit Logs"
       description="Immutable record of every admin action with actor, target and IP."
       icon={<ScrollText className="h-5 w-5 text-primary" />}
+      disableCrud
       kpis={[
-        { label: "Events (24h)", value: "4,280" },
-        { label: "Admin users", value: "47" },
-        { label: "Failed access", value: "3", tone: "warning" },
-        { label: "Retention", value: "7y", tone: "info" },
+        { label: "Events", value: String(rows.length) },
+        { label: "Actors", value: String(new Set(rows.map((r) => r.actor).filter(Boolean)).size), tone: "info" },
+        { label: "Unique actions", value: String(new Set(rows.map((r) => r.action).filter(Boolean)).size), tone: "warning" },
+        { label: "With IP", value: String(rows.filter((r) => r.ip && r.ip !== "—").length), tone: "info" },
       ]}
-      rows={auditLogs}
+      rows={rows}
       searchKeys={["id", "actor", "action", "target"]}
+      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load audit logs." : "No audit logs found."}
       columns={[
         { key: "time", label: "Time" },
         { key: "actor", label: "Actor", render: (r) => <span className="font-mono text-xs">{r.actor}</span> },
@@ -26,5 +49,5 @@ export const Route = createFileRoute("/_admin/audit-logs")({
         { key: "ip", label: "IP", className: "font-mono text-xs text-muted-foreground" },
       ]}
     />
-  ),
-});
+  );
+}

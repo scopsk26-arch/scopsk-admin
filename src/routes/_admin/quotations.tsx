@@ -1,24 +1,59 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
-import { quotations } from "@/lib/mock-data";
 import { Quote } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fetchList } from "@/lib/api/resources";
+import { num, str } from "@/lib/api/client";
+import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/quotations")({
   head: () => ({ meta: [{ title: "Quotations — Prime Plate" }] }),
-  component: () => (
+  component: QuotationsPage,
+});
+
+function QuotationsPage() {
+  const { restaurants, suppliers, rfqs } = useAdminLookups();
+
+  const { data: rows = [], isLoading, isError } = useQuery({
+    queryKey: ["quotations"],
+    queryFn: async () => {
+      const list = await fetchList("/quotations");
+      return list.map((r: any) => ({
+        id: str(r.number ?? r.id),
+        rfq: str(r.rfq?.number ?? r.rfqId, "—"),
+        supplier: str(r.supplierOrg?.name ?? r.organization?.name ?? r.supplierOrgId, "—"),
+        restaurant: str(r.rfq?.organization?.name ?? r.buyerOrg?.name, "—"),
+        amount: num(r.total ?? r.amount ?? r.subtotal),
+        aiScore: num(r.aiScore ?? r.metadata?.aiScore),
+        status: str(r.status, "pending"),
+      }));
+    },
+  });
+
+  const approved = rows.filter((r) => ["approved", "accepted"].includes(r.status)).length;
+  const flagged = rows.filter((r) => r.status === "flagged").length;
+  const avgScore = rows.length ? (rows.reduce((s, r) => s + r.aiScore, 0) / rows.length).toFixed(1) : "0";
+
+  return (
     <DataPage
       title="Quotations"
       description="Quotation monitoring with AI scoring, approval workflow and flagging."
       icon={<Quote className="h-5 w-5 text-primary" />}
+      lookups={{
+        restaurant: restaurants.map((r) => ({ value: r.label, label: r.label })),
+        supplier: suppliers.map((s) => ({ value: s.label, label: s.label })),
+        rfq: rfqs.map((r) => ({ value: r.label, label: r.label })),
+      }}
       kpis={[
-        { label: "Active quotations", value: "921" },
-        { label: "Approved (30d)", value: "612", tone: "success" },
-        { label: "Flagged by AI", value: "14", tone: "warning" },
-        { label: "Avg. AI score", value: "88.4", tone: "info" },
+        { label: "Active quotations", value: String(rows.length) },
+        { label: "Approved", value: String(approved), tone: "success" },
+        { label: "Flagged by AI", value: String(flagged), tone: "warning" },
+        { label: "Avg. AI score", value: avgScore, tone: "info" },
       ]}
-      rows={quotations}
+      rows={rows}
       searchKeys={["id", "rfq", "supplier", "restaurant"]}
+      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load quotations." : "No quotations found."}
       columns={[
         { key: "id", label: "Quotation", className: "font-mono text-xs" },
         { key: "rfq", label: "RFQ", className: "font-mono text-xs" },
@@ -33,5 +68,5 @@ export const Route = createFileRoute("/_admin/quotations")({
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}
     />
-  ),
-});
+  );
+}

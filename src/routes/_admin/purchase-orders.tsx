@@ -1,23 +1,55 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
-import { purchaseOrders } from "@/lib/mock-data";
 import { ClipboardList } from "lucide-react";
+import { fetchList } from "@/lib/api/resources";
+import { num, str } from "@/lib/api/client";
+import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/purchase-orders")({
   head: () => ({ meta: [{ title: "Purchase Orders — Prime Plate" }] }),
-  component: () => (
+  component: PurchaseOrdersPage,
+});
+
+function PurchaseOrdersPage() {
+  const { restaurants, suppliers } = useAdminLookups();
+
+  const { data: rows = [], isLoading, isError } = useQuery({
+    queryKey: ["purchase-orders"],
+    queryFn: async () => {
+      const list = await fetchList("/purchase-orders");
+      return list.map((r: any) => ({
+        id: str(r.number ?? r.id),
+        restaurant: str(r.buyerOrg?.name ?? r.buyerOrgId, "—"),
+        supplier: str(r.supplierOrg?.name ?? r.supplierOrgId, "—"),
+        amount: num(r.total ?? r.subtotal),
+        status: str(r.status, "processing"),
+      }));
+    },
+  });
+
+  const open = rows.filter((r) => !["delivered", "cancelled", "closed", "completed"].includes(r.status)).length;
+  const delivered = rows.filter((r) => ["delivered", "completed"].includes(r.status)).length;
+  const gmv = rows.reduce((s, r) => s + r.amount, 0);
+
+  return (
     <DataPage
       title="Purchase Orders"
       description="POs with fulfilment status, supplier and buyer details."
       icon={<ClipboardList className="h-5 w-5 text-primary" />}
+      lookups={{
+        restaurant: restaurants.map((r) => ({ value: r.label, label: r.label })),
+        supplier: suppliers.map((s) => ({ value: s.label, label: s.label })),
+      }}
       kpis={[
-        { label: "Open POs", value: "184" },
-        { label: "In transit", value: "62", tone: "info" },
-        { label: "Delivered (30d)", value: "412", tone: "success" },
-        { label: "GMV (30d)", value: AED(4_820_000) },
+        { label: "Open POs", value: String(open) },
+        { label: "In transit", value: String(rows.filter((r) => ["dispatched", "in_transit", "in_progress"].includes(r.status)).length), tone: "info" },
+        { label: "Delivered", value: String(delivered), tone: "success" },
+        { label: "GMV", value: AED(gmv) },
       ]}
-      rows={purchaseOrders}
+      rows={rows}
       searchKeys={["id", "restaurant", "supplier"]}
+      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load POs." : "No purchase orders found."}
       columns={[
         { key: "id", label: "PO", className: "font-mono text-xs" },
         { key: "restaurant", label: "Buyer", render: (r) => <span className="font-medium">{r.restaurant}</span> },
@@ -26,5 +58,5 @@ export const Route = createFileRoute("/_admin/purchase-orders")({
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}
     />
-  ),
-});
+  );
+}

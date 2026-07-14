@@ -1,6 +1,6 @@
 import { Bell, Search, Moon, Sun, Command as CommandIcon, ChevronDown } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
-import { useRouterState, Link } from "@tanstack/react-router";
+import { useRouterState, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { CommandPalette } from "./CommandPalette";
 import { useEffect, useState } from "react";
@@ -8,6 +8,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { logout } from "@/lib/api/auth";
+import { getSessionUser } from "@/lib/auth-session";
 
 function useBreadcrumbs() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -21,7 +23,11 @@ function useBreadcrumbs() {
 export function Topbar() {
   const { theme, toggle } = useTheme();
   const crumbs = useBreadcrumbs();
+  const navigate = useNavigate();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const user = getSessionUser();
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Sarah Ahmed";
+  const initials = displayName.split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "SA";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -33,6 +39,11 @@ export function Topbar() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const onSignOut = async () => {
+    await logout();
+    navigate({ to: "/login" });
+  };
 
   return (
     <>
@@ -80,10 +91,10 @@ export function Topbar() {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 h-9 pl-1 pr-2 rounded-lg hover:bg-muted transition-colors">
                   <div className="h-7 w-7 rounded-md gradient-primary grid place-items-center text-primary-foreground text-xs font-semibold">
-                    SA
+                    {initials}
                   </div>
                   <div className="hidden md:flex flex-col items-start leading-tight">
-                    <span className="text-xs font-medium">Sarah Ahmed</span>
+                    <span className="text-xs font-medium">{displayName}</span>
                     <span className="text-[10px] text-muted-foreground">Super Admin</span>
                   </div>
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -96,7 +107,9 @@ export function Topbar() {
                 <DropdownMenuItem asChild><Link to="/roles">Roles & Permissions</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link to="/audit-logs">My Activity</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild><Link to="/login">Sign out</Link></DropdownMenuItem>
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); void onSignOut(); }}>
+                  Sign out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
