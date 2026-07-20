@@ -3,7 +3,7 @@ import {
   PackageCheck, Receipt, CreditCard, Percent, Boxes, FolderTree, Brain,
   AlertTriangle, MessageSquare, LifeBuoy, BookOpen, BadgeCheck, Megaphone,
   BarChart3, ScrollText, UsersRound, Settings, Bell, FolderOpen, Code2,
-  Activity,
+  Activity, UtensilsCrossed, Award, CheckSquare, Warehouse,
 } from "lucide-react";
 
 export type NavItem = {
@@ -20,11 +20,12 @@ export const navItems: NavItem[] = [
 
   { group: "Marketplace", title: "Restaurants", to: "/restaurants", icon: Store },
   { group: "Marketplace", title: "Suppliers", to: "/suppliers", icon: Truck },
-  { group: "Marketplace", title: "KYC Queue", to: "/kyc", icon: ShieldCheck, badge: "12" },
+  { group: "Marketplace", title: "KYC Queue", to: "/kyc", icon: ShieldCheck },
 
   { group: "Trade", title: "RFQs", to: "/rfqs", icon: FileText },
   { group: "Trade", title: "Quotations", to: "/quotations", icon: Quote },
   { group: "Trade", title: "Purchase Orders", to: "/purchase-orders", icon: ClipboardList },
+  { group: "Trade", title: "Approvals", to: "/approvals", icon: CheckSquare },
   { group: "Trade", title: "Deliveries", to: "/deliveries", icon: PackageCheck },
 
   { group: "Finance", title: "Invoices", to: "/invoices", icon: Receipt },
@@ -33,9 +34,12 @@ export const navItems: NavItem[] = [
 
   { group: "Catalog", title: "Product Catalog", to: "/catalog", icon: Boxes },
   { group: "Catalog", title: "Categories", to: "/categories", icon: FolderTree },
+  { group: "Catalog", title: "Cuisines", to: "/cuisines", icon: UtensilsCrossed },
+  { group: "Catalog", title: "Qualities", to: "/qualities", icon: Award },
+  { group: "Catalog", title: "Restaurant Inventory", to: "/inventory", icon: Warehouse },
 
   { group: "Intelligence", title: "AI Control Center", to: "/ai-center", icon: Brain },
-  { group: "Intelligence", title: "Fraud Detection", to: "/fraud", icon: AlertTriangle, badge: "3" },
+  { group: "Intelligence", title: "Fraud Detection", to: "/fraud", icon: AlertTriangle },
   { group: "Intelligence", title: "Reports & BI", to: "/reports", icon: BarChart3 },
 
   { group: "Engagement", title: "Communications", to: "/communications", icon: MessageSquare },

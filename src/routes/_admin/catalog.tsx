@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { Boxes } from "lucide-react";
 import { fetchList } from "@/lib/api/resources";
-import { num, str } from "@/lib/api/client";
+import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
 
@@ -13,78 +13,154 @@ export const Route = createFileRoute("/_admin/catalog")({
   component: CatalogPage,
 });
 
+type ProductRow = {
+  id: string;
+  sku: string;
+  name: string;
+  category: string;
+  categoryId: string;
+  unit: string;
+  unitId: string;
+  price: number;
+  supplier: string;
+  organizationId: string;
+  stock: number;
+  status: string;
+};
+
+function mapProductRow(r: any): ProductRow {
+  const attrs = (r.attributes && typeof r.attributes === "object" ? r.attributes : {}) as Record<
+    string,
+    unknown
+  >;
+  const inventoryTotal = Array.isArray(r.inventoryItems)
+    ? r.inventoryItems.reduce((s: number, i: any) => s + num(i.stock), 0)
+    : null;
+  const latestPrice = Array.isArray(r.marketPrices) ? r.marketPrices[0] : null;
+  return {
+    id: str(r.id),
+    sku: str(r.sku ?? r.id),
+    name: str(r.name, "—"),
+    category: str(r.category?.name ?? "", "—"),
+    categoryId: str(r.categoryId ?? r.category?.id, ""),
+    unit: str(r.unit?.name ?? r.unit?.symbol ?? "", "—"),
+    unitId: str(r.unitId ?? r.unit?.id, ""),
+    price: num(attrs.price ?? latestPrice?.price ?? r.listPrice ?? r.basePrice),
+    supplier: str(r.organization?.name ?? r.brand?.name ?? attrs.supplier, "—"),
+    organizationId: str(r.organizationId ?? r.organization?.id, ""),
+    stock: num(
+      r.stock ??
+        inventoryTotal ??
+        attrs.stock,
+    ),
+    status: str(r.status, "active"),
+  };
+}
+
+function toProductPayload(data: Record<string, any>) {
+  const categoryId = data.categoryId ? String(data.categoryId) : undefined;
+  const organizationId = data.organizationId ? String(data.organizationId) : undefined;
+  const unitId = data.unitId ? String(data.unitId) : undefined;
+  return {
+    name: String(data.name || "").trim(),
+    sku: data.sku ? String(data.sku).trim() : null,
+    ...(categoryId ? { categoryId } : {}),
+    ...(organizationId ? { organizationId } : {}),
+    ...(unitId
+      ? { unitId }
+      : data.unit && data.unit !== "—"
+        ? { unit: String(data.unit) }
+        : {}),
+    status: data.status || "active",
+    price: data.price === "" || data.price == null ? undefined : Number(data.price),
+    stock: data.stock === "" || data.stock == null ? undefined : Number(data.stock),
+  };
+}
+
 function CatalogPage() {
+  const qc = useQueryClient();
   const { categories, suppliers } = useAdminLookups();
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["catalog", "products"],
     queryFn: async () => {
       const list = await fetchList("/catalog/products");
-      return list.map((r: any) => ({
-        sku: str(r.sku ?? r.id),
-        name: str(r.name, "—"),
-        category: str(r.category?.name ?? "", "—"),
-        categoryId: str(r.categoryId ?? r.category?.id, ""),
-        unit: str(r.unit?.name ?? r.unit?.symbol ?? r.unitId, "—"),
-        price: num(r.metadata?.price ?? r.listPrice),
-        supplier: str(r.brand?.name ?? r.organization?.name ?? r.metadata?.supplier, "—"),
-        stock: num(r.metadata?.stock),
-        status: str(r.status, "active"),
-        id: str(r.id),
-      }));
+      return list.map(mapProductRow);
     },
   });
 
-  const unitOptions: SelectOption[] = useMemo(() => {
+  const { data: unitOptions = [] } = useQuery({
+    queryKey: ["catalog", "units"],
+    queryFn: async () => {
+      try {
+        const list = await fetchList("/catalog/units");
+        return list.map((u: any) => ({
+          value: str(u.id),
+          label: str(u.name || u.symbol || u.id),
+        })) as SelectOption[];
+      } catch {
+        return [] as SelectOption[];
+      }
+    },
+    staleTime: 60_000,
+  });
+
+  const fallbackUnitOptions: SelectOption[] = useMemo(() => {
+    if (unitOptions.length) return unitOptions;
     const seen = new Set<string>();
     const out: SelectOption[] = [];
     for (const r of rows) {
-      const u = String(r.unit ?? "").trim();
-      if (!u || u === "—" || seen.has(u)) continue;
-      seen.add(u);
-      out.push({ value: u, label: u });
+      const label = String(r.unit ?? "").trim();
+      const value = String(r.unitId || label).trim();
+      if (!label || label === "—" || !value || seen.has(value)) continue;
+      seen.add(value);
+      out.push({ value, label });
     }
     return out.sort((a, b) => a.label.localeCompare(b.label));
-  }, [rows]);
+  }, [rows, unitOptions]);
 
   const active = rows.filter((r) => r.status === "active").length;
   const low = rows.filter((r) => r.stock > 0 && r.stock < 100).length;
+
+  const invalidate = async () => {
+    await qc.invalidateQueries({ queryKey: ["catalog", "products"] });
+    await qc.invalidateQueries({ queryKey: ["lookups", "categories"] });
+  };
 
   return (
     <DataPage
       title="Product Catalog"
       description="Master catalog with templates, units, pricing and stock signals."
       icon={<Boxes className="h-5 w-5 text-primary" />}
-      idKey="sku"
+      idKey="id"
       entityName="Product"
       formFields={[
         { key: "sku", label: "SKU", type: "text", placeholder: "SKU-001" },
         { key: "name", label: "Product", type: "text", placeholder: "Product name" },
         {
-          key: "category",
+          key: "categoryId",
           label: "Category",
           type: "searchable",
-          selectOptions: categories.length
-            ? categories.map((c) => ({ value: c.label, label: c.label }))
-            : undefined,
+          selectOptions: categories,
           placeholder: "Search categories…",
+          allowClear: true,
         },
         {
-          key: "unit",
+          key: "unitId",
           label: "Unit",
           type: "searchable",
-          selectOptions: unitOptions,
+          selectOptions: fallbackUnitOptions,
           placeholder: "kg, carton, liter…",
+          allowClear: true,
         },
         { key: "price", label: "Price", type: "number" },
         {
-          key: "supplier",
+          key: "organizationId",
           label: "Supplier",
           type: "searchable",
-          selectOptions: suppliers.length
-            ? suppliers.map((s) => ({ value: s.label, label: s.label }))
-            : undefined,
+          selectOptions: suppliers,
           placeholder: "Search suppliers…",
+          allowClear: true,
         },
         { key: "stock", label: "Stock", type: "number" },
         {
@@ -95,9 +171,9 @@ function CatalogPage() {
         },
       ]}
       lookups={{
-        category: categories.map((c) => ({ value: c.label, label: c.label })),
-        supplier: suppliers.map((s) => ({ value: s.label, label: s.label })),
-        unit: unitOptions,
+        categoryId: categories,
+        organizationId: suppliers,
+        unitId: fallbackUnitOptions,
       }}
       kpis={[
         { label: "SKUs", value: String(rows.length) },
@@ -111,13 +187,46 @@ function CatalogPage() {
       columns={[
         { key: "sku", label: "SKU", className: "font-mono text-xs" },
         { key: "name", label: "Product", render: (r) => <span className="font-medium">{r.name}</span> },
-        { key: "category", label: "Category" },
-        { key: "unit", label: "Unit" },
+        {
+          key: "category",
+          label: "Category",
+          render: (r) =>
+            categories.find((c) => c.value === r.categoryId)?.label ?? r.category,
+        },
+        {
+          key: "unit",
+          label: "Unit",
+          render: (r) =>
+            fallbackUnitOptions.find((u) => u.value === r.unitId)?.label ?? r.unit,
+        },
         { key: "price", label: "Price", render: (r) => AED(r.price) },
-        { key: "supplier", label: "Supplier" },
+        {
+          key: "supplier",
+          label: "Supplier",
+          render: (r) =>
+            suppliers.find((s) => s.value === r.organizationId)?.label ?? r.supplier,
+        },
         { key: "stock", label: "Stock" },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}
+      onCreate={async (data) => {
+        const payload = toProductPayload(data);
+        if (!payload.name) throw new Error("Product name is required");
+        const created = await api.post<any>("/catalog/products", payload);
+        await invalidate();
+        return mapProductRow(created);
+      }}
+      onUpdate={async (id, data) => {
+        const payload = toProductPayload(data);
+        if (!payload.name) throw new Error("Product name is required");
+        const updated = await api.patch<any>(`/catalog/products/${id}`, payload);
+        await invalidate();
+        return mapProductRow(updated);
+      }}
+      onDelete={async (id) => {
+        await api.delete(`/catalog/products/${id}`);
+        await invalidate();
+      }}
     />
   );
 }

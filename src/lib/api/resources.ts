@@ -35,18 +35,28 @@ export async function fetchOrganizationsByType(type: "restaurant" | "supplier") 
       id: str(u.id),
       name: [u.firstName, u.lastName].filter(Boolean).join(" ") || str(u.email, "User"),
       industry: "—",
+      cuisines: "—",
       region: "—",
       branches: 0,
       orders: 0,
       spend: 0,
       rfqs: 0,
       status: str(u.status, "active"),
+      verificationStatus: "—",
       categories: [] as string[],
       revenue: 0,
       winRate: 0,
       rating: 0,
       email: str(u.email),
+      phone: "",
+      legalName: "",
       type,
+      poApprovalLevels: 0,
+      minRfqValueAed: 0,
+      ownerName: "",
+      tradeLicenseNumber: "",
+      vatRegistrationNumber: "",
+      foodLicenseNumber: "",
     }));
   } catch {
     return [];
@@ -69,31 +79,186 @@ export async function fetchOrganizations(query?: {
 }
 
 function mapOrgRow(r: any, type: "restaurant" | "supplier") {
+  const cuisineNames = Array.isArray(r.cuisines)
+    ? r.cuisines.map((c: any) => str(c.name ?? c, "")).filter((n: string) => n && n !== "—")
+    : Array.isArray(r.metadata?.cuisineNames)
+      ? r.metadata.cuisineNames.map((n: any) => String(n)).filter(Boolean)
+      : [];
+  const cuisineFallback = str(r.metadata?.cuisineType ?? r.metadata?.industry ?? r.legalName, "—");
   return {
     id: str(r.id),
     name: str(r.name, "Untitled"),
-    industry: str(r.metadata?.industry ?? r.legalName, "—"),
+    industry: cuisineNames.length ? cuisineNames.join(", ") : cuisineFallback,
+    cuisines: cuisineNames.length ? cuisineNames.join(", ") : cuisineFallback,
     region: str(r.city || r.country, "—"),
     branches: num(r.metadata?.branches),
     orders: num(r.metadata?.orders ?? r.orderCount),
     spend: num(r.metadata?.spend ?? r.spend),
     rfqs: num(r.metadata?.rfqs),
     status: str(r.status || r.verificationStatus, "pending"),
+    verificationStatus: str(r.verificationStatus, "—"),
     categories: Array.isArray(r.metadata?.categories) ? r.metadata.categories : [],
     revenue: num(r.metadata?.revenue ?? r.revenue),
     winRate: num(r.metadata?.winRate),
     rating: num(r.metadata?.rating),
     email: str(r.email),
+    phone: str(r.phone, ""),
+    legalName: str(r.legalName, ""),
     type,
+    poApprovalLevels: num(r.poApprovalLevels ?? r.settings?.poApprovalLevels),
+    minRfqValueAed: num(r.minRfqValueAed ?? r.settings?.minRfqValueAed),
+    ownerName: str(r.ownerName ?? r.profile?.ownerName, ""),
+    tradeLicenseNumber: str(r.tradeLicenseNumber ?? r.profile?.tradeLicenseNumber, ""),
+    vatRegistrationNumber: str(r.vatRegistrationNumber ?? r.profile?.vatRegistrationNumber, ""),
+    foodLicenseNumber: str(r.foodLicenseNumber ?? r.profile?.foodLicenseNumber, ""),
   };
 }
 
-export async function fetchList(path: string, query?: Record<string, string | number | boolean | undefined | null>) {
-  try {
-    return asArray(await api.get(path, { query: { limit: 100, ...query } }));
-  } catch {
-    return [];
+/** Enrich org row with /organizations/:id/settings + /profile (best-effort). */
+export async function enrichOrganizationRow<T extends { id: string }>(
+  row: T,
+  type: "restaurant" | "supplier" = "restaurant",
+): Promise<
+  T & {
+    type: "restaurant" | "supplier";
+    poApprovalLevels: number;
+    minRfqValueAed: number;
+    ownerName: string;
+    tradeLicenseNumber: string;
+    vatRegistrationNumber: string;
+    foodLicenseNumber: string;
   }
+> {
+  const [settings, profile] = await Promise.all([
+    api.get<any>(`/organizations/${row.id}/settings`).catch(() => null),
+    api.get<any>(`/organizations/${row.id}/profile`).catch(() => null),
+  ]);
+  return {
+    ...row,
+    type,
+    poApprovalLevels: num(settings?.poApprovalLevels, num((row as any).poApprovalLevels)),
+    minRfqValueAed: num(settings?.minRfqValueAed, num((row as any).minRfqValueAed)),
+    ownerName: str(profile?.ownerName, str((row as any).ownerName, "")),
+    tradeLicenseNumber: str(profile?.tradeLicenseNumber, str((row as any).tradeLicenseNumber, "")),
+    vatRegistrationNumber: str(profile?.vatRegistrationNumber, str((row as any).vatRegistrationNumber, "")),
+    foodLicenseNumber: str(profile?.foodLicenseNumber, str((row as any).foodLicenseNumber, "")),
+  };
+}
+
+export async function updateOrgSettings(
+  organizationId: string,
+  data: { poApprovalLevels?: number | string; minRfqValueAed?: number | string },
+) {
+  const payload: Record<string, number> = {};
+  if (data.poApprovalLevels != null && String(data.poApprovalLevels).trim() !== "") {
+    payload.poApprovalLevels = Number(data.poApprovalLevels);
+  }
+  if (data.minRfqValueAed != null && String(data.minRfqValueAed).trim() !== "") {
+    payload.minRfqValueAed = Number(data.minRfqValueAed);
+  }
+  if (!Object.keys(payload).length) return null;
+  return api.patch(`/organizations/${organizationId}/settings`, payload);
+}
+
+export async function updateOrgProfile(
+  organizationId: string,
+  data: Record<string, any>,
+) {
+  const keys = [
+    "ownerName",
+    "tradeLicenseNumber",
+    "vatRegistrationNumber",
+    "foodLicenseNumber",
+  ] as const;
+  const payload: Record<string, string> = {};
+  for (const key of keys) {
+    if (data[key] != null && String(data[key]).trim() !== "") {
+      payload[key] = String(data[key]).trim();
+    }
+  }
+  if (!Object.keys(payload).length) return null;
+  return api.patch(`/organizations/${organizationId}/profile`, payload);
+}
+
+export { mapOrgRow };
+
+/** PATCH supplier — prefers /suppliers/:id (admin), falls back to /organizations/:id. */
+export async function updateOrganization(
+  id: string,
+  data: Record<string, any>,
+  type: "restaurant" | "supplier" = "restaurant",
+) {
+  const payload: Record<string, unknown> = {};
+  if (data.name != null && String(data.name).trim()) payload.name = String(data.name).trim();
+  if (data.email != null && String(data.email).trim()) payload.email = String(data.email).trim();
+  if (data.phone != null && String(data.phone).trim()) payload.phone = String(data.phone).trim();
+  if (data.legalName != null && String(data.legalName).trim()) {
+    payload.legalName = String(data.legalName).trim();
+  }
+
+  let currentMeta: Record<string, unknown> = {};
+  try {
+    const current = (await api.get<any>(`/organizations/${id}`)) as any;
+    if (current?.metadata && typeof current.metadata === "object") {
+      currentMeta = current.metadata as Record<string, unknown>;
+    }
+  } catch {
+    // best-effort merge
+  }
+
+  if (type === "restaurant") {
+    if (data.industry != null) {
+      payload.metadata = { ...currentMeta, industry: String(data.industry) };
+    }
+    if (data.region != null && String(data.region).trim()) {
+      payload.city = String(data.region).trim();
+    }
+  }
+
+  if (type === "supplier" && data.categories != null) {
+    const cats = Array.isArray(data.categories)
+      ? data.categories.map((s) => String(s).trim()).filter(Boolean)
+      : String(data.categories)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+    payload.metadata = {
+      ...(payload.metadata as Record<string, unknown> | undefined ?? currentMeta),
+      categories: cats,
+    };
+  }
+
+  if (data.status != null && String(data.status).trim()) {
+    const status = String(data.status).trim().toLowerCase();
+    if (status === "verified") {
+      payload.status = "active";
+      payload.verificationStatus = "verified";
+    } else if (["pending", "active", "suspended", "rejected"].includes(status)) {
+      payload.status = status;
+      if (status === "active") payload.verificationStatus = "verified";
+      if (status === "pending") payload.verificationStatus = "pending";
+    }
+  }
+
+  if (Object.keys(payload).length === 0) {
+    throw new Error("No changes to save");
+  }
+
+  let updated: any;
+  if (type === "supplier") {
+    try {
+      updated = await api.patch(`/suppliers/${id}`, payload);
+    } catch {
+      updated = await api.patch(`/organizations/${id}`, payload);
+    }
+  } else {
+    updated = await api.patch(`/organizations/${id}`, payload);
+  }
+  return mapOrgRow(updated, type);
+}
+
+export async function fetchList(path: string, query?: Record<string, string | number | boolean | undefined | null>) {
+  return asArray(await api.get(path, { query: { limit: 200, ...query } }));
 }
 
 /** Activity feed: GET /admin/activity → fallback GET /admin/audit-logs. */
@@ -342,4 +507,63 @@ export async function fetchCommunications() {
 
 export async function fetchAdminDashboard() {
   return api.get<Record<string, unknown>>("/admin/dashboard");
+}
+
+/** Helpers for Wave 1 admin mutations — pass party org via X-Organization-Id. */
+function orgHeaders(organizationId?: string | null) {
+  return organizationId ? { "X-Organization-Id": organizationId } : undefined;
+}
+
+export async function approveKyc(id: string, notes?: string) {
+  return api.post(`/kyc/applications/${id}/approve`, { notes: notes || undefined });
+}
+
+export async function rejectKyc(id: string, notes: string) {
+  return api.post(`/kyc/applications/${id}/reject`, { notes });
+}
+
+export async function approveQuotation(id: string, buyerOrgId: string) {
+  return api.post(`/quotations/${id}/approve`, {}, { headers: orgHeaders(buyerOrgId) });
+}
+
+export async function rejectQuotation(id: string, buyerOrgId: string, reason?: string) {
+  return api.post(`/quotations/${id}/reject`, { reason }, { headers: orgHeaders(buyerOrgId) });
+}
+
+export async function updatePurchaseOrderStatus(id: string, status: string, organizationId: string) {
+  return api.patch(`/purchase-orders/${id}/status`, { status }, { headers: orgHeaders(organizationId) });
+}
+
+export async function updateDeliveryStatus(id: string, status: string, organizationId?: string) {
+  return api.patch(`/deliveries/${id}/status`, { status }, { headers: orgHeaders(organizationId) });
+}
+
+export async function markInvoicePaid(id: string, organizationId: string) {
+  return api.post(`/invoices/${id}/mark-paid`, { method: "admin" }, { headers: orgHeaders(organizationId) });
+}
+
+export async function approveApprovalRequest(id: string, notes?: string) {
+  return api.post(`/approvals/${id}/approve`, { notes: notes || undefined });
+}
+
+export async function rejectApprovalRequest(id: string, reason?: string) {
+  return api.post(`/approvals/${id}/reject`, { reason: reason || undefined, notes: reason || undefined });
+}
+
+export async function markNotificationRead(id: string) {
+  return api.post(`/notifications/${id}/read`);
+}
+
+export async function markAllNotificationsRead() {
+  return api.post(`/notifications/read-all`);
+}
+
+/** Restaurant inventory for a specific org (admin passes X-Organization-Id). */
+export async function fetchRestaurantInventory(organizationId: string) {
+  return asArray(
+    await api.get("/restaurant-inventory", {
+      headers: orgHeaders(organizationId),
+      query: { limit: 200 },
+    }),
+  );
 }

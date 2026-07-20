@@ -385,7 +385,7 @@ function Dashboard() {
           </div>
         </WidgetCard>
 
-        <WidgetCard title="Pending Approvals" to="/quotations" badge={`${approvalsList.length}`}>
+        <WidgetCard title="Pending Approvals" to="/approvals" badge={`${approvalsList.length}`}>
           <div className="space-y-2">
             {approvalsList.length === 0 && <p className="text-sm text-muted-foreground py-4">No pending approvals.</p>}
             {approvalsList.map((a) => (

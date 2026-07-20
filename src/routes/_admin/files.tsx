@@ -31,7 +31,8 @@ function FilesPage() {
   return (
     <DataPage
       title="File Management"
-      description="Supplier and restaurant documents, contracts and invoices."
+      description="No list API yet — upload via POST /files/upload. This page is view-only once listing ships."
+      disableCrud
       icon={<FolderOpen className="h-5 w-5 text-primary" />}
       kpis={[
         { label: "Files", value: String(rows.length) },

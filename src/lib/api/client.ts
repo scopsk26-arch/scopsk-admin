@@ -112,8 +112,11 @@ export async function apiRequest<T = unknown>(path: string, options: RequestOpti
   if (auth) {
     const token = getAccessToken();
     if (token) reqHeaders.Authorization = `Bearer ${token}`;
-    const orgId = getOrgId();
-    if (orgId) reqHeaders["X-Organization-Id"] = orgId;
+    // Prefer explicit org header from caller; fall back to session org
+    if (!reqHeaders["X-Organization-Id"] && !reqHeaders["x-organization-id"]) {
+      const orgId = getOrgId();
+      if (orgId) reqHeaders["X-Organization-Id"] = orgId;
+    }
   }
 
   const res = await fetch(buildUrl(path, query), {

@@ -39,7 +39,8 @@ function PaymentsPage() {
   return (
     <DataPage
       title="Payments"
-      description="Payment runs, gateway settlements and reconciliation."
+      description="Payment ledger (read-only). Mark invoices paid from the Invoices page until a payment gateway is configured."
+      disableCrud
       icon={<CreditCard className="h-5 w-5 text-primary" />}
       kpis={[
         { label: "Processed", value: AED(processed), tone: "success" },

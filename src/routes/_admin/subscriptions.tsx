@@ -1,28 +1,39 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { BadgeCheck } from "lucide-react";
 import { fetchList } from "@/lib/api/resources";
-import { num, str } from "@/lib/api/client";
+import { api, num, str } from "@/lib/api/client";
+import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/subscriptions")({
   head: () => ({ meta: [{ title: "Subscriptions — Prime Plate" }] }),
   component: SubscriptionsPage,
 });
 
+function mapSub(r: any) {
+  return {
+    id: str(r.id),
+    customer: str(r.organization?.name ?? r.customerName ?? r.organizationId, "—"),
+    organizationId: str(r.organizationId ?? r.organization?.id, ""),
+    plan: str(r.plan?.name ?? r.planName ?? r.planCode ?? r.plan, "—"),
+    planCode: str(r.planCode ?? r.plan?.code ?? "basic"),
+    mrr: num(r.mrr ?? r.amount ?? r.price),
+    renews: r.renewsAt ? String(r.renewsAt).slice(0, 10) : r.currentPeriodEnd ? String(r.currentPeriodEnd).slice(0, 10) : "—",
+    status: str(r.status, "active"),
+  };
+}
+
 function SubscriptionsPage() {
+  const queryClient = useQueryClient();
+  const { restaurants, suppliers } = useAdminLookups();
+  const orgs = [...restaurants, ...suppliers];
+
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["subscriptions"],
     queryFn: async () => {
       const list = await fetchList("/subscriptions");
-      return list.map((r: any) => ({
-        id: str(r.id),
-        customer: str(r.organization?.name ?? r.customerName ?? r.organizationId, "—"),
-        plan: str(r.plan?.name ?? r.planName ?? r.plan, "—"),
-        mrr: num(r.mrr ?? r.amount ?? r.price),
-        renews: r.renewsAt ? String(r.renewsAt).slice(0, 10) : r.currentPeriodEnd ? String(r.currentPeriodEnd).slice(0, 10) : "—",
-        status: str(r.status, "active"),
-      }));
+      return list.map(mapSub);
     },
   });
 
@@ -34,6 +45,22 @@ function SubscriptionsPage() {
       title="Subscriptions"
       description="Plans, billing cycles and MRR for restaurants and suppliers."
       icon={<BadgeCheck className="h-5 w-5 text-primary" />}
+      formFields={[
+        {
+          key: "organizationId",
+          label: "Organization",
+          type: "searchable",
+          selectOptions: orgs.map((o) => ({ value: o.value, label: o.label })),
+        },
+        { key: "planCode", label: "Plan code", type: "text", placeholder: "basic" },
+        { key: "mrr", label: "MRR", type: "number" },
+        {
+          key: "status",
+          label: "Status",
+          type: "select",
+          options: ["trialing", "active", "past_due", "cancelled", "expired"],
+        },
+      ]}
       kpis={[
         { label: "Active subs", value: String(active), tone: "success" },
         { label: "MRR", value: AED(mrr), tone: "info" },
@@ -51,6 +78,30 @@ function SubscriptionsPage() {
         { key: "renews", label: "Renews" },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}
+      onCreate={async (data) => {
+        if (!data.organizationId || !data.planCode) throw new Error("Organization and plan code required");
+        const created = await api.post("/subscriptions", {
+          organizationId: data.organizationId,
+          planCode: data.planCode,
+          status: data.status || "active",
+          mrr: Number(data.mrr) || 0,
+        });
+        await queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+        return mapSub(created);
+      }}
+      onUpdate={async (id, data) => {
+        const updated = await api.patch(`/subscriptions/${id}`, {
+          planCode: data.planCode || data.plan,
+          status: data.status,
+          mrr: data.mrr != null ? Number(data.mrr) : undefined,
+        });
+        await queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+        return mapSub(updated);
+      }}
+      onDelete={async (id) => {
+        await api.delete(`/subscriptions/${id}`);
+        await queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      }}
     />
   );
 }

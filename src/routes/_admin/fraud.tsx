@@ -36,7 +36,8 @@ function FraudPage() {
   return (
     <DataPage
       title="Fraud Detection"
-      description="AI-driven alerts across quotations, accounts and transactions."
+      description="Rule-based heuristic alerts (not ML). Review open signals from /ai/fraud-signals."
+      disableCrud
       icon={<AlertTriangle className="h-5 w-5 text-destructive" />}
       kpis={[
         { label: "Open alerts", value: String(rows.filter((r) => r.status === "open").length), tone: "destructive" },

@@ -52,7 +52,8 @@ function AiCenterPage() {
   return (
     <DataPage
       title="AI Control Center"
-      description="Models powering quotation scoring, fraud detection and demand forecasting."
+      description="Rule-based heuristics (not trained ML). Scores from /ai/* endpoints with honest confidence labels."
+      disableCrud
       icon={<Brain className="h-5 w-5 text-primary" />}
       kpis={[
         { label: "Active models", value: String(rows.filter((r) => r.status === "active").length), tone: "success" },

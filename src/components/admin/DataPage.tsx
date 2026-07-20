@@ -118,9 +118,20 @@ export function DataPage<T extends Record<string, any>>({
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<T | null>(null);
 
-  // Sync when parent rows change (react-query). Avoid looping on unstable `[]` defaults.
+  // Sync when parent rows change (react-query). Include values so edits refetch into the table.
   const rowsSyncKey = useMemo(
-    () => `${initialRows.length}:${initialRows.map((r) => String(r?.[idKey as keyof T] ?? "")).join(",")}`,
+    () =>
+      initialRows
+        .map((r) => {
+          const id = String(r?.[idKey as keyof T] ?? "");
+          const name = String((r as any)?.name ?? "");
+          const status = String((r as any)?.status ?? "");
+          const cats = Array.isArray((r as any)?.categories)
+            ? (r as any).categories.join("|")
+            : String((r as any)?.categories ?? "");
+          return `${id}:${name}:${status}:${cats}`;
+        })
+        .join(";"),
     [initialRows, idKey],
   );
   useEffect(() => {
@@ -177,10 +188,18 @@ export function DataPage<T extends Record<string, any>>({
     );
   }, [q, rows, searchKeys]);
 
+  const canCreate = Boolean(onCreate) && !disableCrud;
+  const canUpdate = Boolean(onUpdate) && !disableCrud;
+  const canDelete = Boolean(onDelete) && !disableCrud;
+
   const handleSave = async (data: Record<string, any>, isNew: boolean) => {
     try {
       if (isNew) {
-        const created = await onCreate?.(data);
+        if (!onCreate) {
+          toast.error(`Create is not available for ${entity.toLowerCase()}s`);
+          return;
+        }
+        const created = await onCreate(data);
         const id = (created as T | undefined)?.[idKey as keyof T]
           ?? data[idKey]
           ?? `${entity.slice(0, 3).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
@@ -189,8 +208,12 @@ export function DataPage<T extends Record<string, any>>({
         toast.success(`${entity} created`, { description: String(id) });
         setCreating(false);
       } else {
+        if (!onUpdate) {
+          toast.error(`Save is not available for ${entity.toLowerCase()}s — wire an API handler`);
+          return;
+        }
         const rowId = String(editing?.[idKey as keyof T] ?? "");
-        const updated = await onUpdate?.(rowId, data, editing as T);
+        const updated = await onUpdate(rowId, data, editing as T);
         setRows((prev) => prev.map((r) => (
           r[idKey as keyof T] === editing?.[idKey as keyof T]
             ? ({ ...r, ...(updated ?? data) } as T)
@@ -206,9 +229,14 @@ export function DataPage<T extends Record<string, any>>({
 
   const handleDelete = async () => {
     if (!deleting) return;
+    if (!onDelete) {
+      toast.error(`Delete is not available for ${entity.toLowerCase()}s`);
+      setDeleting(null);
+      return;
+    }
     try {
       const rowId = String(deleting[idKey as keyof T] ?? "");
-      await onDelete?.(rowId, deleting);
+      await onDelete(rowId, deleting);
       setRows((prev) => prev.filter((r) => r[idKey as keyof T] !== deleting[idKey as keyof T]));
       toast.success(`${entity} deleted`, { description: rowId });
       setDeleting(null);
@@ -255,7 +283,7 @@ export function DataPage<T extends Record<string, any>>({
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1.5" />Export</Button>
-          {!disableCrud && (
+          {canCreate && (
             <Button size="sm" onClick={() => setCreating(true)}>
               <Plus className="h-4 w-4 mr-1.5" />New {entity}
             </Button>
@@ -327,12 +355,16 @@ export function DataPage<T extends Record<string, any>>({
                     {!disableCrud && (
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditing(row)} aria-label="Edit">
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleting(row)} aria-label="Delete">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          {canUpdate && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditing(row)} aria-label="Edit">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleting(row)} aria-label="Delete">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setViewing(row)} aria-label="View">
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
@@ -389,9 +421,11 @@ export function DataPage<T extends Record<string, any>>({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setViewing(null)}>Close</Button>
-            <Button type="button" onClick={() => { setEditing(viewing); setViewing(null); }}>
-              <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
-            </Button>
+            {canUpdate && (
+              <Button type="button" onClick={() => { setEditing(viewing); setViewing(null); }}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -428,11 +462,20 @@ function RecordDialog({
   const isEdit = !!initial;
   const [form, setForm] = useState<Record<string, any>>({});
 
-  // Reset form when dialog opens
+  // Reset form when dialog opens — normalize arrays (e.g. categories) for inputs
   useEffect(() => {
     if (open) {
       const init: Record<string, any> = {};
-      fields.forEach((f) => { init[f.key] = initial?.[f.key] ?? (f.type === "number" ? 0 : ""); });
+      fields.forEach((f) => {
+        const raw = initial?.[f.key];
+        if (Array.isArray(raw)) {
+          init[f.key] = raw[0] != null ? String(raw[0]) : "";
+        } else if (raw == null) {
+          init[f.key] = f.type === "number" ? 0 : "";
+        } else {
+          init[f.key] = raw;
+        }
+      });
       setForm(init);
     }
   }, [open, initial, fields]);

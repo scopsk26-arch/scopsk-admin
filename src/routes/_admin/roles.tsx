@@ -33,7 +33,8 @@ function RolesPage() {
   return (
     <DataPage
       title="Roles & Permissions"
-      description="Built-in and custom roles with granular permission scopes."
+      description="Built-in and custom roles (read-only list from /admin/roles)."
+      disableCrud
       icon={<UsersRound className="h-5 w-5 text-primary" />}
       kpis={[
         { label: "Roles", value: String(rows.length) },
