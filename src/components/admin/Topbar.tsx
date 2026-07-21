@@ -26,7 +26,7 @@ export function Topbar() {
   const navigate = useNavigate();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const user = getSessionUser();
-  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Sarah Ahmed";
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "User";
   const initials = displayName.split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "SA";
 
   useEffect(() => {

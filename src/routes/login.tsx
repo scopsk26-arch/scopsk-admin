@@ -19,8 +19,8 @@ function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState("sarah@primeplate.io");
-  const [password, setPassword] = useState("ChangeMeNow!123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,17 +104,6 @@ function LoginPage() {
           <p className="text-sm text-muted-foreground mt-1.5">
             Use your enterprise credentials to access the command center.
           </p>
-
-          <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-3.5 text-xs">
-            <div className="flex items-center gap-1.5 font-medium text-primary mb-1.5">
-              <Sparkles className="h-3.5 w-3.5" /> Demo credentials
-            </div>
-            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-muted-foreground">
-              <span className="text-foreground/70">Email</span><span>sarah@primeplate.io</span>
-              <span className="text-foreground/70">Password</span><span>ChangeMeNow!123</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-2 font-sans">Fields are pre-filled — just click Sign in.</p>
-          </div>
 
           <form onSubmit={onSubmit} className="mt-5 space-y-4">
             <div className="space-y-1.5">
