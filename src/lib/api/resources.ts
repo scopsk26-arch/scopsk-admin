@@ -111,6 +111,17 @@ function mapOrgRow(r: any, type: "restaurant" | "supplier") {
     tradeLicenseNumber: str(r.tradeLicenseNumber ?? r.profile?.tradeLicenseNumber, ""),
     vatRegistrationNumber: str(r.vatRegistrationNumber ?? r.profile?.vatRegistrationNumber, ""),
     foodLicenseNumber: str(r.foodLicenseNumber ?? r.profile?.foodLicenseNumber, ""),
+    documents: Array.isArray(r.documents)
+      ? r.documents.map((d: any) => ({
+          id: str(d.id),
+          type: str(d.documentType ?? d.type, "document"),
+          url: str(d.url, ""),
+          fileName: str(d.fileName, ""),
+          status: str(d.status, ""),
+        }))
+      : [],
+    documentCount: num(r.documentCount, Array.isArray(r.documents) ? r.documents.length : 0),
+    kycApplication: r.kycApplication ?? null,
   };
 }
 

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
-import { Store } from "lucide-react";
+import { ExternalLink, Store } from "lucide-react";
 import {
   enrichOrganizationRow,
   fetchOrganizationsByType,
@@ -10,6 +10,8 @@ import {
   updateOrgSettings,
 } from "@/lib/api/resources";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
+
+type OrgDoc = { id?: string; type: string; url?: string; fileName?: string };
 
 export const Route = createFileRoute("/_admin/restaurants")({
   head: () => ({ meta: [{ title: "Restaurants — Prime Plate" }] }),
@@ -74,6 +76,38 @@ function RestaurantsPage() {
         { key: "cuisines", label: "Cuisines" },
         { key: "region", label: "Region" },
         { key: "tradeLicenseNumber", label: "Trade license", className: "font-mono text-xs" },
+        {
+          key: "documents",
+          label: "Documents",
+          render: (r) => {
+            const docs = (r.documents as OrgDoc[]) || [];
+            if (!docs.length) {
+              return <span className="text-xs text-muted-foreground">No documents</span>;
+            }
+            return (
+              <div className="flex flex-col gap-1 max-w-[220px]">
+                {docs.map((d, i) =>
+                  d.url ? (
+                    <a
+                      key={d.id || `${d.type}-${i}`}
+                      href={d.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{(d.type || d.fileName || "file").replace(/_/g, " ")}</span>
+                    </a>
+                  ) : (
+                    <span key={d.id || `${d.type}-${i}`} className="text-xs text-muted-foreground truncate">
+                      {(d.type || "document").replace(/_/g, " ")}
+                    </span>
+                  ),
+                )}
+              </div>
+            );
+          },
+        },
         { key: "poApprovalLevels", label: "PO levels" },
         { key: "minRfqValueAed", label: "Min RFQ", render: (r) => AED(r.minRfqValueAed) },
         {
