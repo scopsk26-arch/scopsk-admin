@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { Code2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -35,6 +36,25 @@ function ApiKeysPage() {
         { key: "label", label: "Label", type: "text", placeholder: "Production — Web" },
         { key: "scope", label: "Scopes", type: "text", placeholder: "read:catalog write:rfq" },
       ]}
+      viewFields={[
+        { key: "id", label: "Key ID" },
+        { key: "label", label: "Label" },
+        { key: "scope", label: "Scope" },
+        { key: "keyPrefix", label: "Key prefix" },
+        { key: "calls24h", label: "Calls (24h)" },
+        { key: "lastUsed", label: "Last used" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => {
+        const { key: _key, secret: _secret, plaintext: _pt, ...safe } = row as Record<string, any>;
+        return safe;
+      }}
+      renderView={(detail) => (
+        <GenericJsonDetailView
+          detail={detail}
+          omitKeys={["id", "key", "secret", "plaintext", "apiKey", "rawKey"]}
+        />
+      )}
       kpis={[
         { label: "Active keys", value: String(active), tone: "success" },
         { label: "Calls (24h)", value: calls24h > 0 ? calls24h.toLocaleString() : "—", tone: "info" },

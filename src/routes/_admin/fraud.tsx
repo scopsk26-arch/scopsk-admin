@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, asArray, str } from "@/lib/api/client";
@@ -24,6 +25,7 @@ function FraudPage() {
           model: str(r.model ?? "FraudSignals", "—"),
           severity: str(r.severity, "low"),
           status: str(r.status, "open"),
+          payload: r,
         }));
       } catch {
         return [];
@@ -39,6 +41,15 @@ function FraudPage() {
       description="Rule-based heuristic alerts (not ML). Review open signals from /ai/fraud-signals."
       disableCrud
       icon={<AlertTriangle className="h-5 w-5 text-destructive" />}
+      viewFields={[
+        { key: "subject", label: "Subject" },
+        { key: "reason", label: "Reason" },
+        { key: "model", label: "Model" },
+        { key: "severity", label: "Severity" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => row.payload ?? row}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} omitKeys={["id", "payload"]} />}
       kpis={[
         { label: "Open alerts", value: String(rows.filter((r) => r.status === "open").length), tone: "destructive" },
         { label: "Total signals", value: String(rows.length), tone: "success" },

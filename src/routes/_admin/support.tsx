@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { LifeBuoy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fetchList } from "@/lib/api/resources";
+import { fetchList, fetchSupportTicketDetail } from "@/lib/api/resources";
 import { api, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/support")({
@@ -51,6 +52,23 @@ function SupportPage() {
           options: ["open", "in_progress", "waiting", "resolved", "closed"],
         },
       ]}
+      viewFields={[
+        { key: "number", label: "Ticket" },
+        { key: "subject", label: "Subject" },
+        { key: "requester", label: "Requester" },
+        { key: "agent", label: "Agent" },
+        { key: "priority", label: "Priority" },
+        { key: "sla", label: "SLA" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => {
+        try {
+          return await fetchSupportTicketDetail(row.id);
+        } catch {
+          return row;
+        }
+      }}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Open tickets", value: String(open), tone: "info" },
         { label: "Total", value: String(rows.length), tone: "success" },

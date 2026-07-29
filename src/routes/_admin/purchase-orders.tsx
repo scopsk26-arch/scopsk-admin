@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
+import { PurchaseOrderDetailView } from "@/components/admin/DetailViews";
 import { ClipboardList } from "lucide-react";
-import { fetchList, updatePurchaseOrderStatus } from "@/lib/api/resources";
+import { fetchList, fetchPurchaseOrderDetail, updatePurchaseOrderStatus } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -14,23 +15,30 @@ export const Route = createFileRoute("/_admin/purchase-orders")({
 const PO_STATUSES = ["draft", "confirmed", "in_progress", "delivered", "completed", "cancelled"] as const;
 
 function mapPo(r: any) {
+  const items = Array.isArray(r.items) ? r.items : [];
   return {
     id: str(r.id),
     number: str(r.number ?? r.id),
     restaurant: str(r.buyerOrg?.name ?? r.buyerOrgId, "—"),
     supplier: str(r.supplierOrg?.name ?? r.supplierOrgId, "—"),
     buyerOrgId: str(r.buyerOrgId ?? r.buyerOrg?.id, ""),
+    rfq: str(r.rfq?.number ?? r.rfqId, "—"),
+    quotation: str(r.quotation?.number ?? r.quotationId, "—"),
+    itemCount: items.length || num(r.itemCount),
     amount: num(r.total ?? r.subtotal),
+    currency: str(r.currency, "AED"),
+    created: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
     status: str(r.status, "processing"),
   };
 }
 
 function PurchaseOrdersPage() {
-  const { restaurants, suppliers } = useAdminLookups();
+  const { restaurants, suppliers } = useAdminLookups(["restaurants", "suppliers"]);
   const queryClient = useQueryClient();
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["purchase-orders"],
+    staleTime: 60_000,
     queryFn: async () => {
       const list = await fetchList("/purchase-orders");
       return list.map(mapPo);
@@ -57,6 +65,20 @@ function PurchaseOrdersPage() {
         { key: "amount", label: "Amount", type: "number" },
         { key: "status", label: "Status", type: "select", options: [...PO_STATUSES] },
       ]}
+      viewFields={[
+        { key: "number", label: "PO #" },
+        { key: "restaurant", label: "Buyer" },
+        { key: "supplier", label: "Supplier" },
+        { key: "rfq", label: "RFQ" },
+        { key: "quotation", label: "Quotation" },
+        { key: "itemCount", label: "Line items" },
+        { key: "amount", label: "Amount" },
+        { key: "currency", label: "Currency" },
+        { key: "created", label: "Created" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => fetchPurchaseOrderDetail(row.id)}
+      renderView={(detail) => <PurchaseOrderDetailView detail={detail} />}
       kpis={[
         { label: "Open POs", value: String(open) },
         { label: "In transit", value: String(rows.filter((r) => ["dispatched", "in_transit", "in_progress"].includes(r.status)).length), tone: "info" },
@@ -64,14 +86,16 @@ function PurchaseOrdersPage() {
         { label: "GMV", value: AED(gmv) },
       ]}
       rows={rows}
-      searchKeys={["number", "restaurant", "supplier"]}
+      searchKeys={["number", "restaurant", "supplier", "rfq"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load POs." : "No purchase orders found."}
       columns={[
-        { key: "number", label: "PO", className: "font-mono text-xs" },
+        { key: "number", label: "PO", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "restaurant", label: "Buyer", render: (r) => <span className="font-medium">{r.restaurant}</span> },
         { key: "supplier", label: "Supplier" },
-        { key: "amount", label: "Amount", render: (r) => AED(r.amount) },
-        { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+        { key: "rfq", label: "RFQ", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
+        { key: "itemCount", label: "Items", className: "whitespace-nowrap w-[1%]" },
+        { key: "amount", label: "Amount", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.amount) },
+        { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onUpdate={async (id, data, row) => {
         if (!data.status) throw new Error("Status is required");
@@ -79,7 +103,14 @@ function PurchaseOrdersPage() {
         if (!orgId) throw new Error("Missing buyer organization for this PO");
         const updated = await updatePurchaseOrderStatus(id, String(data.status), orgId);
         await queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
-        return mapPo({ ...updated, buyerOrg: row, number: row.number });
+        return mapPo({
+          ...(updated && typeof updated === "object" ? updated : {}),
+          id,
+          number: row.number,
+          status: data.status,
+          buyerOrg: { name: row.restaurant, id: row.buyerOrgId },
+          supplierOrg: { name: row.supplier },
+        });
       }}
     />
   );

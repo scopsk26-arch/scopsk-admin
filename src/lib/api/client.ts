@@ -36,6 +36,8 @@ type RequestOptions = {
   query?: Record<string, string | number | boolean | undefined | null>;
   /** Skip auto-refresh retry (used internally). */
   _retried?: boolean;
+  /** Abort after this many ms (default 25s — Heroku router limit is 30s). */
+  timeoutMs?: number;
 };
 
 function buildUrl(path: string, query?: RequestOptions["query"]) {
@@ -99,7 +101,7 @@ async function tryRefresh(): Promise<boolean> {
 }
 
 export async function apiRequest<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = "GET", body, headers = {}, auth = true, query, _retried } = options;
+  const { method = "GET", body, headers = {}, auth = true, query, _retried, timeoutMs = 25_000 } = options;
   const reqHeaders: Record<string, string> = {
     Accept: "application/json",
     ...headers,
@@ -119,11 +121,25 @@ export async function apiRequest<T = unknown>(path: string, options: RequestOpti
     }
   }
 
-  const res = await fetch(buildUrl(path, query), {
-    method,
-    headers: reqHeaders,
-    body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch(buildUrl(path, query), {
+      method,
+      headers: reqHeaders,
+      body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new ApiError("Request timed out — server is slow or unreachable. Try again.", 408);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   const payload = await parseBody(res);
 

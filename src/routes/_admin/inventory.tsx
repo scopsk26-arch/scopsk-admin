@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView, ProductDetailView } from "@/components/admin/DetailViews";
 import { Warehouse } from "lucide-react";
-import { fetchRestaurantInventory } from "@/lib/api/resources";
+import { fetchProductDetail, fetchRestaurantInventory } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import {
@@ -26,6 +27,7 @@ type InventoryRow = {
   quantity: number;
   reorderPoint: number;
   product: string;
+  productId: string;
   status: string;
 };
 
@@ -37,16 +39,17 @@ function mapInventory(r: any, restaurantLabel: string, organizationId: string): 
     name: str(r.name ?? r.product?.name, "—"),
     sku: str(r.sku ?? r.product?.sku, "—"),
     itemCode: str(r.itemCode, "—"),
-    unit: str(r.unit, "—"),
+    unit: str(r.unit ?? r.product?.unit?.symbol ?? r.product?.unit?.name, "—"),
     quantity: num(r.quantity ?? r.stock),
     reorderPoint: num(r.reorderPoint),
     product: str(r.product?.name, "—"),
+    productId: str(r.productId ?? r.product?.id, ""),
     status: str(r.status, "active"),
   };
 }
 
 function InventoryPage() {
-  const { restaurants } = useAdminLookups();
+  const { restaurants } = useAdminLookups(["restaurants"]);
   const [orgId, setOrgId] = useState<string>("");
 
   const selectedLabel = useMemo(
@@ -87,6 +90,34 @@ function InventoryPage() {
             ))}
           </SelectContent>
         </Select>
+      }
+      viewFields={[
+        { key: "itemCode", label: "Item code" },
+        { key: "name", label: "Item" },
+        { key: "sku", label: "SKU" },
+        { key: "product", label: "Product" },
+        { key: "restaurant", label: "Restaurant" },
+        { key: "unit", label: "Unit" },
+        { key: "quantity", label: "Quantity" },
+        { key: "reorderPoint", label: "Reorder point" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => {
+        if (row.productId) {
+          try {
+            return await fetchProductDetail(row.productId);
+          } catch {
+            /* fall through */
+          }
+        }
+        return row;
+      }}
+      renderView={(detail) =>
+        detail?.category || detail?.variants || detail?.images || detail?.inventoryItems ? (
+          <ProductDetailView detail={detail} />
+        ) : (
+          <GenericJsonDetailView detail={detail} />
+        )
       }
       kpis={[
         { label: "Items", value: String(rows.length) },

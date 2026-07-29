@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { UtensilsCrossed } from "lucide-react";
 import { fetchList } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
@@ -58,7 +59,7 @@ function resolveCategoryIds(raw: unknown, options: SelectOption[]): string[] {
 
 function CuisinesPage() {
   const qc = useQueryClient();
-  const { categories } = useAdminLookups();
+  const { categories } = useAdminLookups(["categories"]);
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["cuisines"],
@@ -101,6 +102,17 @@ function CuisinesPage() {
         },
       ]}
       lookups={{ categories }}
+      viewFields={[
+        { key: "name", label: "Cuisine" },
+        { key: "slug", label: "Slug" },
+        { key: "description", label: "Description" },
+        { key: "categories", label: "Categories" },
+        { key: "products", label: "Products" },
+        { key: "sortOrder", label: "Sort order" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => row}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Total", value: String(rows.length) },
         { label: "Active", value: String(active), tone: "success" },

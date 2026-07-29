@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
+import { ProductDetailView } from "@/components/admin/DetailViews";
 import { Boxes } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
+import { fetchList, fetchProductDetail } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
@@ -19,12 +20,14 @@ type ProductRow = {
   name: string;
   category: string;
   categoryId: string;
+  brand: string;
   unit: string;
   unitId: string;
   price: number;
   supplier: string;
   organizationId: string;
   stock: number;
+  description: string;
   status: string;
 };
 
@@ -34,7 +37,7 @@ function mapProductRow(r: any): ProductRow {
     unknown
   >;
   const inventoryTotal = Array.isArray(r.inventoryItems)
-    ? r.inventoryItems.reduce((s: number, i: any) => s + num(i.stock), 0)
+    ? r.inventoryItems.reduce((s: number, i: any) => s + num(i.stock ?? i.quantity), 0)
     : null;
   const latestPrice = Array.isArray(r.marketPrices) ? r.marketPrices[0] : null;
   return {
@@ -43,9 +46,10 @@ function mapProductRow(r: any): ProductRow {
     name: str(r.name, "—"),
     category: str(r.category?.name ?? "", "—"),
     categoryId: str(r.categoryId ?? r.category?.id, ""),
+    brand: str(r.brand?.name ?? attrs.brand, "—"),
     unit: str(r.unit?.name ?? r.unit?.symbol ?? "", "—"),
     unitId: str(r.unitId ?? r.unit?.id, ""),
-    price: num(attrs.price ?? latestPrice?.price ?? r.listPrice ?? r.basePrice),
+    price: num(attrs.price ?? latestPrice?.price ?? r.listPrice ?? r.basePrice ?? r.price),
     supplier: str(r.organization?.name ?? r.brand?.name ?? attrs.supplier, "—"),
     organizationId: str(r.organizationId ?? r.organization?.id, ""),
     stock: num(
@@ -53,6 +57,7 @@ function mapProductRow(r: any): ProductRow {
         inventoryTotal ??
         attrs.stock,
     ),
+    description: str(r.description ?? attrs.description, ""),
     status: str(r.status, "active"),
   };
 }
@@ -79,7 +84,7 @@ function toProductPayload(data: Record<string, any>) {
 
 function CatalogPage() {
   const qc = useQueryClient();
-  const { categories, suppliers } = useAdminLookups();
+  const { categories, suppliers } = useAdminLookups(["categories", "suppliers"]);
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["catalog", "products"],
@@ -170,6 +175,26 @@ function CatalogPage() {
           options: ["active", "inactive", "draft", "archived"],
         },
       ]}
+      viewFields={[
+        { key: "sku", label: "SKU" },
+        { key: "name", label: "Product" },
+        { key: "category", label: "Category" },
+        { key: "brand", label: "Brand" },
+        { key: "unit", label: "Unit" },
+        { key: "price", label: "Price" },
+        { key: "supplier", label: "Supplier" },
+        { key: "stock", label: "Stock" },
+        { key: "description", label: "Description" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => {
+        try {
+          return await fetchProductDetail(row.id);
+        } catch {
+          return row;
+        }
+      }}
+      renderView={(detail) => <ProductDetailView detail={detail} />}
       lookups={{
         categoryId: categories,
         organizationId: suppliers,
@@ -206,8 +231,8 @@ function CatalogPage() {
           render: (r) =>
             suppliers.find((s) => s.value === r.organizationId)?.label ?? r.supplier,
         },
-        { key: "stock", label: "Stock" },
-        { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+        { key: "stock", label: "Stock", className: "whitespace-nowrap w-[1%]" },
+        { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onCreate={async (data) => {
         const payload = toProductPayload(data);

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { CreditCard } from "lucide-react";
 import { fetchList } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
@@ -10,23 +11,34 @@ export const Route = createFileRoute("/_admin/payments")({
   component: PaymentsPage,
 });
 
+function mapPayment(r: any) {
+  return {
+    id: str(r.id ?? r.providerRef),
+    providerRef: str(r.providerRef, "—"),
+    invoice: str(r.invoice?.number ?? r.invoiceId, "—"),
+    invoiceId: str(r.invoiceId ?? r.invoice?.id, ""),
+    method: str(r.method ?? r.paymentMethod, "—"),
+    provider: str(r.provider ?? r.gateway, "—"),
+    currency: str(r.currency, "AED"),
+    amount: num(r.amount),
+    fee: num(r.fee ?? r.processingFee),
+    organization: str(r.organization?.name ?? r.organizationId, "—"),
+    date: r.paidAt
+      ? String(r.paidAt).slice(0, 10)
+      : r.createdAt
+        ? String(r.createdAt).slice(0, 10)
+        : "—",
+    paidAt: r.paidAt ? String(r.paidAt).replace("T", " ").slice(0, 19) : "—",
+    status: str(r.status, "pending"),
+  };
+}
+
 function PaymentsPage() {
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["payments"],
     queryFn: async () => {
       const list = await fetchList("/payments");
-      return list.map((r: any) => ({
-        id: str(r.providerRef ?? r.id),
-        invoice: str(r.invoice?.number ?? r.invoiceId, "—"),
-        method: str(r.method, "—"),
-        amount: num(r.amount),
-        date: r.paidAt
-          ? String(r.paidAt).slice(0, 10)
-          : r.createdAt
-            ? String(r.createdAt).slice(0, 10)
-            : "—",
-        status: str(r.status, "pending"),
-      }));
+      return list.map(mapPayment);
     },
   });
 
@@ -42,6 +54,22 @@ function PaymentsPage() {
       description="Payment ledger (read-only). Mark invoices paid from the Invoices page until a payment gateway is configured."
       disableCrud
       icon={<CreditCard className="h-5 w-5 text-primary" />}
+      viewFields={[
+        { key: "id", label: "Payment ID" },
+        { key: "providerRef", label: "Provider ref" },
+        { key: "invoice", label: "Invoice" },
+        { key: "method", label: "Method" },
+        { key: "provider", label: "Provider" },
+        { key: "currency", label: "Currency" },
+        { key: "amount", label: "Amount" },
+        { key: "fee", label: "Fee" },
+        { key: "organization", label: "Organization" },
+        { key: "date", label: "Date" },
+        { key: "paidAt", label: "Paid at" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => row}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Processed", value: AED(processed), tone: "success" },
         { label: "Pending", value: AED(pending), tone: "warning" },
@@ -49,12 +77,13 @@ function PaymentsPage() {
         { label: "Rows", value: String(rows.length), tone: "info" },
       ]}
       rows={rows}
-      searchKeys={["id", "invoice", "method"]}
+      searchKeys={["id", "invoice", "method", "provider", "organization"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load payments." : "No payments yet."}
       columns={[
         { key: "id", label: "Payment", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 12) },
         { key: "invoice", label: "Invoice", className: "font-mono text-xs" },
         { key: "method", label: "Method" },
+        { key: "provider", label: "Provider" },
         { key: "amount", label: "Amount", render: (r) => AED(r.amount) },
         { key: "date", label: "Date" },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },

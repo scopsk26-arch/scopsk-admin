@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { Bell, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fetchList, markAllNotificationsRead, markNotificationRead } from "@/lib/api/resources";
+import { fetchList, fetchNotificationDetail, markAllNotificationsRead, markNotificationRead } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -51,6 +52,21 @@ function NotificationsPage() {
           options: ["read", "unread"],
         },
       ]}
+      viewFields={[
+        { key: "category", label: "Category" },
+        { key: "title", label: "Title" },
+        { key: "body", label: "Detail" },
+        { key: "time", label: "Time" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => {
+        try {
+          return await fetchNotificationDetail(row.id);
+        } catch {
+          return row;
+        }
+      }}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       filters={
         <Button
           variant="outline"

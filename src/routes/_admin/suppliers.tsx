@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
+import { OrganizationDetailView } from "@/components/admin/DetailViews";
 import { Truck } from "lucide-react";
 import {
-  enrichOrganizationRow,
+  fetchOrganizationDetail,
   fetchOrganizationsByType,
   updateOrganization,
   updateOrgProfile,
@@ -17,14 +18,15 @@ export const Route = createFileRoute("/_admin/suppliers")({
 });
 
 function SuppliersPage() {
-  const { categories } = useAdminLookups();
+  const { categories } = useAdminLookups(["categories"]);
   const queryClient = useQueryClient();
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["organizations", "supplier"],
+    staleTime: 60_000,
     queryFn: async () => {
-      const base = await fetchOrganizationsByType("supplier");
-      return Promise.all(base.map((r) => enrichOrganizationRow(r, "supplier")));
+      // List API already embeds profile + settings — do not N+1 /profile + /settings per row.
+      return fetchOrganizationsByType("supplier");
     },
   });
 
@@ -67,6 +69,24 @@ function SuppliersPage() {
           options: ["active", "pending", "verified", "suspended", "rejected"],
         },
       ]}
+      viewFields={[
+        { key: "name", label: "Supplier" },
+        { key: "email", label: "Email" },
+        { key: "phone", label: "Phone" },
+        { key: "legalName", label: "Legal name" },
+        { key: "region", label: "Region" },
+        { key: "ownerName", label: "Owner" },
+        { key: "tradeLicenseNumber", label: "Trade license" },
+        { key: "vatRegistrationNumber", label: "VAT #" },
+        { key: "poApprovalLevels", label: "PO approval levels" },
+        { key: "minRfqValueAed", label: "Min RFQ (AED)" },
+        { key: "revenue", label: "Revenue (90d)" },
+        { key: "winRate", label: "Win rate" },
+        { key: "verificationStatus", label: "Verification" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => fetchOrganizationDetail(row.id)}
+      renderView={(detail) => <OrganizationDetailView detail={detail} />}
       kpis={[
         { label: "Total suppliers", value: String(rows.length) },
         { label: "Verified", value: String(verified), tone: "success" },
@@ -104,17 +124,16 @@ function SuppliersPage() {
         });
         await updateOrgProfile(id, data);
         await queryClient.invalidateQueries({ queryKey: ["organizations", "supplier"] });
-        return enrichOrganizationRow(
-          {
-            ...updated,
-            poApprovalLevels: Number(data.poApprovalLevels ?? updated.poApprovalLevels),
-            minRfqValueAed: Number(data.minRfqValueAed ?? updated.minRfqValueAed),
-            ownerName: String(data.ownerName ?? ""),
-            tradeLicenseNumber: String(data.tradeLicenseNumber ?? ""),
-            vatRegistrationNumber: String(data.vatRegistrationNumber ?? ""),
-          },
-          "supplier",
-        );
+        return {
+          ...updated,
+          poApprovalLevels: Number(data.poApprovalLevels ?? updated.poApprovalLevels),
+          minRfqValueAed: Number(data.minRfqValueAed ?? updated.minRfqValueAed),
+          ownerName: String(data.ownerName ?? updated.ownerName ?? ""),
+          tradeLicenseNumber: String(data.tradeLicenseNumber ?? updated.tradeLicenseNumber ?? ""),
+          vatRegistrationNumber: String(
+            data.vatRegistrationNumber ?? updated.vatRegistrationNumber ?? "",
+          ),
+        };
       }}
     />
   );

@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
+import { OrganizationDetailView } from "@/components/admin/DetailViews";
 import { ExternalLink, Store } from "lucide-react";
 import {
-  enrichOrganizationRow,
+  fetchOrganizationDetail,
   fetchOrganizationsByType,
   updateOrganization,
   updateOrgProfile,
@@ -19,15 +20,15 @@ export const Route = createFileRoute("/_admin/restaurants")({
 });
 
 function RestaurantsPage() {
-  const { categories } = useAdminLookups();
+  const { categories } = useAdminLookups(["categories"]);
   const queryClient = useQueryClient();
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["organizations", "restaurant"],
+    staleTime: 60_000,
     queryFn: async () => {
-      const base = await fetchOrganizationsByType("restaurant");
-      // Enrich with settings + profile (best-effort, capped concurrency feel via Promise.all)
-      return Promise.all(base.map((r) => enrichOrganizationRow(r, "restaurant")));
+      // List API already embeds profile + settings — do not N+1 /profile + /settings per row.
+      return fetchOrganizationsByType("restaurant");
     },
   });
 
@@ -61,6 +62,25 @@ function RestaurantsPage() {
           options: ["active", "pending", "suspended", "rejected"],
         },
       ]}
+      viewFields={[
+        { key: "name", label: "Restaurant" },
+        { key: "email", label: "Email" },
+        { key: "phone", label: "Phone" },
+        { key: "legalName", label: "Legal name" },
+        { key: "cuisines", label: "Cuisines" },
+        { key: "region", label: "Region" },
+        { key: "ownerName", label: "Owner" },
+        { key: "tradeLicenseNumber", label: "Trade license" },
+        { key: "vatRegistrationNumber", label: "VAT #" },
+        { key: "foodLicenseNumber", label: "Food license" },
+        { key: "poApprovalLevels", label: "PO approval levels" },
+        { key: "minRfqValueAed", label: "Min RFQ (AED)" },
+        { key: "verificationStatus", label: "Verification" },
+        { key: "status", label: "Status" },
+        { key: "documentCount", label: "Documents" },
+      ]}
+      loadDetail={async (row) => fetchOrganizationDetail(row.id)}
+      renderView={(detail) => <OrganizationDetailView detail={detail} />}
       kpis={[
         { label: "Total restaurants", value: String(rows.length) },
         { label: "Active", value: String(active), tone: "success" },
@@ -79,14 +99,19 @@ function RestaurantsPage() {
         {
           key: "documents",
           label: "Documents",
+          className: "whitespace-nowrap w-[1%]",
           render: (r) => {
             const docs = (r.documents as OrgDoc[]) || [];
+            const count = docs.length || Number(r.documentCount || 0);
+            if (!count) {
+              return <span className="text-xs text-muted-foreground">None</span>;
+            }
             if (!docs.length) {
-              return <span className="text-xs text-muted-foreground">No documents</span>;
+              return <span className="text-xs text-muted-foreground">{count} file(s)</span>;
             }
             return (
               <div className="flex flex-col gap-1 max-w-[220px]">
-                {docs.map((d, i) =>
+                {docs.slice(0, 3).map((d, i) =>
                   d.url ? (
                     <a
                       key={d.id || `${d.type}-${i}`}
@@ -103,6 +128,9 @@ function RestaurantsPage() {
                       {(d.type || "document").replace(/_/g, " ")}
                     </span>
                   ),
+                )}
+                {docs.length > 3 && (
+                  <span className="text-xs text-muted-foreground">+{docs.length - 3} more</span>
                 )}
               </div>
             );
@@ -130,19 +158,18 @@ function RestaurantsPage() {
         });
         await updateOrgProfile(id, data);
         await queryClient.invalidateQueries({ queryKey: ["organizations", "restaurant"] });
-        return enrichOrganizationRow(
-          {
-            ...updated,
-            poApprovalLevels: Number(data.poApprovalLevels ?? updated.poApprovalLevels),
-            minRfqValueAed: Number(data.minRfqValueAed ?? updated.minRfqValueAed),
-            ownerName: String(data.ownerName ?? ""),
-            tradeLicenseNumber: String(data.tradeLicenseNumber ?? ""),
-            vatRegistrationNumber: String(data.vatRegistrationNumber ?? ""),
-            foodLicenseNumber: String(data.foodLicenseNumber ?? ""),
-            cuisines: String(data.cuisines || updated.cuisines || updated.industry || "—"),
-          },
-          "restaurant",
-        );
+        return {
+          ...updated,
+          poApprovalLevels: Number(data.poApprovalLevels ?? updated.poApprovalLevels),
+          minRfqValueAed: Number(data.minRfqValueAed ?? updated.minRfqValueAed),
+          ownerName: String(data.ownerName ?? updated.ownerName ?? ""),
+          tradeLicenseNumber: String(data.tradeLicenseNumber ?? updated.tradeLicenseNumber ?? ""),
+          vatRegistrationNumber: String(
+            data.vatRegistrationNumber ?? updated.vatRegistrationNumber ?? "",
+          ),
+          foodLicenseNumber: String(data.foodLicenseNumber ?? updated.foodLicenseNumber ?? ""),
+          cuisines: String(data.cuisines || updated.cuisines || updated.industry || "—"),
+        };
       }}
     />
   );

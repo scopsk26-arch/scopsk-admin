@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { FolderTree } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
+import { fetchCategoryDetail, fetchList } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
-import { useAdminLookups } from "@/hooks/useAdminLookups";
+import type { SelectOption } from "@/components/admin/SearchableSelect";
 
 export const Route = createFileRoute("/_admin/categories")({
   head: () => ({ meta: [{ title: "Categories — Prime Plate" }] }),
@@ -72,10 +74,10 @@ function toCategoryPayload(data: Record<string, any>) {
 
 function CategoriesPage() {
   const qc = useQueryClient();
-  const { categories: categoryOptions } = useAdminLookups();
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["catalog", "categories"],
+    staleTime: 60_000,
     queryFn: async () => {
       const list = await fetchList("/catalog/categories");
       const byId = new Map(list.map((r: any) => [str(r.id), r]));
@@ -84,6 +86,19 @@ function CategoriesPage() {
         .sort((a, b) => a.path.localeCompare(b.path) || a.name.localeCompare(b.name));
     },
   });
+
+  // Parent dropdown: show category names (path), values stay UUIDs for the API.
+  const parentOptions: SelectOption[] = useMemo(
+    () =>
+      rows
+        .filter((r) => r.id && r.name && r.name !== "—")
+        .map((r) => ({
+          value: r.id,
+          label: r.path && r.path !== r.name ? r.path : r.name,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [rows],
+  );
 
   const top = rows.filter((r) => !r.parentId || r.parent === "—" || !r.parent).length;
   const nested = rows.filter((r) => r.depth > 0).length;
@@ -106,7 +121,7 @@ function CategoriesPage() {
           key: "parentId",
           label: "Parent category",
           type: "searchable",
-          selectOptions: categoryOptions,
+          selectOptions: parentOptions,
           placeholder: "None (top-level)",
           allowClear: true,
         },
@@ -117,7 +132,24 @@ function CategoriesPage() {
           options: ["active", "inactive", "draft", "archived"],
         },
       ]}
-      lookups={{ parent: categoryOptions, parentId: categoryOptions }}
+      lookups={{ parent: parentOptions, parentId: parentOptions }}
+      viewFields={[
+        { key: "name", label: "Category" },
+        { key: "path", label: "Path" },
+        { key: "parent", label: "Parent" },
+        { key: "depth", label: "Depth" },
+        { key: "products", label: "Products" },
+        { key: "suppliers", label: "Suppliers" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => {
+        try {
+          return await fetchCategoryDetail(row.id);
+        } catch {
+          return row;
+        }
+      }}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Top-level", value: String(top) },
         { label: "Nested", value: String(nested), tone: "info" },
@@ -143,7 +175,7 @@ function CategoriesPage() {
           key: "parent",
           label: "Parent",
           render: (r) => {
-            const label = categoryOptions.find((o) => o.value === r.parentId)?.label ?? r.parent;
+            const label = parentOptions.find((o) => o.value === r.parentId)?.label ?? r.parent;
             return label && label !== "—" ? label : "—";
           },
         },

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { BookOpen } from "lucide-react";
 import { fetchList } from "@/lib/api/resources";
 import { api, str } from "@/lib/api/client";
@@ -43,6 +44,16 @@ function CmsPage() {
         { key: "status", label: "Status", type: "select", options: ["draft", "published", "archived"] },
         { key: "body", label: "Body", type: "text" },
       ]}
+      viewFields={[
+        { key: "title", label: "Title" },
+        { key: "slug", label: "Slug" },
+        { key: "author", label: "Author" },
+        { key: "updated", label: "Updated" },
+        { key: "status", label: "Status" },
+        { key: "body", label: "Body" },
+      ]}
+      loadDetail={async (row) => row}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Published", value: String(rows.filter((r) => r.status === "published").length), tone: "success" },
         { label: "Drafts", value: String(rows.filter((r) => r.status === "draft").length), tone: "info" },

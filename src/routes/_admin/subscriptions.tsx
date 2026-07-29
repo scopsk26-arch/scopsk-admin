@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { BadgeCheck } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
+import { fetchList, fetchSubscriptionDetail } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -26,7 +27,7 @@ function mapSub(r: any) {
 
 function SubscriptionsPage() {
   const queryClient = useQueryClient();
-  const { restaurants, suppliers } = useAdminLookups();
+  const { restaurants, suppliers } = useAdminLookups(["restaurants", "suppliers"]);
   const orgs = [...restaurants, ...suppliers];
 
   const { data: rows = [], isLoading, isError } = useQuery({
@@ -61,6 +62,23 @@ function SubscriptionsPage() {
           options: ["trialing", "active", "past_due", "cancelled", "expired"],
         },
       ]}
+      viewFields={[
+        { key: "id", label: "Subscription" },
+        { key: "customer", label: "Customer" },
+        { key: "plan", label: "Plan" },
+        { key: "planCode", label: "Plan code" },
+        { key: "mrr", label: "MRR" },
+        { key: "renews", label: "Renews" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => {
+        try {
+          return await fetchSubscriptionDetail(row.id);
+        } catch {
+          return row;
+        }
+      }}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Active subs", value: String(active), tone: "success" },
         { label: "MRR", value: AED(mrr), tone: "info" },

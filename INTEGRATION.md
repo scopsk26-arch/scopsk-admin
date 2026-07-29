@@ -57,5 +57,6 @@ Client helpers: `src/lib/api/client.ts` (request + unwrap), `src/lib/api/resourc
 - Charts render **"No data"** when trend arrays are missing; values are never invented.
 - Dashboard maps `restaurants` / `suppliers` from enriched dashboard fields (not `organizations` / `users`).
 - API key plaintext is shown only in the create toast; table rows use `keyPrefix` / id only.
+- **View dialogs** load rich detail via `GET /:id` helpers in `resources.ts` (`fetchProductDetail`, `fetchOrganizationDetail`, etc.) when available; otherwise they fall back to the list row and render `GenericJsonDetailView` / domain views from `DetailViews.tsx`.
 
 Demo login hint: `sarah@primeplate.io` / `ChangeMeNow!123`

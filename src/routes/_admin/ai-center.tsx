@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { Brain } from "lucide-react";
 import { api, asArray, num, str } from "@/lib/api/client";
 
@@ -27,6 +28,7 @@ function AiCenterPage() {
           accuracy: recs ? `${Math.round(num((asArray((recs as any).suppliers)[0] as any)?.score, 0) * 100)}%` : "—",
           lastTrained: str((recs as any)?.generatedAt, "—").slice(0, 10),
           status: recs ? "active" : "review",
+          payload: recs,
         },
         {
           id: "AI-demand-forecast",
@@ -35,6 +37,7 @@ function AiCenterPage() {
           accuracy: forecast ? `${Math.round(num((asArray((forecast as any).items)[0] as any)?.confidence, 0) * 100)}%` : "—",
           lastTrained: str((forecast as any)?.generatedAt, "—").slice(0, 10),
           status: forecast ? "active" : "review",
+          payload: forecast,
         },
         {
           id: "AI-price-prediction",
@@ -43,6 +46,7 @@ function AiCenterPage() {
           accuracy: "—",
           lastTrained: str((prices as any)?.generatedAt, "—").slice(0, 10),
           status: prices ? "active" : "review",
+          payload: prices,
         },
       ];
       return models;
@@ -55,6 +59,15 @@ function AiCenterPage() {
       description="Rule-based heuristics (not trained ML). Scores from /ai/* endpoints with honest confidence labels."
       disableCrud
       icon={<Brain className="h-5 w-5 text-primary" />}
+      viewFields={[
+        { key: "name", label: "Name" },
+        { key: "type", label: "Type" },
+        { key: "accuracy", label: "Accuracy" },
+        { key: "lastTrained", label: "Last trained" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => row.payload ?? row}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} omitKeys={["id", "payload"]} />}
       kpis={[
         { label: "Active models", value: String(rows.filter((r) => r.status === "active").length), tone: "success" },
         { label: "Endpoints", value: String(rows.length), tone: "info" },

@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { FolderOpen } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
+import { fetchFileDetail, fetchList } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/files")({
@@ -34,6 +35,22 @@ function FilesPage() {
       description="No list API yet — upload via POST /files/upload. This page is view-only once listing ships."
       disableCrud
       icon={<FolderOpen className="h-5 w-5 text-primary" />}
+      viewFields={[
+        { key: "name", label: "File" },
+        { key: "owner", label: "Owner" },
+        { key: "type", label: "Type" },
+        { key: "size", label: "Size" },
+        { key: "uploaded", label: "Uploaded" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => {
+        try {
+          return await fetchFileDetail(row.id);
+        } catch {
+          return row;
+        }
+      }}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Files", value: String(rows.length) },
         { label: "Verified", value: "—", tone: "success" },

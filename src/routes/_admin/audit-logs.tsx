@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { DataPage } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { ScrollText } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
+import { fetchAuditLogDetail, fetchList } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/audit-logs")({
@@ -32,6 +33,21 @@ function AuditLogsPage() {
       description="Immutable record of every admin action with actor, target and IP."
       icon={<ScrollText className="h-5 w-5 text-primary" />}
       disableCrud
+      viewFields={[
+        { key: "time", label: "Time" },
+        { key: "actor", label: "Actor" },
+        { key: "action", label: "Action" },
+        { key: "target", label: "Target" },
+        { key: "ip", label: "IP" },
+      ]}
+      loadDetail={async (row) => {
+        try {
+          return await fetchAuditLogDetail(row.id);
+        } catch {
+          return row;
+        }
+      }}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Events", value: String(rows.length) },
         { label: "Actors", value: String(new Set(rows.map((r) => r.actor).filter(Boolean)).size), tone: "info" },

@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { ApprovalDetailView } from "@/components/admin/DetailViews";
 import { CheckSquare } from "lucide-react";
 import {
   approveApprovalRequest,
+  fetchApprovalDetail,
   fetchList,
   rejectApprovalRequest,
 } from "@/lib/api/resources";
@@ -20,6 +22,8 @@ type ApprovalRow = {
   organizationId: string;
   entityType: string;
   entityId: string;
+  entityNumber: string;
+  entityTotal: string;
   level: string;
   currentLevel: number;
   requiredLevels: number;
@@ -29,17 +33,20 @@ type ApprovalRow = {
 };
 
 function mapApproval(r: any): ApprovalRow {
+  const entity = r.entity ?? r.entitySnapshot;
   return {
     id: str(r.id),
     organization: str(r.organization?.name ?? r.organizationId, "—"),
     organizationId: str(r.organizationId ?? r.organization?.id, ""),
     entityType: str(r.entityType, "—"),
     entityId: str(r.entityId, "—"),
+    entityNumber: str(entity?.number ?? r.entityNumber, "—"),
+    entityTotal: entity?.total != null ? String(entity.total) : "—",
     currentLevel: num(r.currentLevel),
     requiredLevels: num(r.requiredLevels),
     level: `${num(r.currentLevel)} / ${num(r.requiredLevels)}`,
     status: str(r.status, "pending"),
-    requestedBy: str(r.requestedBy, "—"),
+    requestedBy: str(r.requester?.email ?? r.requestedBy, "—"),
     created: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 16) : "—",
   };
 }
@@ -49,6 +56,7 @@ function ApprovalsPage() {
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["approvals"],
+    staleTime: 60_000,
     queryFn: async () => {
       const list = await fetchList("/approvals");
       return list.map(mapApproval);
@@ -76,6 +84,19 @@ function ApprovalsPage() {
           options: ["approved", "rejected", "pending"],
         },
       ]}
+      viewFields={[
+        { key: "organization", label: "Organization" },
+        { key: "entityType", label: "Entity type" },
+        { key: "entityNumber", label: "Entity #" },
+        { key: "entityId", label: "Entity ID" },
+        { key: "entityTotal", label: "Entity total" },
+        { key: "level", label: "Level" },
+        { key: "requestedBy", label: "Requested by" },
+        { key: "created", label: "Created" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => fetchApprovalDetail(row.id)}
+      renderView={(detail) => <ApprovalDetailView detail={detail} />}
       kpis={[
         { label: "Pending", value: String(pending), tone: "warning" },
         { label: "PO approvals", value: String(poApprovals), tone: "info" },
@@ -88,21 +109,21 @@ function ApprovalsPage() {
         },
       ]}
       rows={rows}
-      searchKeys={["organization", "entityType", "entityId", "status", "id"]}
+      searchKeys={["organization", "entityType", "entityId", "entityNumber", "status", "id"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load approvals." : "No pending approvals."}
       columns={[
-        { key: "id", label: "ID", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
+        { key: "id", label: "ID", className: "font-mono text-xs whitespace-nowrap w-[1%]", render: (r) => String(r.id).slice(0, 8) },
         { key: "organization", label: "Organization", render: (r) => <span className="font-medium">{r.organization}</span> },
-        { key: "entityType", label: "Type" },
+        { key: "entityType", label: "Type", className: "whitespace-nowrap w-[1%]" },
         {
-          key: "entityId",
+          key: "entityNumber",
           label: "Entity",
-          className: "font-mono text-xs",
-          render: (r) => String(r.entityId).slice(0, 8),
+          className: "font-mono text-xs whitespace-nowrap w-[1%]",
+          render: (r) => (r.entityNumber !== "—" ? r.entityNumber : String(r.entityId).slice(0, 8)),
         },
-        { key: "level", label: "Level" },
-        { key: "created", label: "Created" },
-        { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+        { key: "level", label: "Level", className: "whitespace-nowrap w-[1%]" },
+        { key: "created", label: "Created", className: "whitespace-nowrap w-[1%]" },
+        { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onUpdate={async (id, data, row) => {
         const status = String(data.status || "").toLowerCase();

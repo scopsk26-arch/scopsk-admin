@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { Award } from "lucide-react";
 import { fetchList } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
@@ -48,6 +49,15 @@ function QualitiesPage() {
       icon={<Award className="h-5 w-5 text-primary" />}
       entityName="Quality"
       disableCrud
+      viewFields={[
+        { key: "name", label: "Quality" },
+        { key: "slug", label: "Slug" },
+        { key: "description", label: "Description" },
+        { key: "sortOrder", label: "Sort order" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => row}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Total", value: String(rows.length) },
         { label: "Active", value: String(active), tone: "success" },

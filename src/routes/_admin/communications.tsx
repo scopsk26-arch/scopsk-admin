@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { MessageSquare } from "lucide-react";
 import { EMPTY_LIST, fetchCommunications } from "@/lib/api/resources";
 
@@ -27,6 +28,17 @@ function CommunicationsPage() {
       description="In-app, email, SMS and push messages across the marketplace."
       icon={<MessageSquare className="h-5 w-5 text-primary" />}
       disableCrud
+      viewFields={[
+        { key: "id", label: "ID" },
+        { key: "channel", label: "Channel" },
+        { key: "subject", label: "Subject" },
+        { key: "from", label: "From" },
+        { key: "to", label: "To" },
+        { key: "time", label: "Time" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => row}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Total", value: String(rows.length), tone: "info" },
         { label: "Delivery rate", value: deliveryRate, tone: "success" },

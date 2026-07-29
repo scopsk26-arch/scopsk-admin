@@ -5,62 +5,83 @@ import type { SelectOption } from "@/components/admin/SearchableSelect";
 
 function mapOptions(list: any[], labelKey = "name"): SelectOption[] {
   return list
-    .map((r) => ({
-      value: str(r.id ?? r.value ?? r[labelKey]),
-      label: str(r[labelKey] ?? r.label ?? r.number ?? r.id, "—"),
-    }))
-    .filter((o) => o.value && o.label !== "—")
+    .map((r) => {
+      const value = str(r.id ?? r.value, "");
+      const label = str(r[labelKey] ?? r.label ?? r.number ?? r.title, "");
+      // Never show raw UUIDs as the visible label
+      if (!value || !label || label === value) return null;
+      return { value, label };
+    })
+    .filter((o): o is SelectOption => Boolean(o?.value && o.label && o.label !== "—"))
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-/** Shared admin dropdown data: categories, restaurants, suppliers. */
-export function useAdminLookups() {
+export type AdminLookupKey =
+  | "categories"
+  | "restaurants"
+  | "suppliers"
+  | "rfqs"
+  | "purchaseOrders";
+
+/**
+ * Shared admin dropdown data — only fetches the keys you ask for.
+ * Previously this always hit 5 heavy Heroku endpoints on every page.
+ */
+export function useAdminLookups(needed: AdminLookupKey[] = []) {
+  const want = new Set(needed);
+
   const categories = useQuery({
     queryKey: ["lookups", "categories"],
-    queryFn: async () => mapOptions(await fetchList("/catalog/categories")),
-    staleTime: 60_000,
+    queryFn: async () => mapOptions(await fetchList("/catalog/categories", { limit: 100 })),
+    staleTime: 5 * 60_000,
+    enabled: want.has("categories"),
   });
 
+  // Reuse the same cache key as Restaurants / Suppliers list pages.
   const restaurants = useQuery({
-    queryKey: ["lookups", "restaurants"],
-    queryFn: async () => {
-      const rows = await fetchOrganizationsByType("restaurant");
-      return mapOptions(rows);
-    },
-    staleTime: 60_000,
+    queryKey: ["organizations", "restaurant"],
+    queryFn: async () => fetchOrganizationsByType("restaurant"),
+    select: (rows) => mapOptions(rows),
+    staleTime: 5 * 60_000,
+    enabled: want.has("restaurants"),
   });
 
   const suppliers = useQuery({
-    queryKey: ["lookups", "suppliers"],
-    queryFn: async () => {
-      const rows = await fetchOrganizationsByType("supplier");
-      return mapOptions(rows);
-    },
-    staleTime: 60_000,
+    queryKey: ["organizations", "supplier"],
+    queryFn: async () => fetchOrganizationsByType("supplier"),
+    select: (rows) => mapOptions(rows),
+    staleTime: 5 * 60_000,
+    enabled: want.has("suppliers"),
   });
 
   const rfqs = useQuery({
     queryKey: ["lookups", "rfqs"],
     queryFn: async () => {
-      const list = await fetchList("/rfqs");
-      return list.map((r: any) => ({
-        value: str(r.id),
-        label: str(r.number ?? r.title ?? r.id),
-      })).filter((o) => o.value);
+      const list = await fetchList("/rfqs", { limit: 100 });
+      return list
+        .map((r: any) => ({
+          value: str(r.id),
+          label: str(r.number ?? r.title ?? r.id),
+        }))
+        .filter((o) => o.value);
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    enabled: want.has("rfqs"),
   });
 
   const purchaseOrders = useQuery({
     queryKey: ["lookups", "purchase-orders"],
     queryFn: async () => {
-      const list = await fetchList("/purchase-orders");
-      return list.map((r: any) => ({
-        value: str(r.id),
-        label: str(r.number ?? r.id),
-      })).filter((o) => o.value);
+      const list = await fetchList("/purchase-orders", { limit: 100 });
+      return list
+        .map((r: any) => ({
+          value: str(r.id),
+          label: str(r.number ?? r.id),
+        }))
+        .filter((o) => o.value);
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    enabled: want.has("purchaseOrders"),
   });
 
   return {

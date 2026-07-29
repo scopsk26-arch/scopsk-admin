@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
+import { QuotationDetailView } from "@/components/admin/DetailViews";
 import { Quote } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { approveQuotation, fetchList, rejectQuotation } from "@/lib/api/resources";
+import { approveQuotation, fetchList, fetchQuotationDetail, rejectQuotation } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -22,16 +23,20 @@ function mapQuotation(r: any) {
     buyerOrgId: str(r.rfq?.organizationId ?? r.buyerOrgId ?? r.rfq?.organization?.id, ""),
     amount: num(r.total ?? r.amount ?? r.subtotal),
     aiScore: num(r.aiScore ?? r.metadata?.aiScore),
+    fulfillmentType: str(r.fulfillmentType, "—"),
+    validUntil: r.validUntil ? String(r.validUntil).slice(0, 10) : "—",
+    created: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
     status: str(r.status, "pending"),
   };
 }
 
 function QuotationsPage() {
-  const { restaurants, suppliers, rfqs } = useAdminLookups();
+  const { restaurants, suppliers, rfqs } = useAdminLookups(["restaurants", "suppliers", "rfqs"]);
   const queryClient = useQueryClient();
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["quotations"],
+    staleTime: 60_000,
     queryFn: async () => {
       const list = await fetchList("/quotations");
       return list.map(mapQuotation);
@@ -64,6 +69,20 @@ function QuotationsPage() {
           options: ["approved", "rejected", "submitted", "draft", "pending"],
         },
       ]}
+      viewFields={[
+        { key: "number", label: "Quotation #" },
+        { key: "rfq", label: "RFQ" },
+        { key: "supplier", label: "Supplier" },
+        { key: "restaurant", label: "Restaurant" },
+        { key: "amount", label: "Amount" },
+        { key: "aiScore", label: "AI score" },
+        { key: "fulfillmentType", label: "Fulfillment" },
+        { key: "validUntil", label: "Valid until" },
+        { key: "created", label: "Created" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => fetchQuotationDetail(row.id)}
+      renderView={(detail) => <QuotationDetailView detail={detail} />}
       kpis={[
         { label: "Active quotations", value: String(rows.length) },
         { label: "Approved", value: String(approved), tone: "success" },
@@ -74,17 +93,17 @@ function QuotationsPage() {
       searchKeys={["number", "rfq", "supplier", "restaurant"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load quotations." : "No quotations found."}
       columns={[
-        { key: "number", label: "Quotation", className: "font-mono text-xs" },
-        { key: "rfq", label: "RFQ", className: "font-mono text-xs" },
+        { key: "number", label: "Quotation", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
+        { key: "rfq", label: "RFQ", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "supplier", label: "Supplier", render: (r) => <span className="font-medium">{r.supplier}</span> },
         { key: "restaurant", label: "Restaurant" },
-        { key: "amount", label: "Amount", render: (r) => AED(r.amount) },
-        { key: "aiScore", label: "AI Score", render: (r) => (
+        { key: "amount", label: "Amount", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.amount) },
+        { key: "aiScore", label: "AI Score", className: "whitespace-nowrap w-[1%]", render: (r) => (
           <span className={cn("font-mono font-semibold",
             r.aiScore >= 90 ? "text-success" : r.aiScore >= 75 ? "text-info" : "text-warning"
-          )}>{r.aiScore}</span>
+          )}>{r.aiScore || "—"}</span>
         ) },
-        { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+        { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onUpdate={async (id, data, row) => {
         const status = String(data.status || "");

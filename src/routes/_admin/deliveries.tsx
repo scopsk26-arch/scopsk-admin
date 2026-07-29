@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { DeliveryDetailView } from "@/components/admin/DetailViews";
 import { PackageCheck } from "lucide-react";
-import { fetchList, updateDeliveryStatus } from "@/lib/api/resources";
+import { fetchDeliveryDetail, fetchList, updateDeliveryStatus } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -25,6 +26,7 @@ function mapDelivery(r: any) {
     supplier: str(r.purchaseOrder?.supplierOrg?.name ?? r.supplierOrg?.name, "—"),
     driver: str(r.driverName ?? r.driver?.name ?? r.metadata?.driver, "—"),
     eta: r.etaAt ? String(r.etaAt).replace("T", " ").slice(0, 16) : "—",
+    scheduled: r.scheduledAt ? String(r.scheduledAt).replace("T", " ").slice(0, 16) : "—",
     status: str(r.status, "processing"),
     organizationId: str(
       r.organizationId
@@ -38,11 +40,16 @@ function mapDelivery(r: any) {
 }
 
 function DeliveriesPage() {
-  const { restaurants, suppliers, purchaseOrders } = useAdminLookups();
+  const { restaurants, suppliers, purchaseOrders } = useAdminLookups([
+    "restaurants",
+    "suppliers",
+    "purchaseOrders",
+  ]);
   const queryClient = useQueryClient();
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["deliveries"],
+    staleTime: 60_000,
     queryFn: async () => {
       const list = await fetchList("/deliveries");
       return list.map(mapDelivery);
@@ -69,6 +76,18 @@ function DeliveriesPage() {
         { key: "driver", label: "Driver", type: "text" },
         { key: "status", label: "Status", type: "select", options: [...DELIVERY_STATUSES] },
       ]}
+      viewFields={[
+        { key: "number", label: "Delivery #" },
+        { key: "po", label: "PO" },
+        { key: "restaurant", label: "Buyer" },
+        { key: "supplier", label: "Supplier" },
+        { key: "driver", label: "Driver" },
+        { key: "scheduled", label: "Scheduled" },
+        { key: "eta", label: "ETA" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => fetchDeliveryDetail(row.id)}
+      renderView={(detail) => <DeliveryDetailView detail={detail} />}
       kpis={[
         { label: "Out for delivery", value: String(out), tone: "info" },
         { label: "Delivered", value: String(delivered), tone: "success" },
@@ -79,19 +98,25 @@ function DeliveriesPage() {
       searchKeys={["number", "po", "restaurant", "supplier", "driver"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load deliveries." : "No deliveries found."}
       columns={[
-        { key: "number", label: "Delivery", className: "font-mono text-xs" },
-        { key: "po", label: "PO", className: "font-mono text-xs" },
+        { key: "number", label: "Delivery", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
+        { key: "po", label: "PO", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "restaurant", label: "Buyer", render: (r) => <span className="font-medium">{r.restaurant}</span> },
         { key: "supplier", label: "Supplier" },
-        { key: "driver", label: "Driver" },
-        { key: "eta", label: "ETA" },
-        { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+        { key: "driver", label: "Driver", className: "whitespace-nowrap w-[1%]" },
+        { key: "eta", label: "ETA", className: "whitespace-nowrap w-[1%]" },
+        { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onUpdate={async (id, data, row) => {
         if (!data.status) throw new Error("Status is required");
         const updated = await updateDeliveryStatus(id, String(data.status), row.organizationId || undefined);
         await queryClient.invalidateQueries({ queryKey: ["deliveries"] });
-        return mapDelivery({ ...updated, number: row.number, purchaseOrder: { number: row.po } });
+        return mapDelivery({
+          ...(updated && typeof updated === "object" ? updated : {}),
+          id,
+          number: row.number,
+          status: data.status,
+          purchaseOrder: { number: row.po },
+        });
       }}
     />
   );

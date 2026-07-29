@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
+import { RfqDetailView } from "@/components/admin/DetailViews";
 import { FileText } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
+import { fetchList, fetchRfqDetail } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -40,30 +41,38 @@ function mapRfqRow(r: any) {
   return {
     id: str(r.id),
     number: str(r.number ?? r.id),
+    title: str(r.title, ""),
     restaurant: str(r.organization?.name ?? r.title, "—"),
     category: str(r.visibility ?? r.metadata?.category, "—"),
     quantity: quantityLabel,
+    itemCount,
     budget: num(r.estimatedBudget),
     quotations: num(r.quotationsCount ?? r.quotationCount ?? r.metadata?.quotations),
+    deliveryDate: r.deliveryDate ? String(r.deliveryDate).slice(0, 10) : "—",
     created: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
+    creator: str(
+      r.creator?.email ?? [r.creator?.firstName, r.creator?.lastName].filter(Boolean).join(" "),
+      "—",
+    ),
     status: str(r.status, "draft"),
   };
 }
 
 function RfqsPage() {
-  const { restaurants, categories } = useAdminLookups();
+  const { restaurants, categories } = useAdminLookups(["restaurants", "categories"]);
   const queryClient = useQueryClient();
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["rfqs"],
+    staleTime: 60_000,
     queryFn: async () => {
-      const list = await fetchList("/rfqs", { limit: 200 });
+      const list = await fetchList("/rfqs", { limit: 100 });
       return list.map(mapRfqRow);
     },
   });
 
   const open = rows.filter((r) =>
-    ["open", "published", "active", "supplier_invited", "negotiation"].includes(r.status)
+    ["open", "published", "active", "supplier_invited", "negotiation"].includes(r.status),
   ).length;
   const openValue = rows.reduce((s, r) => s + (r.budget || 0), 0);
 
@@ -89,6 +98,22 @@ function RfqsPage() {
           options: [...RFQ_STATUSES],
         },
       ]}
+      viewFields={[
+        { key: "number", label: "RFQ #" },
+        { key: "title", label: "Title" },
+        { key: "restaurant", label: "Restaurant" },
+        { key: "category", label: "Visibility" },
+        { key: "quantity", label: "Quantity" },
+        { key: "itemCount", label: "Line items" },
+        { key: "budget", label: "Budget" },
+        { key: "quotations", label: "Quotations" },
+        { key: "deliveryDate", label: "Delivery date" },
+        { key: "created", label: "Created" },
+        { key: "creator", label: "Creator" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => fetchRfqDetail(row.id)}
+      renderView={(detail) => <RfqDetailView detail={detail} />}
       kpis={[
         { label: "Active RFQs", value: String(open), tone: "info" },
         { label: "Total RFQs", value: String(rows.length) },
@@ -101,21 +126,31 @@ function RfqsPage() {
         { label: "Open value", value: AED(openValue), tone: "success" },
       ]}
       rows={rows}
-      searchKeys={["number", "restaurant", "category"]}
+      searchKeys={["number", "restaurant", "category", "title"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load RFQs." : "No RFQs found."}
       columns={[
-        { key: "number", label: "RFQ", className: "font-mono text-xs" },
+        { key: "number", label: "RFQ", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         {
           key: "restaurant",
           label: "Restaurant",
           render: (r) => <span className="font-medium">{r.restaurant}</span>,
         },
-        { key: "category", label: "Category" },
-        { key: "quantity", label: "Quantity" },
-        { key: "budget", label: "Budget", render: (r) => AED(r.budget) },
-        { key: "quotations", label: "Quotations" },
-        { key: "created", label: "Created" },
-        { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+        { key: "category", label: "Visibility", className: "whitespace-nowrap w-[1%]" },
+        { key: "quantity", label: "Quantity", className: "whitespace-nowrap w-[1%]" },
+        {
+          key: "budget",
+          label: "Budget",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => AED(r.budget),
+        },
+        { key: "quotations", label: "Quotes", className: "whitespace-nowrap w-[1%]" },
+        { key: "created", label: "Created", className: "whitespace-nowrap w-[1%]" },
+        {
+          key: "status",
+          label: "Status",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => <StatusBadge status={r.status} />,
+        },
       ]}
       onUpdate={async (id, data) => {
         if (!data.status) throw new Error("Status is required");
@@ -124,7 +159,6 @@ function RfqsPage() {
           await queryClient.invalidateQueries({ queryKey: ["rfqs"] });
           return mapRfqRow(updated);
         } catch (err) {
-          // Live Heroku may lag behind PATCH — POST publish is already deployed
           if (data.status === "published") {
             const current = await api.get<any>(`/rfqs/${id}`);
             const headerOrg = current?.organizationId;

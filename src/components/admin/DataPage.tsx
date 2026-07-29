@@ -82,10 +82,14 @@ export function DataPage<T extends Record<string, any>>({
   filters,
   emptyHint,
   formFields,
+  viewFields,
+  loadDetail,
+  renderView,
   lookups,
   idKey = "id",
   entityName: entityNameProp,
   disableCrud = false,
+  hideView = false,
   onCreate,
   onUpdate,
   onDelete,
@@ -100,11 +104,19 @@ export function DataPage<T extends Record<string, any>>({
   filters?: ReactNode;
   emptyHint?: string;
   formFields?: FormField[];
+  /** Fields shown in View dialog (defaults to formFields → columns). */
+  viewFields?: FormField[];
+  /** Fetch full record when opening View (GET /:id). */
+  loadDetail?: (row: T) => Promise<Record<string, any>>;
+  /** Extra nested sections under the field grid (items, docs, timeline). */
+  renderView?: (detail: Record<string, any>, row: T) => ReactNode;
   /** Prefetched dropdown options keyed by form field name (e.g. category, parent, supplier). */
   lookups?: Record<string, SelectOption[]>;
   idKey?: string;
   entityName?: string;
   disableCrud?: boolean;
+  /** Hide the Eye/View action (rare). */
+  hideView?: boolean;
   onCreate?: (data: Record<string, any>) => Promise<T | void> | T | void;
   onUpdate?: (id: string, data: Record<string, any>, row: T) => Promise<T | void> | T | void;
   onDelete?: (id: string, row: T) => Promise<void> | void;
@@ -115,6 +127,8 @@ export function DataPage<T extends Record<string, any>>({
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<T | null>(null);
   const [viewing, setViewing] = useState<T | null>(null);
+  const [viewDetail, setViewDetail] = useState<Record<string, any> | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<T | null>(null);
 
@@ -143,11 +157,14 @@ export function DataPage<T extends Record<string, any>>({
   // Auto-derive form fields from columns when not provided — relation fields become searchable.
   const fields: FormField[] = useMemo(() => {
     const enrich = (f: FormField): FormField => {
-      if (f.selectOptions?.length || (f.options?.length && f.type === "select")) return f;
+      if (f.selectOptions && f.selectOptions.length > 0) return f;
+      if (f.options?.length && f.type === "select") return f;
       const fromLookup = lookups?.[f.key];
       if (fromLookup?.length) {
         return { ...f, type: "searchable", selectOptions: fromLookup, allowClear: f.allowClear ?? true };
       }
+      // Never invent options from *Id columns — unique values are UUIDs and show as labels.
+      if (/Id$/i.test(f.key) || f.key === "id") return f;
       if (SEARCHABLE_KEYS.has(f.key) || ENUM_KEYS.has(f.key)) {
         const values = uniqueFromRows(initialRows as Record<string, any>[], f.key);
         if (values.length) {
@@ -177,6 +194,37 @@ export function DataPage<T extends Record<string, any>>({
       });
   }, [columns, formFields, initialRows, lookups]);
 
+  const displayViewFields: FormField[] = useMemo(() => {
+    if (viewFields?.length) return viewFields;
+    if (formFields?.length) return formFields;
+    return fields;
+  }, [viewFields, formFields, fields]);
+
+  const openView = async (row: T) => {
+    setViewing(row);
+    setViewDetail(null);
+    if (!loadDetail) {
+      setViewDetail(row as Record<string, any>);
+      return;
+    }
+    setViewLoading(true);
+    try {
+      const detail = await loadDetail(row);
+      setViewDetail({ ...(row as Record<string, any>), ...(detail || {}) });
+    } catch (err) {
+      setViewDetail(row as Record<string, any>);
+      toast.error(err instanceof Error ? err.message : "Failed to load details");
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const closeView = () => {
+    setViewing(null);
+    setViewDetail(null);
+    setViewLoading(false);
+  };
+
   const filtered = useMemo(() => {
     if (!q.trim()) return rows;
     const needle = q.toLowerCase();
@@ -191,6 +239,8 @@ export function DataPage<T extends Record<string, any>>({
   const canCreate = Boolean(onCreate) && !disableCrud;
   const canUpdate = Boolean(onUpdate) && !disableCrud;
   const canDelete = Boolean(onDelete) && !disableCrud;
+  const canView = !hideView;
+  const showRowActions = canUpdate || canDelete || canView;
 
   const handleSave = async (data: Record<string, any>, isNew: boolean) => {
     try {
@@ -334,13 +384,13 @@ export function DataPage<T extends Record<string, any>>({
                     {c.label}
                   </th>
                 ))}
-                {!disableCrud && <th className="px-4 py-3 w-[1%]"></th>}
+                {showRowActions && <th className="px-4 py-3 w-[1%]"></th>}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length + (disableCrud ? 0 : 1)} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                  <td colSpan={columns.length + (showRowActions ? 1 : 0)} className="px-4 py-12 text-center text-sm text-muted-foreground">
                     {emptyHint ?? "No results found."}
                   </td>
                 </tr>
@@ -352,7 +402,7 @@ export function DataPage<T extends Record<string, any>>({
                         {c.render ? c.render(row) : String(row[c.key as keyof T] ?? "—")}
                       </td>
                     ))}
-                    {!disableCrud && (
+                    {showRowActions && (
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex gap-1 justify-end">
                           {canUpdate && (
@@ -365,9 +415,11 @@ export function DataPage<T extends Record<string, any>>({
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           )}
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setViewing(row)} aria-label="View">
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
+                          {canView && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => void openView(row)} aria-label="View">
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     )}
@@ -398,31 +450,49 @@ export function DataPage<T extends Record<string, any>>({
       />
 
       {/* View dialog */}
-      <Dialog open={viewing !== null} onOpenChange={(o) => { if (!o) setViewing(null); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={viewing !== null} onOpenChange={(o) => { if (!o) closeView(); }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>View {entity.toLowerCase()}</DialogTitle>
             <DialogDescription>Read-only details for this record.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 sm:grid-cols-2 py-2">
-            {fields.map((f) => (
-              <div key={f.key} className={cn(fields.length === 1 && "sm:col-span-2")}>
-                <div className="text-xs text-muted-foreground uppercase tracking-wider">{f.label}</div>
-                <div className="mt-1 text-sm font-medium break-words">
-                  {(() => {
-                    const raw = viewing?.[f.key];
-                    if (raw == null || raw === "") return "—";
-                    const opt = f.selectOptions?.find((o) => o.value === String(raw) || o.label === String(raw));
-                    return opt?.label ?? String(raw);
-                  })()}
-                </div>
+          {viewLoading ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">Loading details…</div>
+          ) : (
+            <div className="space-y-6 py-2">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {displayViewFields.map((f) => {
+                  const source = viewDetail ?? viewing;
+                  const raw = source?.[f.key];
+                  const col = columns.find((c) => String(c.key) === f.key);
+                  let display: ReactNode = "—";
+                  if (raw != null && raw !== "") {
+                    if (col?.render && viewing) {
+                      // Prefer formatted column render when value lives on the list row.
+                      try {
+                        display = col.render({ ...viewing, ...source, [f.key]: raw } as T);
+                      } catch {
+                        display = formatViewValue(raw, f);
+                      }
+                    } else {
+                      display = formatViewValue(raw, f);
+                    }
+                  }
+                  return (
+                    <div key={f.key} className={cn(displayViewFields.length === 1 && "sm:col-span-2")}>
+                      <div className="text-xs text-muted-foreground uppercase tracking-wider">{f.label}</div>
+                      <div className="mt-1 text-sm font-medium break-words">{display}</div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+              {viewDetail && renderView && viewing ? renderView(viewDetail, viewing) : null}
+            </div>
+          )}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setViewing(null)}>Close</Button>
-            {canUpdate && (
-              <Button type="button" onClick={() => { setEditing(viewing); setViewing(null); }}>
+            <Button type="button" variant="outline" onClick={closeView}>Close</Button>
+            {canUpdate && viewing && (
+              <Button type="button" onClick={() => { setEditing(viewing); closeView(); }}>
                 <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
               </Button>
             )}
@@ -537,6 +607,93 @@ function RecordDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function formatViewValue(raw: unknown, field: FormField): ReactNode {
+  if (raw == null || raw === "") return "—";
+  if (Array.isArray(raw)) {
+    if (!raw.length) return "—";
+    if (raw.every((x) => x == null || typeof x !== "object")) return raw.map(String).join(", ");
+    return `${raw.length} item(s)`;
+  }
+  if (typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    if (o.name != null) return String(o.name);
+    if (o.email != null) return String(o.email);
+    if (o.number != null) return String(o.number);
+    try {
+      return JSON.stringify(raw);
+    } catch {
+      return "[object]";
+    }
+  }
+  const opt = field.selectOptions?.find((o) => o.value === String(raw) || o.label === String(raw));
+  return opt?.label ?? String(raw);
+}
+
+/** Section heading + body for nested View content (line items, timeline, etc.). */
+export function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="space-y-2 border-t border-border pt-4">
+      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+/** Compact key/value list for nested objects. */
+export function DetailKv({ rows }: { rows: { label: string; value: ReactNode }[] }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {rows.map((r) => (
+        <div key={r.label}>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider">{r.label}</div>
+          <div className="mt-1 text-sm font-medium break-words">{r.value ?? "—"}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Simple nested table for line items / documents. */
+export function DetailTable({
+  columns,
+  rows,
+  empty = "None",
+}: {
+  columns: { key: string; label: string; render?: (row: any) => ReactNode; className?: string }[];
+  rows: any[];
+  empty?: string;
+}) {
+  if (!rows?.length) {
+    return <p className="text-sm text-muted-foreground">{empty}</p>;
+  }
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border bg-muted/30 text-left">
+            {columns.map((c) => (
+              <th key={c.key} className={cn("px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground", c.className)}>
+                {c.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={String(row.id ?? i)} className="border-b border-border last:border-0">
+              {columns.map((c) => (
+                <td key={c.key} className={cn("px-3 py-2", c.className)}>
+                  {c.render ? c.render(row) : String(row[c.key] ?? "—")}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

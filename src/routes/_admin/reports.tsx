@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { DataPage } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api/client";
@@ -29,6 +30,7 @@ function ReportsPage() {
           lastRun: now,
           owner: "Ops",
           detail: procurement ? JSON.stringify(procurement) : "—",
+          payload: procurement,
         },
         {
           id: "RPT-catalog",
@@ -38,6 +40,7 @@ function ReportsPage() {
           lastRun: now,
           owner: "Catalog",
           detail: catalog ? JSON.stringify(catalog) : "—",
+          payload: catalog,
         },
         {
           id: "RPT-finance",
@@ -47,6 +50,7 @@ function ReportsPage() {
           lastRun: now,
           owner: "Finance",
           detail: finance ? JSON.stringify(finance) : "—",
+          payload: finance,
         },
       ];
     },
@@ -58,6 +62,25 @@ function ReportsPage() {
       description="Scheduled and ad-hoc reports across finance, marketplace and risk."
       icon={<BarChart3 className="h-5 w-5 text-primary" />}
       disableCrud
+      viewFields={[
+        { key: "name", label: "Report" },
+        { key: "category", label: "Category" },
+        { key: "schedule", label: "Schedule" },
+        { key: "lastRun", label: "Last run" },
+        { key: "owner", label: "Owner" },
+      ]}
+      loadDetail={async (row) => {
+        if (row.payload && typeof row.payload === "object") return row.payload as Record<string, unknown>;
+        return {
+          name: row.name,
+          category: row.category,
+          schedule: row.schedule,
+          lastRun: row.lastRun,
+          owner: row.owner,
+          detail: row.detail,
+        };
+      }}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} omitKeys={["id", "payload"]} />}
       kpis={[
         { label: "Report endpoints", value: String(rows.length) },
         { label: "Runs", value: "—", tone: "success" },

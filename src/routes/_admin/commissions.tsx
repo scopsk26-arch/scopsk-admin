@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { EMPTY_LIST, fetchCommissions, settleCommission } from "@/lib/api/resources";
+import { EMPTY_LIST, fetchCommissionDetail, fetchCommissions, settleCommission } from "@/lib/api/resources";
 import { num } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/commissions")({
@@ -46,6 +47,23 @@ function CommissionsPage() {
       description="Marketplace commission accruals, tiers and payout schedule."
       icon={<Percent className="h-5 w-5 text-primary" />}
       disableCrud
+      viewFields={[
+        { key: "id", label: "Ref" },
+        { key: "po", label: "PO" },
+        { key: "supplier", label: "Supplier" },
+        { key: "gross", label: "Gross" },
+        { key: "rate", label: "Rate" },
+        { key: "commission", label: "Commission" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => {
+        try {
+          return await fetchCommissionDetail(String(row.id));
+        } catch {
+          return row;
+        }
+      }}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Accrued (MTD)", value: AED(accrued), tone: "info" },
         { label: "Paid (30d)", value: AED(paid), tone: "success" },

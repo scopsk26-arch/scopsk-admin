@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { KycDetailView } from "@/components/admin/DetailViews";
 import { ExternalLink, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { approveKyc, fetchList, rejectKyc } from "@/lib/api/resources";
+import { approveKyc, fetchKycDetail, fetchList, rejectKyc } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/kyc")({
@@ -71,6 +72,17 @@ function KycPage() {
         },
         { key: "notes", label: "Notes (required to reject)", type: "text", placeholder: "Rejection reason…" },
       ]}
+      viewFields={[
+        { key: "entity", label: "Entity" },
+        { key: "type", label: "Type" },
+        { key: "submitted", label: "Submitted" },
+        { key: "priority", label: "Priority" },
+        { key: "reviewer", label: "Reviewer" },
+        { key: "docCount", label: "Document count" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => fetchKycDetail(row.id)}
+      renderView={(detail) => <KycDetailView detail={detail} />}
       kpis={[
         { label: "Pending review", value: String(pending), tone: "warning" },
         { label: "Approved", value: String(approved), tone: "success" },
@@ -85,20 +97,32 @@ function KycPage() {
       searchKeys={["id", "entity", "reviewer"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load KYC." : "No KYC applications."}
       columns={[
-        { key: "id", label: "ID", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
-        { key: "entity", label: "Entity", render: (r) => <span className="font-medium">{r.entity}</span> },
-        { key: "type", label: "Type" },
-        { key: "submitted", label: "Submitted" },
+        {
+          key: "id",
+          label: "ID",
+          className: "font-mono text-xs whitespace-nowrap w-[1%]",
+          render: (r) => String(r.id).slice(0, 8),
+        },
+        {
+          key: "entity",
+          label: "Entity",
+          className: "whitespace-nowrap",
+          render: (r) => <span className="font-medium">{r.entity}</span>,
+        },
+        { key: "type", label: "Type", className: "whitespace-nowrap w-[1%]" },
+        { key: "submitted", label: "Submitted", className: "whitespace-nowrap w-[1%]" },
         {
           key: "documents",
           label: "Documents",
+          // Absorb leftover table width so Reviewer/Status don't stretch apart.
+          className: "w-full",
           render: (r) => {
             const docs = (r.documents as KycDoc[]) || [];
             if (!docs.length) {
               return <span className="text-xs text-muted-foreground">No documents</span>;
             }
             return (
-              <div className="flex flex-col gap-1 max-w-[220px]">
+              <div className="flex flex-col gap-1 max-w-xs">
                 {docs.map((d, i) =>
                   d.url ? (
                     <a
@@ -124,6 +148,7 @@ function KycPage() {
         {
           key: "priority",
           label: "Priority",
+          className: "whitespace-nowrap w-[1%]",
           render: (r) => (
             <span
               className={cn(
@@ -139,8 +164,13 @@ function KycPage() {
             </span>
           ),
         },
-        { key: "reviewer", label: "Reviewer" },
-        { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+        { key: "reviewer", label: "Reviewer", className: "whitespace-nowrap w-[1%]" },
+        {
+          key: "status",
+          label: "Status",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => <StatusBadge status={r.status} />,
+        },
       ]}
       onUpdate={async (id, data, row) => {
         const status = String(data.status || "");
@@ -158,7 +188,7 @@ function KycPage() {
           throw new Error("Set status to approved or rejected to update KYC");
         }
         await queryClient.invalidateQueries({ queryKey: ["kyc", "applications"] });
-        return { id, status, entity: data.entity, notes: data.notes };
+        return { ...row, status, notes: String(data.notes ?? row.notes ?? "") };
       }}
     />
   );

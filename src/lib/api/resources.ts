@@ -57,6 +57,9 @@ export async function fetchOrganizationsByType(type: "restaurant" | "supplier") 
       tradeLicenseNumber: "",
       vatRegistrationNumber: "",
       foodLicenseNumber: "",
+      documents: [] as { id?: string; type: string; url?: string; fileName?: string }[],
+      documentCount: 0,
+      kycApplication: null,
     }));
   } catch {
     return [];
@@ -269,7 +272,7 @@ export async function updateOrganization(
 }
 
 export async function fetchList(path: string, query?: Record<string, string | number | boolean | undefined | null>) {
-  return asArray(await api.get(path, { query: { limit: 200, ...query } }));
+  return asArray(await api.get(path, { query: { limit: 100, ...query } }));
 }
 
 /** Activity feed: GET /admin/activity → fallback GET /admin/audit-logs. */
@@ -578,3 +581,74 @@ export async function fetchRestaurantInventory(organizationId: string) {
     }),
   );
 }
+
+// ─── Detail (GET by id) helpers for admin View dialogs ───────────────────────
+
+export async function fetchOrganizationDetail(id: string) {
+  return api.get<any>(`/organizations/${id}`);
+}
+
+export async function fetchRfqDetail(id: string) {
+  return api.get<any>(`/rfqs/${id}`);
+}
+
+export async function fetchQuotationDetail(id: string) {
+  return api.get<any>(`/quotations/${id}`);
+}
+
+export async function fetchPurchaseOrderDetail(id: string) {
+  return api.get<any>(`/purchase-orders/${id}`);
+}
+
+export async function fetchDeliveryDetail(id: string) {
+  return api.get<any>(`/deliveries/${id}`);
+}
+
+export async function fetchInvoiceDetail(id: string) {
+  return api.get<any>(`/invoices/${id}`);
+}
+
+export async function fetchApprovalDetail(id: string) {
+  return api.get<any>(`/approvals/${id}`);
+}
+
+export async function fetchKycDetail(id: string) {
+  return api.get<any>(`/kyc/applications/${id}`);
+}
+
+export async function fetchProductDetail(id: string) {
+  return api.get<any>(`/catalog/products/${id}`);
+}
+
+export async function fetchCategoryDetail(id: string) {
+  return api.get<any>(`/catalog/categories/${id}`);
+}
+
+export async function fetchSupportTicketDetail(id: string) {
+  return api.get<any>(`/support/${id}`);
+}
+
+export async function fetchNotificationDetail(id: string) {
+  return api.get<any>(`/notifications/${id}`);
+}
+
+export async function fetchFileDetail(id: string) {
+  return api.get<any>(`/files/${id}`);
+}
+
+export async function fetchCommissionDetail(id: string) {
+  return api.get<any>(`/admin/commissions/${id}`);
+}
+
+export async function fetchAuditLogDetail(id: string) {
+  return api.get<any>(`/admin/audit-logs/${id}`);
+}
+
+export async function fetchSubscriptionDetail(id: string) {
+  return api.get<any>(`/subscriptions/${id}`);
+}
+
+export async function fetchRoleDetail(id: string) {
+  return api.get<any>(`/admin/roles/${id}`);
+}
+

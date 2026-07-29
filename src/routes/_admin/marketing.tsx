@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { Megaphone } from "lucide-react";
 import { fetchList } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
@@ -51,6 +52,18 @@ function MarketingPage() {
           options: ["draft", "scheduled", "active", "completed", "cancelled"],
         },
       ]}
+      viewFields={[
+        { key: "name", label: "Campaign" },
+        { key: "channel", label: "Channel" },
+        { key: "audience", label: "Audience" },
+        { key: "sent", label: "Sent" },
+        { key: "opens", label: "Opens" },
+        { key: "clicks", label: "Clicks" },
+        { key: "conv", label: "Conversions" },
+        { key: "status", label: "Status" },
+      ]}
+      loadDetail={async (row) => row}
+      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Active campaigns", value: String(active), tone: "info" },
         { label: "Reach", value: String(rows.reduce((s, r) => s + r.sent, 0)) },
