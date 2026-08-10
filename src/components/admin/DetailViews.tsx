@@ -19,6 +19,10 @@ export function RfqDetailView({ detail }: { detail: any }) {
   const invitations = Array.isArray(detail?.invitations) ? detail.invitations : [];
   const attachments = Array.isArray(detail?.attachments) ? detail.attachments : [];
   const timeline = Array.isArray(detail?.timeline) ? detail.timeline : [];
+  const purchaseOrders = Array.isArray(detail?.purchaseOrders) ? detail.purchaseOrders : [];
+  const requestedQty = num(detail?.requestedQty);
+  const awardedQty = num(detail?.fulfilledQty ?? detail?.awardedQty);
+  const remainingQty = num(detail?.remainingQty);
 
   return (
     <>
@@ -29,6 +33,15 @@ export function RfqDetailView({ detail }: { detail: any }) {
           <div className="sm:col-span-2"><span className="text-muted-foreground">Notes: </span>{str(detail.notes ?? detail.description, "—")}</div>
           <div><span className="text-muted-foreground">Creator: </span>{str(detail.creator?.email ?? [detail.creator?.firstName, detail.creator?.lastName].filter(Boolean).join(" "), "—")}</div>
           <div><span className="text-muted-foreground">Org: </span>{str(detail.organization?.name, "—")}</div>
+          <div><span className="text-muted-foreground">Quotes: </span>{str(detail.quotationCount, "—")}</div>
+          <div><span className="text-muted-foreground">Purchase orders: </span>{str(detail.purchaseOrderCount ?? purchaseOrders.length, "—")}</div>
+        </div>
+      </DetailSection>
+      <DetailSection title="Fulfillment">
+        <div className="grid gap-3 sm:grid-cols-3 text-sm">
+          <div><span className="text-muted-foreground">Requested: </span>{requestedQty || "—"}</div>
+          <div><span className="text-muted-foreground">Awarded: </span>{awardedQty || "—"}</div>
+          <div><span className="text-muted-foreground">Remaining: </span>{remainingQty || "—"}</div>
         </div>
       </DetailSection>
       <DetailSection title="Line items">
@@ -36,12 +49,44 @@ export function RfqDetailView({ detail }: { detail: any }) {
           rows={items}
           columns={[
             { key: "product", label: "Product", render: (r) => productName(r) },
-            { key: "qty", label: "Qty", render: (r) => str(r.quantity ?? r.qty, "—") },
+            { key: "qty", label: "Requested", render: (r) => str(r.quantity ?? r.qty, "—") },
+            {
+              key: "awarded",
+              label: "Awarded",
+              render: (r) => str(r.awardedQty ?? r.awarded_qty, "0"),
+            },
+            {
+              key: "remaining",
+              label: "Remaining",
+              render: (r) => {
+                const qty = num(r.quantity ?? r.qty);
+                const awarded = num(r.awardedQty ?? r.awarded_qty);
+                const rem =
+                  r.remainingQty != null || r.remaining_qty != null
+                    ? num(r.remainingQty ?? r.remaining_qty)
+                    : Math.max(0, qty - awarded);
+                return str(rem, "—");
+              },
+            },
             { key: "unit", label: "Unit", render: (r) => str(r.unit?.symbol ?? r.unit?.name ?? r.unit, "—") },
             { key: "notes", label: "Notes", render: (r) => str(r.notes, "—") },
           ]}
         />
       </DetailSection>
+      {purchaseOrders.length > 0 && (
+        <DetailSection title="Purchase orders">
+          <DetailTable
+            rows={purchaseOrders}
+            columns={[
+              { key: "number", label: "PO", render: (r) => str(r.number, "—") },
+              { key: "qty", label: "Qty", render: (r) => str(r.quantity, "—") },
+              { key: "status", label: "Status", render: (r) => str(r.status, "—") },
+              { key: "total", label: "Total", render: (r) => money(r.total) },
+              { key: "created", label: "Created", render: (r) => iso(r.createdAt) },
+            ]}
+          />
+        </DetailSection>
+      )}
       {invitations.length > 0 && (
         <DetailSection title="Invited suppliers">
           <DetailTable
@@ -80,6 +125,20 @@ export function RfqDetailView({ detail }: { detail: any }) {
             columns={[
               { key: "at", label: "When", render: (r) => iso(r.createdAt) },
               { key: "event", label: "Event", render: (r) => str(r.event ?? r.action ?? r.type, "—") },
+              {
+                key: "meta",
+                label: "Award / PO",
+                render: (r) => {
+                  const m = r.meta || r.metadata || {};
+                  const bits = [
+                    m.poNumber ? `PO ${m.poNumber}` : null,
+                    m.awardedQty != null ? `Awarded ${m.awardedQty}` : null,
+                    m.remainingBefore != null ? `Rem before ${m.remainingBefore}` : null,
+                    m.remainingAfter != null ? `Rem after ${m.remainingAfter}` : null,
+                  ].filter(Boolean);
+                  return bits.length ? bits.join(" · ") : "—";
+                },
+              },
               { key: "actor", label: "Actor", render: (r) => str(r.actor?.email ?? r.user?.email, "—") },
             ]}
           />

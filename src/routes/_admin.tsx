@@ -7,20 +7,38 @@ import { clearSession, hasAccessToken } from "@/lib/auth-session";
 import { me } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 
+const PLATFORM_ROLES = new Set([
+  "super_admin",
+  "operations_admin",
+  "finance_admin",
+  "auditor",
+  "kyc_officer",
+  "support_agent",
+  "marketing",
+]);
+
 export const Route = createFileRoute("/_admin")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     if (!hasAccessToken()) {
       throw redirect({ to: "/login" });
     }
-    // Optional session validation
     try {
-      await me();
+      const session = await me();
+      const roles = (session?.roles || [])
+        .map((r: any) => String(r.slug || r.role || r.name || "").toLowerCase())
+        .filter(Boolean);
+      const isPlatform = roles.some((r) => PLATFORM_ROLES.has(r));
+      if (!isPlatform) {
+        clearSession();
+        throw redirect({ to: "/login", search: { reason: "admin_only" } });
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         clearSession();
         throw redirect({ to: "/login" });
       }
+      throw err;
     }
   },
   component: AdminLayout,

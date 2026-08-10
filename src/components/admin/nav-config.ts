@@ -3,7 +3,7 @@ import {
   PackageCheck, Receipt, CreditCard, Percent, Boxes, FolderTree, Brain,
   AlertTriangle, MessageSquare, LifeBuoy, BookOpen, BadgeCheck, Megaphone,
   BarChart3, ScrollText, UsersRound, Settings, Bell, FolderOpen, Code2,
-  Activity, UtensilsCrossed, Award, CheckSquare, Warehouse,
+  Activity, UtensilsCrossed, Award, CheckSquare, Warehouse, Search,
 } from "lucide-react";
 
 export type NavItem = {
@@ -24,7 +24,7 @@ export const navItems: NavItem[] = [
 
   { group: "Trade", title: "RFQs", to: "/rfqs", icon: FileText },
   { group: "Trade", title: "Quotations", to: "/quotations", icon: Quote },
-  { group: "Trade", title: "Purchase Orders", to: "/purchase-orders", icon: ClipboardList },
+  { group: "Trade", title: "ORDs", to: "/purchase-orders", icon: ClipboardList },
   { group: "Trade", title: "Approvals", to: "/approvals", icon: CheckSquare },
   { group: "Trade", title: "Deliveries", to: "/deliveries", icon: PackageCheck },
 
@@ -52,6 +52,7 @@ export const navItems: NavItem[] = [
   { group: "Platform", title: "Files", to: "/files", icon: FolderOpen },
   { group: "Platform", title: "API Management", to: "/api", icon: Code2 },
 
+  { group: "System", title: "Code Lookup", to: "/lookup", icon: Search },
   { group: "System", title: "Audit Logs", to: "/audit-logs", icon: ScrollText },
   { group: "System", title: "Roles & Permissions", to: "/roles", icon: UsersRound },
   { group: "System", title: "Settings", to: "/settings", icon: Settings },

@@ -8,7 +8,7 @@ import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/purchase-orders")({
-  head: () => ({ meta: [{ title: "Purchase Orders — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "ORDs / Purchase Orders — Nexora Admin" }] }),
   component: PurchaseOrdersPage,
 });
 
@@ -19,6 +19,7 @@ function mapPo(r: any) {
   return {
     id: str(r.id),
     number: str(r.number ?? r.id),
+    orderNumber: str(r.executionOrder?.number ?? r.orderNumber, "—"),
     restaurant: str(r.buyerOrg?.name ?? r.buyerOrgId, "—"),
     supplier: str(r.supplierOrg?.name ?? r.supplierOrgId, "—"),
     buyerOrgId: str(r.buyerOrgId ?? r.buyerOrg?.id, ""),
@@ -28,6 +29,7 @@ function mapPo(r: any) {
     amount: num(r.total ?? r.subtotal),
     currency: str(r.currency, "AED"),
     created: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
+    acceptedAt: r.acceptedAt ? String(r.acceptedAt).replace("T", " ").slice(0, 19) : "—",
     status: str(r.status, "processing"),
   };
 }
@@ -51,22 +53,23 @@ function PurchaseOrdersPage() {
 
   return (
     <DataPage
-      title="Purchase Orders"
-      description="POs with fulfilment status. Changing status persists to the API."
+      title="ORDs (Purchase Orders)"
+      description="Commercial ORD documents. Order (ORDR) is created when the supplier accepts. Status changes persist to the API."
       icon={<ClipboardList className="h-5 w-5 text-primary" />}
       lookups={{
         restaurant: restaurants.map((r) => ({ value: r.label, label: r.label })),
         supplier: suppliers.map((s) => ({ value: s.label, label: s.label })),
       }}
       formFields={[
-        { key: "number", label: "PO #", type: "text" },
+        { key: "number", label: "ORD #", type: "text" },
         { key: "restaurant", label: "Buyer", type: "text" },
         { key: "supplier", label: "Supplier", type: "text" },
         { key: "amount", label: "Amount", type: "number" },
         { key: "status", label: "Status", type: "select", options: [...PO_STATUSES] },
       ]}
       viewFields={[
-        { key: "number", label: "PO #" },
+        { key: "number", label: "ORD #" },
+        { key: "orderNumber", label: "Order (ORDR)" },
         { key: "restaurant", label: "Buyer" },
         { key: "supplier", label: "Supplier" },
         { key: "rfq", label: "RFQ" },
@@ -75,21 +78,23 @@ function PurchaseOrdersPage() {
         { key: "amount", label: "Amount" },
         { key: "currency", label: "Currency" },
         { key: "created", label: "Created" },
+        { key: "acceptedAt", label: "Supplier accepted" },
         { key: "status", label: "Status" },
       ]}
       loadDetail={async (row) => fetchPurchaseOrderDetail(row.id)}
       renderView={(detail) => <PurchaseOrderDetailView detail={detail} />}
       kpis={[
-        { label: "Open POs", value: String(open) },
+        { label: "Open ORDs", value: String(open) },
         { label: "In transit", value: String(rows.filter((r) => ["dispatched", "in_transit", "in_progress"].includes(r.status)).length), tone: "info" },
         { label: "Delivered", value: String(delivered), tone: "success" },
         { label: "GMV", value: AED(gmv) },
       ]}
       rows={rows}
-      searchKeys={["number", "restaurant", "supplier", "rfq"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load POs." : "No purchase orders found."}
+      searchKeys={["number", "orderNumber", "restaurant", "supplier", "rfq"]}
+      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load ORDs." : "No purchase orders found."}
       columns={[
-        { key: "number", label: "PO", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
+        { key: "number", label: "ORD", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
+        { key: "orderNumber", label: "Order", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "restaurant", label: "Buyer", render: (r) => <span className="font-medium">{r.restaurant}</span> },
         { key: "supplier", label: "Supplier" },
         { key: "rfq", label: "RFQ", className: "font-mono text-xs whitespace-nowrap w-[1%]" },

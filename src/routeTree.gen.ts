@@ -40,6 +40,7 @@ import { Route as AdminCmsRouteImport } from './routes/_admin/cms'
 import { Route as AdminCategoriesRouteImport } from './routes/_admin/categories'
 import { Route as AdminCatalogRouteImport } from './routes/_admin/catalog'
 import { Route as AdminAuditLogsRouteImport } from './routes/_admin/audit-logs'
+import { Route as AdminLookupRouteImport } from './routes/_admin/lookup'
 import { Route as AdminApprovalsRouteImport } from './routes/_admin/approvals'
 import { Route as AdminApiRouteImport } from './routes/_admin/api'
 import { Route as AdminAiCenterRouteImport } from './routes/_admin/ai-center'
@@ -199,6 +200,11 @@ const AdminAuditLogsRoute = AdminAuditLogsRouteImport.update({
   path: '/audit-logs',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminLookupRoute = AdminLookupRouteImport.update({
+  id: '/lookup',
+  path: '/lookup',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
   id: '/approvals',
   path: '/approvals',
@@ -228,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/api': typeof AdminApiRoute
   '/approvals': typeof AdminApprovalsRoute
   '/audit-logs': typeof AdminAuditLogsRoute
+  '/lookup': typeof AdminLookupRoute
   '/catalog': typeof AdminCatalogRoute
   '/categories': typeof AdminCategoriesRoute
   '/cms': typeof AdminCmsRoute
@@ -264,6 +271,7 @@ export interface FileRoutesByTo {
   '/api': typeof AdminApiRoute
   '/approvals': typeof AdminApprovalsRoute
   '/audit-logs': typeof AdminAuditLogsRoute
+  '/lookup': typeof AdminLookupRoute
   '/catalog': typeof AdminCatalogRoute
   '/categories': typeof AdminCategoriesRoute
   '/cms': typeof AdminCmsRoute
@@ -302,6 +310,7 @@ export interface FileRoutesById {
   '/_admin/api': typeof AdminApiRoute
   '/_admin/approvals': typeof AdminApprovalsRoute
   '/_admin/audit-logs': typeof AdminAuditLogsRoute
+  '/_admin/lookup': typeof AdminLookupRoute
   '/_admin/catalog': typeof AdminCatalogRoute
   '/_admin/categories': typeof AdminCategoriesRoute
   '/_admin/cms': typeof AdminCmsRoute
@@ -340,6 +349,7 @@ export interface FileRouteTypes {
     | '/api'
     | '/approvals'
     | '/audit-logs'
+    | '/lookup'
     | '/catalog'
     | '/categories'
     | '/cms'
@@ -376,6 +386,7 @@ export interface FileRouteTypes {
     | '/api'
     | '/approvals'
     | '/audit-logs'
+    | '/lookup'
     | '/catalog'
     | '/categories'
     | '/cms'
@@ -667,6 +678,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuditLogsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/lookup': {
+      id: '/_admin/lookup'
+      path: '/lookup'
+      fullPath: '/lookup'
+      preLoaderRoute: typeof AdminLookupRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/approvals': {
       id: '/_admin/approvals'
       path: '/approvals'
@@ -704,6 +722,7 @@ interface AdminRouteChildren {
   AdminApiRoute: typeof AdminApiRoute
   AdminApprovalsRoute: typeof AdminApprovalsRoute
   AdminAuditLogsRoute: typeof AdminAuditLogsRoute
+  AdminLookupRoute: typeof AdminLookupRoute
   AdminCatalogRoute: typeof AdminCatalogRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCmsRoute: typeof AdminCmsRoute
@@ -739,6 +758,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminApiRoute: AdminApiRoute,
   AdminApprovalsRoute: AdminApprovalsRoute,
   AdminAuditLogsRoute: AdminAuditLogsRoute,
+  AdminLookupRoute: AdminLookupRoute,
   AdminCatalogRoute: AdminCatalogRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCmsRoute: AdminCmsRoute,
