@@ -275,6 +275,11 @@ export async function fetchList(path: string, query?: Record<string, string | nu
   return asArray(await api.get(path, { query: { limit: 100, ...query } }));
 }
 
+/** Admin-only secure decoder for enterprise tracking codes. */
+export async function fetchLookup(q: string) {
+  return api.get("/admin/lookup", { query: { q } });
+}
+
 /** Activity feed: GET /admin/activity → fallback GET /admin/audit-logs. */
 export async function fetchActivityFeed() {
   try {
