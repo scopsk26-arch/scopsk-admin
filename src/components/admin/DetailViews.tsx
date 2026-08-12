@@ -504,7 +504,15 @@ export function KycDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">Type: </span>{str(detail.organization?.type ?? detail.type, "—")}</div>
           <div><span className="text-muted-foreground">Email: </span>{str(detail.organization?.email, "—")}</div>
           <div><span className="text-muted-foreground">Priority: </span>{str(detail.priority, "—")}</div>
-          <div><span className="text-muted-foreground">Reviewer: </span>{str(detail.reviewer?.email ?? detail.reviewedBy, "—")}</div>
+          <div>
+            <span className="text-muted-foreground">Reviewer: </span>
+            {(() => {
+              const u = detail.reviewer;
+              if (!u) return "—";
+              const name = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+              return name || str(u.email, "—");
+            })()}
+          </div>
           <div><span className="text-muted-foreground">Submitted: </span>{iso(detail.submittedAt ?? detail.createdAt)}</div>
           <div className="sm:col-span-2"><span className="text-muted-foreground">Notes: </span>{str(detail.notes, "—")}</div>
         </div>

@@ -610,18 +610,32 @@ function RecordDialog({
   );
 }
 
+function labelFromObject(o: Record<string, unknown>): string {
+  for (const key of ["name", "label", "title", "slug", "email", "number", "code"] as const) {
+    const v = o[key];
+    if (v != null && String(v).trim()) return String(v).trim();
+  }
+  return "";
+}
+
 function formatViewValue(raw: unknown, field: FormField): ReactNode {
   if (raw == null || raw === "") return "—";
   if (Array.isArray(raw)) {
     if (!raw.length) return "—";
     if (raw.every((x) => x == null || typeof x !== "object")) return raw.map(String).join(", ");
+    const labels = raw
+      .map((x) => {
+        if (x == null) return "";
+        if (typeof x !== "object") return String(x);
+        return labelFromObject(x as Record<string, unknown>);
+      })
+      .filter(Boolean);
+    if (labels.length) return labels.join(", ");
     return `${raw.length} item(s)`;
   }
   if (typeof raw === "object") {
-    const o = raw as Record<string, unknown>;
-    if (o.name != null) return String(o.name);
-    if (o.email != null) return String(o.email);
-    if (o.number != null) return String(o.number);
+    const labeled = labelFromObject(raw as Record<string, unknown>);
+    if (labeled) return labeled;
     try {
       return JSON.stringify(raw);
     } catch {
