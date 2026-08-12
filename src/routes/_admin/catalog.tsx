@@ -29,6 +29,8 @@ type ProductRow = {
   stock: number;
   description: string;
   status: string;
+  imageUrl: string;
+  imageFileId: string;
 };
 
 function mapProductRow(r: any): ProductRow {
@@ -40,9 +42,17 @@ function mapProductRow(r: any): ProductRow {
     ? r.inventoryItems.reduce((s: number, i: any) => s + num(i.stock ?? i.quantity), 0)
     : null;
   const latestPrice = Array.isArray(r.marketPrices) ? r.marketPrices[0] : null;
+  const primaryImage =
+    Array.isArray(r.images) && r.images[0]
+      ? str(r.images[0]?.file?.cdnUrl ?? r.images[0]?.cdnUrl ?? r.images[0]?.url, "")
+      : "";
+  const primaryFileId =
+    Array.isArray(r.images) && r.images[0]
+      ? str(r.images[0]?.fileId ?? r.images[0]?.file?.id, "")
+      : "";
   return {
     id: str(r.id),
-    sku: str(r.sku ?? r.id),
+    sku: str(r.sku ?? r.productCode ?? r.id),
     name: str(r.name, "—"),
     category: str(r.category?.name ?? "", "—"),
     categoryId: str(r.categoryId ?? r.category?.id, ""),
@@ -59,6 +69,9 @@ function mapProductRow(r: any): ProductRow {
     ),
     description: str(r.description ?? attrs.description, ""),
     status: str(r.status, "active"),
+    // Preview only — API resolves from product_images (never products.image_url)
+    imageUrl: str(primaryImage || r.imageUrl, ""),
+    imageFileId: primaryFileId,
   };
 }
 
@@ -66,9 +79,17 @@ function toProductPayload(data: Record<string, any>) {
   const categoryId = data.categoryId ? String(data.categoryId) : undefined;
   const organizationId = data.organizationId ? String(data.organizationId) : undefined;
   const unitId = data.unitId ? String(data.unitId) : undefined;
+  const fileId = data.imageFileId != null ? String(data.imageFileId).trim() : "";
+  const preview = data.imageUrl != null ? String(data.imageUrl).trim() : "";
+  // product_images only: send new file id, or clear when preview removed; omit if unchanged
+  const imagePatch = fileId
+    ? { imageFileId: fileId }
+    : !preview
+      ? { imageFileId: "" }
+      : {};
   return {
     name: String(data.name || "").trim(),
-    sku: data.sku ? String(data.sku).trim() : null,
+    // SKU / item code is always system-generated on create
     ...(categoryId ? { categoryId } : {}),
     ...(organizationId ? { organizationId } : {}),
     ...(unitId
@@ -79,6 +100,7 @@ function toProductPayload(data: Record<string, any>) {
     status: data.status || "active",
     price: data.price === "" || data.price == null ? undefined : Number(data.price),
     stock: data.stock === "" || data.stock == null ? undefined : Number(data.stock),
+    ...imagePatch,
   };
 }
 
@@ -140,8 +162,19 @@ function CatalogPage() {
       idKey="id"
       entityName="Product"
       formFields={[
-        { key: "sku", label: "SKU", type: "text", placeholder: "SKU-001" },
+        {
+          key: "sku",
+          label: "Item code",
+          type: "readonly",
+          placeholder: "Auto: CATEGORY + product ID (on create)",
+        },
         { key: "name", label: "Product", type: "text", placeholder: "Product name" },
+        {
+          key: "imageUrl",
+          label: "Picture",
+          type: "image",
+          placeholder: "Upload → stored in product_images (DigitalOcean file)",
+        },
         {
           key: "categoryId",
           label: "Category",
@@ -176,8 +209,9 @@ function CatalogPage() {
         },
       ]}
       viewFields={[
-        { key: "sku", label: "SKU" },
+        { key: "sku", label: "Item code" },
         { key: "name", label: "Product" },
+        { key: "imageUrl", label: "Picture" },
         { key: "category", label: "Category" },
         { key: "brand", label: "Brand" },
         { key: "unit", label: "Unit" },
@@ -210,8 +244,23 @@ function CatalogPage() {
       searchKeys={["sku", "name", "category", "supplier"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load catalog." : "No products found."}
       columns={[
-        { key: "sku", label: "SKU", className: "font-mono text-xs" },
-        { key: "name", label: "Product", render: (r) => <span className="font-medium">{r.name}</span> },
+        { key: "sku", label: "Item code", className: "font-mono text-xs" },
+        {
+          key: "name",
+          label: "Product",
+          render: (r) => (
+            <span className="inline-flex items-center gap-2 min-w-0">
+              <span className="h-7 w-7 shrink-0 overflow-hidden rounded border border-border bg-muted/50 flex items-center justify-center">
+                {r.imageUrl ? (
+                  <img src={r.imageUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-[9px] text-muted-foreground">—</span>
+                )}
+              </span>
+              <span className="font-medium truncate">{r.name}</span>
+            </span>
+          ),
+        },
         {
           key: "category",
           label: "Category",

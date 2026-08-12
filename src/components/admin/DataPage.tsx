@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Download, Plus, Filter, Pencil, Trash2, Eye } from "lucide-react";
+import { Search, Download, Plus, Filter, Pencil, Trash2, Eye, ImagePlus, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -15,7 +15,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { SearchableSelect, type SelectOption } from "@/components/admin/SearchableSelect";
+import { SearchableSelect, SearchableMultiSelect, type SelectOption } from "@/components/admin/SearchableSelect";
+import { api } from "@/lib/api/client";
 
 export type Column<T> = {
   key: keyof T | string;
@@ -29,7 +30,7 @@ export type Kpi = { label: string; value: string; hint?: string; tone?: "default
 export type FormField = {
   key: string;
   label: string;
-  type?: "text" | "number" | "select" | "searchable";
+  type?: "text" | "number" | "select" | "searchable" | "multiselect" | "image" | "readonly";
   /** Plain select options (string values). */
   options?: string[];
   /** Searchable dropdown options (value/label). */
@@ -157,11 +158,17 @@ export function DataPage<T extends Record<string, any>>({
   // Auto-derive form fields from columns when not provided — relation fields become searchable.
   const fields: FormField[] = useMemo(() => {
     const enrich = (f: FormField): FormField => {
+      if (f.type === "image" || f.type === "readonly") return f;
       if (f.selectOptions && f.selectOptions.length > 0) return f;
       if (f.options?.length && f.type === "select") return f;
       const fromLookup = lookups?.[f.key];
       if (fromLookup?.length) {
-        return { ...f, type: "searchable", selectOptions: fromLookup, allowClear: f.allowClear ?? true };
+        return {
+          ...f,
+          type: f.type === "multiselect" ? "multiselect" : "searchable",
+          selectOptions: fromLookup,
+          allowClear: f.allowClear ?? true,
+        };
       }
       // Never invent options from *Id columns — unique values are UUIDs and show as labels.
       if (/Id$/i.test(f.key) || f.key === "id") return f;
@@ -274,6 +281,7 @@ export function DataPage<T extends Record<string, any>>({
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : `Failed to save ${entity.toLowerCase()}`);
+      throw err;
     }
   };
 
@@ -519,6 +527,107 @@ export function DataPage<T extends Record<string, any>>({
   );
 }
 
+function ImageUrlField({
+  value,
+  onChange,
+  onFileIdChange,
+  disabled,
+  placeholder,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  onFileIdChange?: (fileId: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const onPick = async (file: File | null) => {
+    if (!file || disabled) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("purpose", "product");
+      const uploaded = await api.post<{ id?: string; cdnUrl?: string }>("/files/upload", form);
+      const url = uploaded?.cdnUrl ? String(uploaded.cdnUrl) : "";
+      if (!url) throw new Error("Upload succeeded but no CDN URL returned");
+      onChange(url);
+      if (uploaded?.id) onFileIdChange?.(String(uploaded.id));
+      toast.success("Image uploaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Image upload failed");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="mt-1 space-y-2">
+      <div className="flex items-start gap-3">
+        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md border border-border bg-muted/40 flex items-center justify-center">
+          {value ? (
+            <img src={value} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <ImagePlus className="h-5 w-5 text-muted-foreground" />
+          )}
+        </div>
+        <div className="flex flex-1 flex-col gap-2 min-w-0">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            disabled={disabled || uploading}
+            onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled || uploading}
+              onClick={() => inputRef.current?.click()}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Uploading…
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="h-3.5 w-3.5" />
+                  {value ? "Replace picture" : "Upload picture"}
+                </>
+              )}
+            </Button>
+            {value ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={disabled || uploading}
+                onClick={() => {
+                  onChange("");
+                  onFileIdChange?.("");
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+                Remove
+              </Button>
+            ) : null}
+          </div>
+          <p className="text-[11px] text-muted-foreground truncate">
+            {value || placeholder || "Saved as DigitalOcean CDN URL on the product."}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RecordDialog({
   open, onOpenChange, entity, fields, initial, onSubmit,
 }: {
@@ -527,10 +636,12 @@ function RecordDialog({
   entity: string;
   fields: FormField[];
   initial?: Record<string, any>;
-  onSubmit: (data: Record<string, any>) => void;
+  onSubmit: (data: Record<string, any>) => void | Promise<void>;
 }) {
   const isEdit = !!initial;
   const [form, setForm] = useState<Record<string, any>>({});
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   // Reset form when dialog opens — normalize arrays (e.g. categories) for inputs
   useEffect(() => {
@@ -538,7 +649,18 @@ function RecordDialog({
       const init: Record<string, any> = {};
       fields.forEach((f) => {
         const raw = initial?.[f.key];
-        if (Array.isArray(raw)) {
+        if (f.type === "multiselect") {
+          if (Array.isArray(raw)) {
+            init[f.key] = raw.map(String).filter(Boolean);
+          } else if (raw == null || raw === "" || raw === "—") {
+            init[f.key] = [] as string[];
+          } else {
+            init[f.key] = String(raw)
+              .split(/[,;|]/)
+              .map((s) => s.trim())
+              .filter(Boolean);
+          }
+        } else if (Array.isArray(raw)) {
           init[f.key] = raw[0] != null ? String(raw[0]) : "";
         } else if (raw == null) {
           init[f.key] = f.type === "number" ? 0 : "";
@@ -547,16 +669,33 @@ function RecordDialog({
         }
       });
       setForm(init);
+      setSaving(false);
+      savingRef.current = false;
     }
   }, [open, initial, fields]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(form);
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await onSubmit(form);
+    } catch {
+      // Parent toasts the error; re-enable so the user can retry.
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (savingRef.current && !o) return;
+        onOpenChange(o);
+      }}
+    >
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? `Edit ${entity.toLowerCase()}` : `New ${entity.toLowerCase()}`}</DialogTitle>
@@ -565,44 +704,94 @@ function RecordDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="grid gap-4 sm:grid-cols-2">
-            {fields.map((f) => (
-              <div key={f.key} className={cn(fields.length === 1 && "sm:col-span-2")}>
-                <Label htmlFor={f.key} className="text-xs">{f.label}</Label>
-                {f.type === "searchable" || (f.selectOptions && f.selectOptions.length > 0) ? (
-                  <SearchableSelect
-                    value={String(form[f.key] ?? "")}
-                    onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
-                    options={f.selectOptions ?? []}
-                    placeholder={f.placeholder ?? `Search ${f.label.toLowerCase()}…`}
-                    allowClear={f.allowClear !== false}
-                  />
-                ) : f.type === "select" && f.options ? (
-                  <Select value={String(form[f.key] ?? "")} onValueChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder={`Select ${f.label.toLowerCase()}`} /></SelectTrigger>
-                    <SelectContent>
-                      {f.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    id={f.key}
-                    type={f.type === "number" ? "number" : "text"}
-                    placeholder={f.placeholder}
-                    value={form[f.key] ?? ""}
-                    onChange={(e) => setForm((p) => ({
-                      ...p,
-                      [f.key]: f.type === "number" ? Number(e.target.value) : e.target.value,
-                    }))}
-                    className="mt-1"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
+          <fieldset disabled={saving} className="contents">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {fields.map((f) => (
+                <div
+                  key={f.key}
+                  className={cn(
+                    (fields.length === 1 || f.type === "image") && "sm:col-span-2",
+                  )}
+                >
+                  <Label htmlFor={f.key} className="text-xs">{f.label}</Label>
+                  {f.type === "image" ? (
+                    <ImageUrlField
+                      value={String(form[f.key] ?? "")}
+                      onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
+                      onFileIdChange={(fileId) =>
+                        setForm((p) => ({ ...p, imageFileId: fileId }))
+                      }
+                      disabled={saving}
+                      placeholder={f.placeholder}
+                    />
+                  ) : f.type === "readonly" ? (
+                    <Input
+                      id={f.key}
+                      value={form[f.key] ? String(form[f.key]) : ""}
+                      placeholder={f.placeholder ?? "Auto-generated"}
+                      readOnly
+                      disabled
+                      className="mt-1 font-mono text-xs bg-muted/40"
+                    />
+                  ) : f.type === "multiselect" ? (
+                    <SearchableMultiSelect
+                      value={form[f.key] ?? []}
+                      onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
+                      options={f.selectOptions ?? []}
+                      placeholder={f.placeholder ?? `Select ${f.label.toLowerCase()}…`}
+                      disabled={saving}
+                    />
+                  ) : f.type === "searchable" || (f.selectOptions && f.selectOptions.length > 0) ? (
+                    <SearchableSelect
+                      value={String(form[f.key] ?? "")}
+                      onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
+                      options={f.selectOptions ?? []}
+                      placeholder={f.placeholder ?? `Search ${f.label.toLowerCase()}…`}
+                      allowClear={f.allowClear !== false}
+                      disabled={saving}
+                    />
+                  ) : f.type === "select" && f.options ? (
+                    <Select
+                      value={String(form[f.key] ?? "")}
+                      onValueChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
+                      disabled={saving}
+                    >
+                      <SelectTrigger className="mt-1"><SelectValue placeholder={`Select ${f.label.toLowerCase()}`} /></SelectTrigger>
+                      <SelectContent>
+                        {f.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id={f.key}
+                      type={f.type === "number" ? "number" : "text"}
+                      placeholder={f.placeholder}
+                      value={form[f.key] ?? ""}
+                      onChange={(e) => setForm((p) => ({
+                        ...p,
+                        [f.key]: f.type === "number" ? Number(e.target.value) : e.target.value,
+                      }))}
+                      className="mt-1"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </fieldset>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">{isEdit ? "Save changes" : `Create ${entity.toLowerCase()}`}</Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving
+                ? (isEdit ? "Saving…" : "Creating…")
+                : (isEdit ? "Save changes" : `Create ${entity.toLowerCase()}`)}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -610,18 +799,32 @@ function RecordDialog({
   );
 }
 
+function labelFromObject(o: Record<string, unknown>): string {
+  for (const key of ["name", "label", "title", "slug", "email", "number", "code"] as const) {
+    const v = o[key];
+    if (v != null && String(v).trim()) return String(v).trim();
+  }
+  return "";
+}
+
 function formatViewValue(raw: unknown, field: FormField): ReactNode {
   if (raw == null || raw === "") return "—";
   if (Array.isArray(raw)) {
     if (!raw.length) return "—";
     if (raw.every((x) => x == null || typeof x !== "object")) return raw.map(String).join(", ");
+    const labels = raw
+      .map((x) => {
+        if (x == null) return "";
+        if (typeof x !== "object") return String(x);
+        return labelFromObject(x as Record<string, unknown>);
+      })
+      .filter(Boolean);
+    if (labels.length) return labels.join(", ");
     return `${raw.length} item(s)`;
   }
   if (typeof raw === "object") {
-    const o = raw as Record<string, unknown>;
-    if (o.name != null) return String(o.name);
-    if (o.email != null) return String(o.email);
-    if (o.number != null) return String(o.number);
+    const labeled = labelFromObject(raw as Record<string, unknown>);
+    if (labeled) return labeled;
     try {
       return JSON.stringify(raw);
     } catch {

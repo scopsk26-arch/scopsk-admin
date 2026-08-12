@@ -504,7 +504,15 @@ export function KycDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">Type: </span>{str(detail.organization?.type ?? detail.type, "—")}</div>
           <div><span className="text-muted-foreground">Email: </span>{str(detail.organization?.email, "—")}</div>
           <div><span className="text-muted-foreground">Priority: </span>{str(detail.priority, "—")}</div>
-          <div><span className="text-muted-foreground">Reviewer: </span>{str(detail.reviewer?.email ?? detail.reviewedBy, "—")}</div>
+          <div>
+            <span className="text-muted-foreground">Reviewer: </span>
+            {(() => {
+              const u = detail.reviewer;
+              if (!u) return "—";
+              const name = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+              return name || str(u.email, "—");
+            })()}
+          </div>
           <div><span className="text-muted-foreground">Submitted: </span>{iso(detail.submittedAt ?? detail.createdAt)}</div>
           <div className="sm:col-span-2"><span className="text-muted-foreground">Notes: </span>{str(detail.notes, "—")}</div>
         </div>
@@ -553,12 +561,29 @@ export function ProductDetailView({ detail }: { detail: any }) {
     <>
       <DetailSection title="Catalog">
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
-          <div><span className="text-muted-foreground">SKU: </span>{str(detail.sku, "—")}</div>
+          <div><span className="text-muted-foreground">Item code: </span>{str(detail.sku ?? detail.productCode, "—")}</div>
           <div><span className="text-muted-foreground">Category: </span>{str(detail.category?.name, "—")}</div>
           <div><span className="text-muted-foreground">Brand: </span>{str(detail.brand?.name, "—")}</div>
           <div><span className="text-muted-foreground">Unit: </span>{str(detail.unit?.name ?? detail.unit?.symbol, "—")}</div>
           <div><span className="text-muted-foreground">Org: </span>{str(detail.organization?.name, "—")}</div>
           <div><span className="text-muted-foreground">Price: </span>{money(detail.price ?? detail.unitPrice)}</div>
+          <div><span className="text-muted-foreground">Picture: </span>
+            {(() => {
+              const url =
+                detail.images?.[0]?.file?.cdnUrl ||
+                detail.images?.[0]?.cdnUrl ||
+                detail.imageUrl;
+              if (!url) return "—";
+              return (
+                <span className="inline-flex items-center gap-3 align-middle">
+                  <img src={String(url)} alt="" className="h-16 w-16 rounded object-cover border border-border" />
+                  <a href={String(url)} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline truncate">
+                    Open CDN URL
+                  </a>
+                </span>
+              );
+            })()}
+          </div>
           <div className="sm:col-span-2"><span className="text-muted-foreground">Description: </span>{str(detail.description, "—")}</div>
         </div>
       </DetailSection>

@@ -41,7 +41,12 @@ function KycPage() {
               ? String(r.createdAt).slice(0, 10)
               : "—",
           priority: str(r.priority ?? r.metadata?.priority, "medium"),
-          reviewer: str(r.reviewer?.email ?? r.reviewedBy, "—"),
+          reviewer: (() => {
+            const u = r.reviewer;
+            if (!u) return "—";
+            const name = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+            return name || str(u.email, "—");
+          })(),
           status: str(r.status, "pending"),
           docCount: documents.length,
           documents,
