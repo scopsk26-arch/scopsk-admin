@@ -89,10 +89,10 @@ function CuisinesPage() {
         { key: "description", label: "Description", type: "text" },
         { key: "sortOrder", label: "Sort order", type: "number" },
         {
-          key: "categories",
+          key: "categoryIds",
           label: "Categories",
-          type: "text",
-          placeholder: "Category names, comma-separated",
+          type: "multiselect",
+          placeholder: "Select one or more categories…",
         },
         {
           key: "status",
@@ -101,7 +101,7 @@ function CuisinesPage() {
           options: ["active", "inactive"],
         },
       ]}
-      lookups={{ categories }}
+      lookups={{ categoryIds: categories, categories }}
       viewFields={[
         { key: "name", label: "Cuisine" },
         { key: "slug", label: "Slug" },
@@ -134,7 +134,7 @@ function CuisinesPage() {
       onCreate={async (data) => {
         const name = String(data.name || "").trim();
         if (!name) throw new Error("Cuisine name is required");
-        const categoryIds = resolveCategoryIds(data.categories ?? data.categoryIds, categories);
+        const categoryIds = resolveCategoryIds(data.categoryIds ?? data.categories, categories);
         const created = await api.post<any>("/cuisines", {
           name,
           slug: data.slug ? String(data.slug).trim() : undefined,
@@ -149,7 +149,7 @@ function CuisinesPage() {
       onUpdate={async (id, data) => {
         const name = String(data.name || "").trim();
         if (!name) throw new Error("Cuisine name is required");
-        const categoryIds = resolveCategoryIds(data.categories ?? data.categoryIds, categories);
+        const categoryIds = resolveCategoryIds(data.categoryIds ?? data.categories, categories);
         const updated = await api.patch<any>(`/cuisines/${id}`, {
           name,
           slug: data.slug ? String(data.slug).trim() : undefined,
