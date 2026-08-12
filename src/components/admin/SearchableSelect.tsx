@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type WheelEvent } from "react";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -13,6 +13,11 @@ import {
 import { cn } from "@/lib/utils";
 
 export type SelectOption = { value: string; label: string };
+
+/** Keep wheel events inside nested popovers (Dialog steals scroll otherwise). */
+function stopWheelPropagation(e: WheelEvent) {
+  e.stopPropagation();
+}
 
 export function SearchableSelect({
   value,
@@ -38,7 +43,7 @@ export function SearchableSelect({
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -66,10 +71,18 @@ export function SearchableSelect({
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command>
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0 z-[60]"
+        align="start"
+        onWheel={stopWheelPropagation}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
+        <Command shouldFilter>
           <CommandInput placeholder="Search…" />
-          <CommandList>
+          <CommandList
+            className="max-h-[240px] overflow-y-auto overscroll-contain"
+            onWheel={stopWheelPropagation}
+          >
             <CommandEmpty>{emptyLabel}</CommandEmpty>
             <CommandGroup>
               {options.map((o) => (

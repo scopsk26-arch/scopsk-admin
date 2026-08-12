@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Download, Plus, Filter, Pencil, Trash2, Eye } from "lucide-react";
@@ -274,6 +274,7 @@ export function DataPage<T extends Record<string, any>>({
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : `Failed to save ${entity.toLowerCase()}`);
+      throw err;
     }
   };
 
@@ -527,10 +528,12 @@ function RecordDialog({
   entity: string;
   fields: FormField[];
   initial?: Record<string, any>;
-  onSubmit: (data: Record<string, any>) => void;
+  onSubmit: (data: Record<string, any>) => void | Promise<void>;
 }) {
   const isEdit = !!initial;
   const [form, setForm] = useState<Record<string, any>>({});
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   // Reset form when dialog opens — normalize arrays (e.g. categories) for inputs
   useEffect(() => {
@@ -547,16 +550,33 @@ function RecordDialog({
         }
       });
       setForm(init);
+      setSaving(false);
+      savingRef.current = false;
     }
   }, [open, initial, fields]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(form);
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await onSubmit(form);
+    } catch {
+      // Parent toasts the error; re-enable so the user can retry.
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (savingRef.current && !o) return;
+        onOpenChange(o);
+      }}
+    >
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? `Edit ${entity.toLowerCase()}` : `New ${entity.toLowerCase()}`}</DialogTitle>
@@ -565,44 +585,62 @@ function RecordDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="grid gap-4 sm:grid-cols-2">
-            {fields.map((f) => (
-              <div key={f.key} className={cn(fields.length === 1 && "sm:col-span-2")}>
-                <Label htmlFor={f.key} className="text-xs">{f.label}</Label>
-                {f.type === "searchable" || (f.selectOptions && f.selectOptions.length > 0) ? (
-                  <SearchableSelect
-                    value={String(form[f.key] ?? "")}
-                    onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
-                    options={f.selectOptions ?? []}
-                    placeholder={f.placeholder ?? `Search ${f.label.toLowerCase()}…`}
-                    allowClear={f.allowClear !== false}
-                  />
-                ) : f.type === "select" && f.options ? (
-                  <Select value={String(form[f.key] ?? "")} onValueChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder={`Select ${f.label.toLowerCase()}`} /></SelectTrigger>
-                    <SelectContent>
-                      {f.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    id={f.key}
-                    type={f.type === "number" ? "number" : "text"}
-                    placeholder={f.placeholder}
-                    value={form[f.key] ?? ""}
-                    onChange={(e) => setForm((p) => ({
-                      ...p,
-                      [f.key]: f.type === "number" ? Number(e.target.value) : e.target.value,
-                    }))}
-                    className="mt-1"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
+          <fieldset disabled={saving} className="contents">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {fields.map((f) => (
+                <div key={f.key} className={cn(fields.length === 1 && "sm:col-span-2")}>
+                  <Label htmlFor={f.key} className="text-xs">{f.label}</Label>
+                  {f.type === "searchable" || (f.selectOptions && f.selectOptions.length > 0) ? (
+                    <SearchableSelect
+                      value={String(form[f.key] ?? "")}
+                      onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
+                      options={f.selectOptions ?? []}
+                      placeholder={f.placeholder ?? `Search ${f.label.toLowerCase()}…`}
+                      allowClear={f.allowClear !== false}
+                      disabled={saving}
+                    />
+                  ) : f.type === "select" && f.options ? (
+                    <Select
+                      value={String(form[f.key] ?? "")}
+                      onValueChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
+                      disabled={saving}
+                    >
+                      <SelectTrigger className="mt-1"><SelectValue placeholder={`Select ${f.label.toLowerCase()}`} /></SelectTrigger>
+                      <SelectContent>
+                        {f.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id={f.key}
+                      type={f.type === "number" ? "number" : "text"}
+                      placeholder={f.placeholder}
+                      value={form[f.key] ?? ""}
+                      onChange={(e) => setForm((p) => ({
+                        ...p,
+                        [f.key]: f.type === "number" ? Number(e.target.value) : e.target.value,
+                      }))}
+                      className="mt-1"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </fieldset>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">{isEdit ? "Save changes" : `Create ${entity.toLowerCase()}`}</Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving
+                ? (isEdit ? "Saving…" : "Creating…")
+                : (isEdit ? "Save changes" : `Create ${entity.toLowerCase()}`)}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
