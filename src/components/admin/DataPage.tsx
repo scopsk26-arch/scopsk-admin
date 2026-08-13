@@ -85,6 +85,7 @@ export function DataPage<T extends Record<string, any>>({
   formFields,
   viewFields,
   loadDetail,
+  loadEdit,
   renderView,
   lookups,
   idKey = "id",
@@ -109,6 +110,8 @@ export function DataPage<T extends Record<string, any>>({
   viewFields?: FormField[];
   /** Fetch full record when opening View (GET /:id). */
   loadDetail?: (row: T) => Promise<Record<string, any>>;
+  /** Fetch extra fields when opening Edit (e.g. selected cuisine IDs). */
+  loadEdit?: (row: T) => Promise<Partial<T> | Record<string, any>>;
   /** Extra nested sections under the field grid (items, docs, timeline). */
   renderView?: (detail: Record<string, any>, row: T) => ReactNode;
   /** Prefetched dropdown options keyed by form field name (e.g. category, parent, supplier). */
@@ -144,7 +147,10 @@ export function DataPage<T extends Record<string, any>>({
           const cats = Array.isArray((r as any)?.categories)
             ? (r as any).categories.join("|")
             : String((r as any)?.categories ?? "");
-          return `${id}:${name}:${status}:${cats}`;
+          const cuisines = Array.isArray((r as any)?.cuisineIds)
+            ? (r as any).cuisineIds.join("|")
+            : String((r as any)?.cuisines ?? "");
+          return `${id}:${name}:${status}:${cats}:${cuisines}`;
         })
         .join(";"),
     [initialRows, idKey],
@@ -230,6 +236,22 @@ export function DataPage<T extends Record<string, any>>({
     setViewing(null);
     setViewDetail(null);
     setViewLoading(false);
+  };
+
+  const openEdit = async (row: T) => {
+    setEditing(row);
+    if (!loadEdit) return;
+    try {
+      const extra = await loadEdit(row);
+      if (!extra) return;
+      setEditing((prev) => {
+        if (!prev) return prev;
+        if (String(prev[idKey as keyof T] ?? "") !== String(row[idKey as keyof T] ?? "")) return prev;
+        return { ...prev, ...extra } as T;
+      });
+    } catch {
+      // Keep list-row values if detail fetch fails
+    }
   };
 
   const filtered = useMemo(() => {
@@ -414,7 +436,7 @@ export function DataPage<T extends Record<string, any>>({
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex gap-1 justify-end">
                           {canUpdate && (
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditing(row)} aria-label="Edit">
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => void openEdit(row)} aria-label="Edit">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                           )}
@@ -459,15 +481,15 @@ export function DataPage<T extends Record<string, any>>({
 
       {/* View dialog */}
       <Dialog open={viewing !== null} onOpenChange={(o) => { if (!o) closeView(); }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[90vh] !flex !flex-col overflow-hidden gap-4">
+          <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>View {entity.toLowerCase()}</DialogTitle>
             <DialogDescription>Read-only details for this record.</DialogDescription>
           </DialogHeader>
           {viewLoading ? (
             <div className="py-10 text-center text-sm text-muted-foreground">Loading details…</div>
           ) : (
-            <div className="space-y-6 py-2">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-6 py-1 pr-1 max-h-[calc(90vh-11.5rem)]">
               <div className="grid gap-4 sm:grid-cols-2">
                 {displayViewFields.map((f) => {
                   const source = viewDetail ?? viewing;
@@ -497,10 +519,10 @@ export function DataPage<T extends Record<string, any>>({
               {viewDetail && renderView && viewing ? renderView(viewDetail, viewing) : null}
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="shrink-0 border-t border-border pt-4 bg-background">
             <Button type="button" variant="outline" onClick={closeView}>Close</Button>
             {canUpdate && viewing && (
-              <Button type="button" onClick={() => { setEditing(viewing); closeView(); }}>
+              <Button type="button" onClick={() => { void openEdit(viewing); closeView(); }}>
                 <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
               </Button>
             )}
@@ -696,21 +718,22 @@ function RecordDialog({
         onOpenChange(o);
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] !flex !flex-col overflow-hidden gap-4">
+        <DialogHeader className="shrink-0 pr-8">
           <DialogTitle>{isEdit ? `Edit ${entity.toLowerCase()}` : `New ${entity.toLowerCase()}`}</DialogTitle>
           <DialogDescription>
             {isEdit ? "Update fields and save changes." : `Add a new ${entity.toLowerCase()} to the system.`}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <fieldset disabled={saving} className="contents">
-            <div className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 max-h-[calc(90vh-11.5rem)]">
+            <fieldset disabled={saving} className="min-w-0 border-0 p-0 m-0">
+            <div className="grid gap-4 sm:grid-cols-2 pb-4">
               {fields.map((f) => (
                 <div
                   key={f.key}
                   className={cn(
-                    (fields.length === 1 || f.type === "image") && "sm:col-span-2",
+                    (fields.length === 1 || f.type === "image" || f.type === "multiselect") && "sm:col-span-2",
                   )}
                 >
                   <Label htmlFor={f.key} className="text-xs">{f.label}</Label>
@@ -777,8 +800,9 @@ function RecordDialog({
                 </div>
               ))}
             </div>
-          </fieldset>
-          <DialogFooter>
+            </fieldset>
+          </div>
+          <DialogFooter className="shrink-0 border-t border-border pt-4 mt-0 bg-background">
             <Button
               type="button"
               variant="outline"
