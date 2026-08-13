@@ -36,6 +36,7 @@ export async function fetchOrganizationsByType(type: "restaurant" | "supplier") 
       name: [u.firstName, u.lastName].filter(Boolean).join(" ") || str(u.email, "User"),
       industry: "—",
       cuisines: "—",
+      cuisineIds: [] as string[],
       region: "—",
       branches: 0,
       orders: 0,
@@ -81,18 +82,48 @@ export async function fetchOrganizations(query?: {
   }
 }
 
-function mapOrgRow(r: any, type: "restaurant" | "supplier") {
-  const cuisineNames = Array.isArray(r.cuisines)
-    ? r.cuisines.map((c: any) => str(c.name ?? c, "")).filter((n: string) => n && n !== "—")
-    : Array.isArray(r.metadata?.cuisineNames)
+function mapOrgCuisines(r: any) {
+  const cuisineRows = Array.isArray(r.cuisines)
+    ? r.cuisines.map((c: any) => {
+        if (typeof c === "string") return { id: "", name: c };
+        const nested = c?.cuisineType;
+        if (nested) {
+          return { id: str(nested.id, ""), name: str(nested.name, "") };
+        }
+        // Join row uses cuisineTypeId; CuisineType row uses id + name
+        if (c?.cuisineTypeId) {
+          return { id: str(c.cuisineTypeId, ""), name: str(c.name, "") };
+        }
+        return { id: str(c?.id, ""), name: str(c?.name, "") };
+      })
+    : [];
+  const fromRows = cuisineRows.map((c) => c.id).filter((id) => id && id !== "—");
+  const fromField = Array.isArray(r.cuisineIds)
+    ? r.cuisineIds.map((id: any) => String(id || "").trim()).filter(Boolean)
+    : [];
+  const cuisineIds = fromRows.length ? fromRows : fromField;
+  const cuisineNames = [
+    ...cuisineRows.map((c) => c.name).filter((n: string) => n && n !== "—"),
+    ...(Array.isArray(r.cuisineNames) ? r.cuisineNames.map((n: any) => String(n)).filter(Boolean) : []),
+    ...(Array.isArray(r.metadata?.cuisineNames)
       ? r.metadata.cuisineNames.map((n: any) => String(n)).filter(Boolean)
-      : [];
-  const cuisineFallback = str(r.metadata?.cuisineType ?? r.metadata?.industry ?? r.legalName, "—");
+      : []),
+  ];
+  const uniqueNames = [...new Set(cuisineNames)];
+  return {
+    cuisineIds,
+    cuisineLabel: uniqueNames.length ? uniqueNames.join(", ") : "—",
+  };
+}
+
+function mapOrgRow(r: any, type: "restaurant" | "supplier") {
+  const { cuisineIds, cuisineLabel } = mapOrgCuisines(r);
   return {
     id: str(r.id),
     name: str(r.name, "Untitled"),
-    industry: cuisineNames.length ? cuisineNames.join(", ") : cuisineFallback,
-    cuisines: cuisineNames.length ? cuisineNames.join(", ") : cuisineFallback,
+    industry: cuisineLabel !== "—" ? cuisineLabel : str(r.metadata?.industry, "—"),
+    cuisines: cuisineLabel,
+    cuisineIds,
     region: str(r.city || r.country, "—"),
     branches: num(r.metadata?.branches),
     orders: num(r.metadata?.orders ?? r.orderCount),
@@ -221,6 +252,9 @@ export async function updateOrganization(
   }
 
   if (type === "restaurant") {
+    if (Array.isArray(data.cuisineIds)) {
+      payload.cuisineIds = data.cuisineIds.map((id: unknown) => String(id).trim()).filter(Boolean);
+    }
     if (data.industry != null) {
       payload.metadata = { ...currentMeta, industry: String(data.industry) };
     }

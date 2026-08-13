@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchList, fetchOrganizationsByType } from "@/lib/api/resources";
+import { EMPTY_LIST, fetchList, fetchOrganizationsByType } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
 
@@ -18,6 +18,7 @@ function mapOptions(list: any[], labelKey = "name"): SelectOption[] {
 
 export type AdminLookupKey =
   | "categories"
+  | "cuisines"
   | "restaurants"
   | "suppliers"
   | "rfqs"
@@ -35,6 +36,13 @@ export function useAdminLookups(needed: AdminLookupKey[] = []) {
     queryFn: async () => mapOptions(await fetchList("/catalog/categories", { limit: 100 })),
     staleTime: 5 * 60_000,
     enabled: want.has("categories"),
+  });
+
+  const cuisines = useQuery({
+    queryKey: ["lookups", "cuisines"],
+    queryFn: async () => mapOptions(await fetchList("/cuisines", { all: "true", limit: 200 })),
+    staleTime: 5 * 60_000,
+    enabled: want.has("cuisines"),
   });
 
   // Reuse the same cache key as Restaurants / Suppliers list pages.
@@ -85,10 +93,11 @@ export function useAdminLookups(needed: AdminLookupKey[] = []) {
   });
 
   return {
-    categories: categories.data ?? [],
-    restaurants: restaurants.data ?? [],
-    suppliers: suppliers.data ?? [],
-    rfqs: rfqs.data ?? [],
-    purchaseOrders: purchaseOrders.data ?? [],
+    categories: categories.data ?? EMPTY_LIST,
+    cuisines: cuisines.data ?? EMPTY_LIST,
+    restaurants: restaurants.data ?? EMPTY_LIST,
+    suppliers: suppliers.data ?? EMPTY_LIST,
+    rfqs: rfqs.data ?? EMPTY_LIST,
+    purchaseOrders: purchaseOrders.data ?? EMPTY_LIST,
   };
 }

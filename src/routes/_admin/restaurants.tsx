@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { OrganizationDetailView } from "@/components/admin/DetailViews";
@@ -6,10 +7,12 @@ import { ExternalLink, Store } from "lucide-react";
 import {
   fetchOrganizationDetail,
   fetchOrganizationsByType,
+  mapOrgRow,
   updateOrganization,
   updateOrgProfile,
   updateOrgSettings,
 } from "@/lib/api/resources";
+import { api } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 type OrgDoc = { id?: string; type: string; url?: string; fileName?: string };
@@ -20,7 +23,8 @@ export const Route = createFileRoute("/_admin/restaurants")({
 });
 
 function RestaurantsPage() {
-  const { categories } = useAdminLookups(["categories"]);
+  const { cuisines: cuisineOptions } = useAdminLookups(["cuisines"]);
+  const cuisineLookups = useMemo(() => ({ cuisineIds: cuisineOptions }), [cuisineOptions]);
   const queryClient = useQueryClient();
 
   const { data: rows = [], isLoading, isError } = useQuery({
@@ -41,13 +45,15 @@ function RestaurantsPage() {
       title="Restaurants"
       description="Manage onboarded restaurants, cuisines, KYC/profile fields and org procurement settings."
       icon={<Store className="h-5 w-5 text-primary" />}
-      lookups={{
-        categories: categories.map((c) => ({ value: c.label, label: c.label })),
-        category: categories.map((c) => ({ value: c.label, label: c.label })),
-      }}
+      lookups={cuisineLookups}
       formFields={[
         { key: "name", label: "Restaurant", type: "text" },
-        { key: "cuisines", label: "Cuisines", type: "text", placeholder: "From registration / metadata" },
+        {
+          key: "cuisineIds",
+          label: "Cuisines",
+          type: "multiselect",
+          placeholder: "Select cuisines…",
+        },
         { key: "region", label: "Region", type: "text" },
         { key: "ownerName", label: "Owner name", type: "text" },
         { key: "tradeLicenseNumber", label: "Trade license #", type: "text" },
@@ -80,6 +86,31 @@ function RestaurantsPage() {
         { key: "documentCount", label: "Documents" },
       ]}
       loadDetail={async (row) => fetchOrganizationDetail(row.id)}
+      loadEdit={async (row) => {
+        const detail = await fetchOrganizationDetail(row.id);
+        let mapped = mapOrgRow(detail, "restaurant");
+        if (!mapped.cuisineIds.length) {
+          try {
+            const profile = await api.get<any>("/restaurants/profile", {
+              headers: { "X-Organization-Id": row.id },
+            });
+            mapped = mapOrgRow({ ...detail, ...profile }, "restaurant");
+          } catch {
+            // list/detail already tried
+          }
+        }
+        let cuisineIds = mapped.cuisineIds;
+        if (!cuisineIds.length && mapped.cuisines && mapped.cuisines !== "—") {
+          const names = String(mapped.cuisines)
+            .split(/[,;|]/)
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean);
+          cuisineIds = cuisineOptions
+            .filter((o) => names.includes(o.label.toLowerCase()))
+            .map((o) => o.value);
+        }
+        return { cuisineIds, cuisines: mapped.cuisines };
+      }}
       renderView={(detail) => <OrganizationDetailView detail={detail} />}
       kpis={[
         { label: "Total restaurants", value: String(rows.length) },
@@ -147,9 +178,16 @@ function RestaurantsPage() {
       ]}
       onUpdate={async (id, data) => {
         if (!data.name?.trim()) throw new Error("Restaurant name is required");
+        const cuisineIds = Array.isArray(data.cuisineIds)
+          ? data.cuisineIds.map(String).filter(Boolean)
+          : [];
+        const cuisineLabel = cuisineOptions
+          .filter((o) => cuisineIds.includes(o.value))
+          .map((o) => o.label)
+          .join(", ");
         const updated = await updateOrganization(
           id,
-          { ...data, industry: data.cuisines || data.industry },
+          { ...data, cuisineIds, industry: cuisineLabel || data.industry },
           "restaurant",
         );
         await updateOrgSettings(id, {
@@ -168,7 +206,8 @@ function RestaurantsPage() {
             data.vatRegistrationNumber ?? updated.vatRegistrationNumber ?? "",
           ),
           foodLicenseNumber: String(data.foodLicenseNumber ?? updated.foodLicenseNumber ?? ""),
-          cuisines: String(data.cuisines || updated.cuisines || updated.industry || "—"),
+          cuisineIds,
+          cuisines: cuisineLabel || updated.cuisines || "—",
         };
       }}
     />

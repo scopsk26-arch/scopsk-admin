@@ -414,6 +414,15 @@ export function OrganizationDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">Email: </span>{str(detail.email, "—")}</div>
           <div><span className="text-muted-foreground">Phone: </span>{str(detail.phone, "—")}</div>
           <div><span className="text-muted-foreground">Location: </span>{[detail.city, detail.country].filter(Boolean).join(", ") || "—"}</div>
+          <div>
+            <span className="text-muted-foreground">Cuisines: </span>
+            {str(
+              Array.isArray(detail.cuisines)
+                ? detail.cuisines.map((c: any) => c?.name ?? c).filter(Boolean).join(", ")
+                : detail.cuisineNames?.join?.(", ") ?? detail.cuisines,
+              "—",
+            )}
+          </div>
           <div><span className="text-muted-foreground">Owner: </span>{str(profile.ownerName ?? detail.ownerName, "—")}</div>
           <div><span className="text-muted-foreground">Trade license: </span>{str(profile.tradeLicenseNumber ?? detail.tradeLicenseNumber, "—")}</div>
           <div><span className="text-muted-foreground">VAT: </span>{str(profile.vatRegistrationNumber ?? detail.vatRegistrationNumber, "—")}</div>
