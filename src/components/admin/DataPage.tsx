@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Download, Plus, Filter, Pencil, Trash2, Eye, ImagePlus, Loader2, X } from "lucide-react";
+import { Search, Download, Plus, Pencil, Trash2, Eye, ImagePlus, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -400,9 +400,7 @@ export function DataPage<T extends Record<string, any>>({
               className="pl-9 h-9"
             />
           </div>
-          {filters ?? (
-            <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-1.5" />Filter</Button>
-          )}
+          {filters}
         </div>
 
         <div className="overflow-x-auto">

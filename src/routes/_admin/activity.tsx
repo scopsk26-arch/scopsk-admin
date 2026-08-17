@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Activity } from "lucide-react";
 import { EMPTY_LIST, fetchActivityFeed } from "@/lib/api/resources";
 
 export const Route = createFileRoute("/_admin/activity")({
@@ -30,7 +29,6 @@ function ActivityPage() {
             <p className="text-sm text-muted-foreground mt-1">Real-time event stream across the entire marketplace.</p>
           </div>
         </div>
-        <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-1.5" />Filter events</Button>
       </div>
 
       <div className="rounded-2xl border border-border bg-card shadow-soft p-2">
