@@ -151,20 +151,84 @@ export function RfqDetailView({ detail }: { detail: any }) {
 export function QuotationDetailView({ detail }: { detail: any }) {
   const items = Array.isArray(detail?.items) ? detail.items : [];
   const attachments = Array.isArray(detail?.attachments) ? detail.attachments : [];
+  const approval = detail?.approvalRequest ?? null;
+  const steps = Array.isArray(approval?.metadata?.steps) ? approval.metadata.steps : [];
+  const actions = Array.isArray(approval?.actions) ? approval.actions : [];
+  const currentLevel = Number(approval?.currentLevel || 0);
+  const po = detail?.purchaseOrder ?? detail?.purchaseOrders?.[0];
 
   return (
     <>
       <DetailSection title="Summary">
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
+          <div><span className="text-muted-foreground">Quote: </span>{str(detail.number, "—")}</div>
           <div><span className="text-muted-foreground">RFQ: </span>{str(detail.rfq?.number ?? detail.rfqId, "—")}</div>
           <div><span className="text-muted-foreground">Supplier: </span>{str(detail.supplierOrg?.name, "—")}</div>
           <div><span className="text-muted-foreground">Buyer: </span>{str(detail.rfq?.organization?.name, "—")}</div>
+          <div><span className="text-muted-foreground">Status: </span>{str(detail.displayStatus ?? detail.status, "—")}</div>
           <div><span className="text-muted-foreground">Total: </span>{money(detail.total ?? detail.subtotal)}</div>
           <div><span className="text-muted-foreground">Valid until: </span>{iso(detail.validUntil ?? detail.validityDate)}</div>
           <div><span className="text-muted-foreground">Fulfillment: </span>{str(detail.fulfillmentType, "—")}</div>
           <div className="sm:col-span-2"><span className="text-muted-foreground">Terms: </span>{str(detail.terms ?? detail.notes, "—")}</div>
         </div>
       </DetailSection>
+      {approval ? (
+        <DetailSection title="Quote approval workflow">
+          <div className="grid gap-3 sm:grid-cols-2 text-sm mb-3">
+            <div><span className="text-muted-foreground">Approval status: </span>{str(approval.status, "—")}</div>
+            <div>
+              <span className="text-muted-foreground">Progress: </span>
+              {`${currentLevel} / ${num(approval.requiredLevels)}`}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Current approver: </span>
+              {str(
+                steps.find((s: any) => Number(s.level) === currentLevel + 1)?.assigneeName
+                  ?? steps.find((s: any) => Number(s.level) === currentLevel + 1)?.assigneeEmail,
+                approval.status === "pending" ? "—" : "Complete",
+              )}
+            </div>
+            <div><span className="text-muted-foreground">PO: </span>{str(po?.number ?? detail.purchaseOrderId, "—")}</div>
+          </div>
+          <DetailTable
+            rows={steps}
+            empty="No approval steps"
+            columns={[
+              { key: "level", label: "Step", render: (r) => str(r.level, "—") },
+              {
+                key: "who",
+                label: "Approver",
+                render: (r) => str(r.assigneeName ?? r.assigneeEmail ?? r.assigneeUserId, "—"),
+              },
+              {
+                key: "state",
+                label: "State",
+                render: (r) => {
+                  const level = num(r.level);
+                  if (currentLevel >= level) return "Approved";
+                  if (approval.status === "rejected" && currentLevel + 1 === level) return "Rejected";
+                  if (approval.status === "pending" && currentLevel + 1 === level) return "Pending";
+                  return "Waiting";
+                },
+              },
+            ]}
+          />
+          {actions.length > 0 ? (
+            <div className="mt-3">
+              <DetailTable
+                rows={actions}
+                empty="No actions"
+                columns={[
+                  { key: "at", label: "When", render: (r) => iso(r.createdAt) },
+                  { key: "decision", label: "Decision", render: (r) => str(r.action ?? r.decision, "—") },
+                  { key: "actor", label: "Actor", render: (r) => str(r.actor?.email ?? r.actorId, "—") },
+                  { key: "notes", label: "Notes", render: (r) => str(r.notes, "—") },
+                ]}
+              />
+            </div>
+          ) : null}
+        </DetailSection>
+      ) : null}
       <DetailSection title="Line items">
         <DetailTable
           rows={items}
@@ -362,6 +426,8 @@ export function InvoiceDetailView({ detail }: { detail: any }) {
 export function ApprovalDetailView({ detail }: { detail: any }) {
   const actions = Array.isArray(detail?.actions) ? detail.actions : [];
   const entity = detail?.entity ?? detail?.entitySnapshot ?? null;
+  const steps = Array.isArray(detail?.metadata?.steps) ? detail.metadata.steps : [];
+  const currentLevel = Number(detail?.currentLevel || 0);
 
   return (
     <>
@@ -380,6 +446,32 @@ export function ApprovalDetailView({ detail }: { detail: any }) {
           )}
         </div>
       </DetailSection>
+      {steps.length > 0 ? (
+        <DetailSection title="Approval steps">
+          <DetailTable
+            rows={steps}
+            columns={[
+              { key: "level", label: "Step", render: (r) => str(r.level, "—") },
+              {
+                key: "who",
+                label: "Approver",
+                render: (r) => str(r.assigneeName ?? r.assigneeEmail ?? r.assigneeUserId, "—"),
+              },
+              {
+                key: "state",
+                label: "State",
+                render: (r) => {
+                  const level = num(r.level);
+                  if (currentLevel >= level) return "Approved";
+                  if (detail.status === "rejected" && currentLevel + 1 === level) return "Rejected";
+                  if (detail.status === "pending" && currentLevel + 1 === level) return "Pending";
+                  return "Waiting";
+                },
+              },
+            ]}
+          />
+        </DetailSection>
+      ) : null}
       <DetailSection title="Action history">
         <DetailTable
           rows={actions}
@@ -456,7 +548,7 @@ export function OrganizationDetailView({ detail }: { detail: any }) {
         </DetailSection>
       )}
       {addresses.length > 0 && (
-        <DetailSection title="Addresses">
+        <DetailSection title="Address">
           <DetailTable
             rows={addresses.map((a: any, i: number) => (typeof a === "object" ? { ...a, _i: i } : { label: a, _i: i }))}
             columns={[
