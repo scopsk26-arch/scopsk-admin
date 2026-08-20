@@ -16,6 +16,9 @@ dist-ssr
 .nitro
 *.local
 
+# Vercel build output (local / CI artifacts)
+.vercel/output
+
 # Env (use Vercel/project env vars — never commit secrets)
 .env
 .env.*
