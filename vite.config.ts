@@ -12,4 +12,9 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Deploy target is Vercel (not Lovable/Cloudflare). Without this, Nitro defaults to
+  // `cloudflare-module` and Vercel serves no SSR function → platform 404 NOT_FOUND on routes.
+  nitro: {
+    preset: "vercel",
+  },
 });
