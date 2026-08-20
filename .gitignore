@@ -16,6 +16,11 @@ dist-ssr
 .nitro
 *.local
 
+# Env (use Vercel/project env vars — never commit secrets)
+.env
+.env.*
+!.env.example
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
