@@ -83,8 +83,9 @@ export async function fetchOrganizations(query?: {
 }
 
 function mapOrgCuisines(r: any) {
-  const cuisineRows = Array.isArray(r.cuisines)
-    ? r.cuisines.map((c: any) => {
+  type CuisineRow = { id: string; name: string };
+  const cuisineRows: CuisineRow[] = Array.isArray(r.cuisines)
+    ? r.cuisines.map((c: any): CuisineRow => {
         if (typeof c === "string") return { id: "", name: c };
         const nested = c?.cuisineType;
         if (nested) {
@@ -103,7 +104,7 @@ function mapOrgCuisines(r: any) {
     : [];
   const cuisineIds = fromRows.length ? fromRows : fromField;
   const cuisineNames = [
-    ...cuisineRows.map((c) => c.name).filter((n: string) => n && n !== "—"),
+    ...cuisineRows.map((c) => c.name).filter((n) => n && n !== "—"),
     ...(Array.isArray(r.cuisineNames) ? r.cuisineNames.map((n: any) => String(n)).filter(Boolean) : []),
     ...(Array.isArray(r.metadata?.cuisineNames)
       ? r.metadata.cuisineNames.map((n: any) => String(n)).filter(Boolean)
