@@ -24,7 +24,7 @@ export const navItems: NavItem[] = [
 
   { group: "Trade", title: "RFQs", to: "/rfqs", icon: FileText },
   { group: "Trade", title: "Quotations", to: "/quotations", icon: Quote },
-  { group: "Trade", title: "ORDs", to: "/purchase-orders", icon: ClipboardList },
+  { group: "Trade", title: "POs", to: "/purchase-orders", icon: ClipboardList },
   { group: "Trade", title: "Approvals", to: "/approvals", icon: CheckSquare },
   { group: "Trade", title: "Deliveries", to: "/deliveries", icon: PackageCheck },
 

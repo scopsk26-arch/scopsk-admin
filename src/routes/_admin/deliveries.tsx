@@ -14,6 +14,44 @@ export const Route = createFileRoute("/_admin/deliveries")({
 
 const DELIVERY_STATUSES = ["scheduled", "picked_up", "in_transit", "delivered", "failed", "cancelled"] as const;
 
+function driverName(r: any) {
+  const person = r.driver ?? r.driverUser ?? r.driver_user;
+  const fromUser = [person?.firstName ?? person?.first_name, person?.lastName ?? person?.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const name = str(
+    r.driverName
+      ?? r.driver_name
+      ?? (fromUser || null)
+      ?? person?.email
+      ?? r.metadata?.driver
+      ?? r.metadata?.driverName,
+    "",
+  );
+  return name || "Unassigned";
+}
+
+function etaValue(r: any) {
+  const raw =
+    r.etaAt
+    ?? r.scheduledAt
+    ?? r.scheduled_at
+    ?? r.expectedAt
+    ?? r.pickedUpAt
+    ?? r.picked_up_at
+    ?? r.deliveredAt
+    ?? r.delivered_at;
+  return raw ? String(raw).replace("T", " ").slice(0, 16) : "—";
+}
+
+function hopText(r: any) {
+  const hop = String(r?.leg ?? r?.hop ?? "").toLowerCase();
+  if (hop === "to_warehouse" || hop === "to_warehouse" || hop === "inbound") return "To warehouse";
+  if (hop === "to_restaurant" || hop === "to_restaurant" || hop === "outbound") return "To restaurant";
+  return "—";
+}
+
 function mapDelivery(r: any) {
   return {
     id: str(r.id),
@@ -24,9 +62,14 @@ function mapDelivery(r: any) {
       "—",
     ),
     supplier: str(r.purchaseOrder?.supplierOrg?.name ?? r.supplierOrg?.name, "—"),
-    driver: str(r.driverName ?? r.driver?.name ?? r.metadata?.driver, "—"),
-    eta: r.etaAt ? String(r.etaAt).replace("T", " ").slice(0, 16) : "—",
-    scheduled: r.scheduledAt ? String(r.scheduledAt).replace("T", " ").slice(0, 16) : "—",
+    driver: driverName(r),
+    eta: etaValue(r),
+    hop: hopText(r),
+    scheduled: (r.scheduledAt ?? r.scheduled_at)
+      ? String(r.scheduledAt ?? r.scheduled_at).replace("T", " ").slice(0, 16)
+      : "—",
+    createdAt: r.createdAt ? String(r.createdAt) : "",
+    leg: str(r.leg ?? r.hop, ""),
     status: str(r.status, "processing"),
     organizationId: str(
       r.organizationId
@@ -51,8 +94,10 @@ function DeliveriesPage() {
     queryKey: ["deliveries"],
     staleTime: 60_000,
     queryFn: async () => {
-      const list = await fetchList("/deliveries");
-      return list.map(mapDelivery);
+      const list = await fetchList("/deliveries", { limit: 100, sortBy: "createdAt", sortOrder: "DESC" });
+      return list
+        .map(mapDelivery)
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
     },
   });
 
@@ -65,6 +110,7 @@ function DeliveriesPage() {
       title="Deliveries"
       description="Live delivery tracking. Status changes persist to the API."
       icon={<PackageCheck className="h-5 w-5 text-primary" />}
+      entityName="Delivery"
       lookups={{
         restaurant: restaurants.map((r) => ({ value: r.label, label: r.label })),
         supplier: suppliers.map((s) => ({ value: s.label, label: s.label })),
@@ -81,6 +127,7 @@ function DeliveriesPage() {
         { key: "po", label: "PO" },
         { key: "restaurant", label: "Buyer" },
         { key: "supplier", label: "Supplier" },
+        { key: "hop", label: "Hop" },
         { key: "driver", label: "Driver" },
         { key: "scheduled", label: "Scheduled" },
         { key: "eta", label: "ETA" },
@@ -102,6 +149,7 @@ function DeliveriesPage() {
         { key: "po", label: "PO", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "restaurant", label: "Buyer", render: (r) => <span className="font-medium">{r.restaurant}</span> },
         { key: "supplier", label: "Supplier" },
+        { key: "hop", label: "Hop", className: "whitespace-nowrap w-[1%]" },
         { key: "driver", label: "Driver", className: "whitespace-nowrap w-[1%]" },
         { key: "eta", label: "ETA", className: "whitespace-nowrap w-[1%]" },
         { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },

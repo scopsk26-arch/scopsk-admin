@@ -8,7 +8,7 @@ import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/purchase-orders")({
-  head: () => ({ meta: [{ title: "ORDs / Purchase Orders — Nexora Admin" }] }),
+  head: () => ({ meta: [{ title: "Purchase Orders — Nexora Admin" }] }),
   component: PurchaseOrdersPage,
 });
 
@@ -28,6 +28,7 @@ function mapPo(r: any) {
     itemCount: items.length || num(r.itemCount),
     amount: num(r.total ?? r.subtotal),
     currency: str(r.currency, "AED"),
+    createdAt: r.createdAt ? String(r.createdAt) : "",
     created: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
     acceptedAt: r.acceptedAt ? String(r.acceptedAt).replace("T", " ").slice(0, 19) : "—",
     status: str(r.status, "processing"),
@@ -42,8 +43,10 @@ function PurchaseOrdersPage() {
     queryKey: ["purchase-orders"],
     staleTime: 60_000,
     queryFn: async () => {
-      const list = await fetchList("/purchase-orders");
-      return list.map(mapPo);
+      const list = await fetchList("/purchase-orders", { limit: 100, sortBy: "createdAt", sortOrder: "DESC" });
+      return list
+        .map(mapPo)
+        .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
     },
   });
 
@@ -53,23 +56,24 @@ function PurchaseOrdersPage() {
 
   return (
     <DataPage
-      title="ORDs (Purchase Orders)"
-      description="Commercial ORD documents. Order (ORDR) is created when the supplier accepts. Status changes persist to the API."
+      title="Purchase Orders"
+      description="Commercial purchase order documents. An execution order is created when the supplier accepts. Status changes persist to the API."
       icon={<ClipboardList className="h-5 w-5 text-primary" />}
+      entityName="Purchase Order"
       lookups={{
         restaurant: restaurants.map((r) => ({ value: r.label, label: r.label })),
         supplier: suppliers.map((s) => ({ value: s.label, label: s.label })),
       }}
       formFields={[
-        { key: "number", label: "ORD #", type: "text" },
+        { key: "number", label: "PO #", type: "text" },
         { key: "restaurant", label: "Buyer", type: "text" },
         { key: "supplier", label: "Supplier", type: "text" },
         { key: "amount", label: "Amount", type: "number" },
         { key: "status", label: "Status", type: "select", options: [...PO_STATUSES] },
       ]}
       viewFields={[
-        { key: "number", label: "ORD #" },
-        { key: "orderNumber", label: "Order (ORDR)" },
+        { key: "number", label: "PO #" },
+        { key: "orderNumber", label: "Order" },
         { key: "restaurant", label: "Buyer" },
         { key: "supplier", label: "Supplier" },
         { key: "rfq", label: "RFQ" },
@@ -84,16 +88,16 @@ function PurchaseOrdersPage() {
       loadDetail={async (row) => fetchPurchaseOrderDetail(row.id)}
       renderView={(detail) => <PurchaseOrderDetailView detail={detail} />}
       kpis={[
-        { label: "Open ORDs", value: String(open) },
+        { label: "Open POs", value: String(open) },
         { label: "In transit", value: String(rows.filter((r) => ["dispatched", "in_transit", "in_progress"].includes(r.status)).length), tone: "info" },
         { label: "Delivered", value: String(delivered), tone: "success" },
         { label: "GMV", value: AED(gmv) },
       ]}
       rows={rows}
       searchKeys={["number", "orderNumber", "restaurant", "supplier", "rfq"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load ORDs." : "No purchase orders found."}
+      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load purchase orders." : "No purchase orders found."}
       columns={[
-        { key: "number", label: "ORD", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
+        { key: "number", label: "PO", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "orderNumber", label: "Order", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "restaurant", label: "Buyer", render: (r) => <span className="font-medium">{r.restaurant}</span> },
         { key: "supplier", label: "Supplier" },

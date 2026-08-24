@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Download, Plus, Pencil, Trash2, Eye, ImagePlus, Loader2, X } from "lucide-react";
@@ -72,6 +72,52 @@ function toSelectOptions(values: string[]): SelectOption[] {
   return values.map((v) => ({ value: v, label: v }));
 }
 
+function ViewExtra<T>({
+  renderView,
+  detail,
+  row,
+}: {
+  renderView: (detail: Record<string, any>, row: T) => ReactNode;
+  detail: Record<string, any>;
+  row: T;
+}) {
+  try {
+    return <>{renderView(detail, row)}</>;
+  } catch (err) {
+    console.error(err);
+    return (
+      <p className="text-sm text-muted-foreground">Could not render extra details for this record.</p>
+    );
+  }
+}
+
+/** Catches render errors inside View extras (try/catch cannot catch child render throws). */
+class ExtraViewBoundary extends Component<
+  { resetKey: string; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(err: unknown) {
+    console.error(err);
+  }
+  componentDidUpdate(prev: { resetKey: string }) {
+    if (prev.resetKey !== this.props.resetKey && this.state.failed) {
+      this.setState({ failed: false });
+    }
+  }
+  render() {
+    if (this.state.failed) {
+      return (
+        <p className="text-sm text-muted-foreground">Could not render extra details for this record.</p>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export function DataPage<T extends Record<string, any>>({
   title,
   description,
@@ -125,8 +171,10 @@ export function DataPage<T extends Record<string, any>>({
   onUpdate?: (id: string, data: Record<string, any>, row: T) => Promise<T | void> | T | void;
   onDelete?: (id: string, row: T) => Promise<void> | void;
 }) {
-  // Derive a friendly singular entity name from the page title when not provided.
-  const entity = entityNameProp ?? (title.replace(/s$/i, "").replace(/\s*&\s*.*$/, "").trim() || "Item");
+  // Prefer an explicit singular name so View titles stay "View Purchase Order", not "View ords (purchase orders)".
+  const entity =
+    entityNameProp
+    ?? (title.replace(/\s*\([^)]*\)\s*/g, " ").replace(/s\s*$/i, "").trim() || "Item");
   const [rows, setRows] = useState<T[]>(initialRows);
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<T | null>(null);
@@ -481,7 +529,7 @@ export function DataPage<T extends Record<string, any>>({
       <Dialog open={viewing !== null} onOpenChange={(o) => { if (!o) closeView(); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] !flex !flex-col overflow-hidden gap-4">
           <DialogHeader className="shrink-0 pr-8">
-            <DialogTitle>View {entity.toLowerCase()}</DialogTitle>
+            <DialogTitle>View {entity}</DialogTitle>
             <DialogDescription>Read-only details for this record.</DialogDescription>
           </DialogHeader>
           {viewLoading ? (
@@ -490,15 +538,23 @@ export function DataPage<T extends Record<string, any>>({
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-6 py-1 pr-1 max-h-[calc(90vh-11.5rem)]">
               <div className="grid gap-4 sm:grid-cols-2">
                 {displayViewFields.map((f) => {
-                  const source = viewDetail ?? viewing;
-                  const raw = source?.[f.key];
+                  // Use list-row primitives for the grid. GET /:id often replaces
+                  // strings (e.g. organization name) with nested objects, which
+                  // crashes React if a column renderer treats them as text.
+                  const fromRow = viewing?.[f.key];
+                  const fromDetail = viewDetail?.[f.key];
+                  const detailIsObject =
+                    fromDetail != null && typeof fromDetail === "object" && !Array.isArray(fromDetail);
+                  const raw =
+                    !detailIsObject && fromDetail != null && fromDetail !== ""
+                      ? fromDetail
+                      : fromRow;
                   const col = columns.find((c) => String(c.key) === f.key);
                   let display: ReactNode = "—";
                   if (raw != null && raw !== "") {
-                    if (col?.render && viewing) {
-                      // Prefer formatted column render when value lives on the list row.
+                    if (col?.render && viewing && (typeof raw !== "object" || Array.isArray(raw))) {
                       try {
-                        display = col.render({ ...viewing, ...source, [f.key]: raw } as T);
+                        display = col.render({ ...viewing, [f.key]: raw } as T);
                       } catch {
                         display = formatViewValue(raw, f);
                       }
@@ -514,7 +570,11 @@ export function DataPage<T extends Record<string, any>>({
                   );
                 })}
               </div>
-              {viewDetail && renderView && viewing ? renderView(viewDetail, viewing) : null}
+              {viewDetail && renderView && viewing ? (
+                <ExtraViewBoundary resetKey={String(viewing[idKey as keyof T] ?? "")}>
+                  <ViewExtra renderView={renderView} detail={viewDetail} row={viewing} />
+                </ExtraViewBoundary>
+              ) : null}
             </div>
           )}
           <DialogFooter className="shrink-0 border-t border-border pt-4 bg-background">

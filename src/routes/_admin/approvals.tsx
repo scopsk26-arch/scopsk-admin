@@ -32,19 +32,30 @@ type ApprovalRow = {
   created: string;
 };
 
+function approvalTypeLabel(type: string) {
+  const t = String(type || "").toLowerCase();
+  if (t === "purchase_order" || t === "po") return "Purchase Order";
+  if (t === "rfq") return "RFQ";
+  if (t === "quotation" || t === "quote") return "Quotation";
+  return type || "—";
+}
+
 function mapApproval(r: any): ApprovalRow {
-  const entity = r.entity ?? r.entitySnapshot;
+  const entity = r.entity ?? r.entitySnapshot ?? r.purchaseOrder ?? r.rfq ?? r.quotation;
   return {
     id: str(r.id),
     organization: str(r.organization?.name ?? r.organizationId, "—"),
     organizationId: str(r.organizationId ?? r.organization?.id, ""),
-    entityType: str(r.entityType, "—"),
+    entityType: approvalTypeLabel(str(r.entityType, "")),
     entityId: str(r.entityId, "—"),
-    entityNumber: str(entity?.number ?? r.entityNumber, "—"),
+    entityNumber: str(
+      entity?.number ?? r.purchaseOrder?.number ?? r.rfq?.number ?? r.quotation?.number ?? r.entityNumber,
+      "—",
+    ),
     entityTotal: entity?.total != null ? String(entity.total) : "—",
     currentLevel: num(r.currentLevel),
-    requiredLevels: num(r.requiredLevels),
-    level: `${num(r.currentLevel)} / ${num(r.requiredLevels)}`,
+    requiredLevels: num(r.requiredLevels ?? r.requiredLevels),
+    level: `${num(r.currentLevel)} / ${num(r.requiredLevels ?? r.requiredLevels)}`,
     status: str(r.status, "pending"),
     requestedBy: str(r.requester?.email ?? r.requestedBy, "—"),
     created: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 16) : "—",
@@ -64,12 +75,13 @@ function ApprovalsPage() {
   });
 
   const pending = rows.filter((r) => r.status === "pending").length;
-  const poApprovals = rows.filter((r) => r.entityType === "purchase_order").length;
+  const poApprovals = rows.filter((r) => String(r.entityType).toLowerCase().includes("purchase")).length;
+  const rfqApprovals = rows.filter((r) => String(r.entityType).toLowerCase() === "rfq").length;
 
   return (
     <DataPage
       title="Approvals"
-      description="Monitor multi-level PO approval requests across organizations. Set status to approved or rejected to act."
+      description="Pending restaurant workflow approvals: RFQs waiting to publish, quotations waiting to award, and purchase orders waiting for supplier release. Approve or reject from Edit."
       icon={<CheckSquare className="h-5 w-5 text-primary" />}
       entityName="Approval"
       formFields={[
@@ -95,12 +107,23 @@ function ApprovalsPage() {
         { key: "created", label: "Created" },
         { key: "status", label: "Status" },
       ]}
-      loadDetail={async (row) => fetchApprovalDetail(row.id)}
+      loadDetail={async (row) => {
+        try {
+          const detail = await fetchApprovalDetail(row.id);
+          try {
+            return JSON.parse(JSON.stringify(detail));
+          } catch {
+            return detail;
+          }
+        } catch {
+          return row as Record<string, any>;
+        }
+      }}
       renderView={(detail) => <ApprovalDetailView detail={detail} />}
       kpis={[
         { label: "Pending", value: String(pending), tone: "warning" },
         { label: "PO approvals", value: String(poApprovals), tone: "info" },
-        { label: "Total shown", value: String(rows.length) },
+        { label: "RFQ approvals", value: String(rfqApprovals), tone: "info" },
         {
           label: "Avg levels",
           value: rows.length
