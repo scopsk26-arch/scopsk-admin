@@ -10,6 +10,29 @@ function money(v: unknown) {
   return AED(num(v));
 }
 
+function hopLabel(row: any) {
+  const hop = String(row?.hop ?? row?.leg ?? row?.phase ?? "").toLowerCase();
+  if (
+    hop === "to_warehouse" || hop === "to_warehouse" || hop === "inbound" || hop === "warehouse" || hop === "1"
+  ) {
+    return "Hop 1 · To warehouse";
+  }
+  if (
+    hop === "to_restaurant" || hop === "to_restaurant" || hop === "outbound" || hop === "restaurant" || hop === "2"
+  ) {
+    return "Hop 2 · To restaurant";
+  }
+  return "—";
+}
+
+function approvalTypeLabel(type: string) {
+  const t = String(type || "").toLowerCase();
+  if (t === "purchase_order" || t === "po") return "Purchase Order";
+  if (t === "rfq") return "RFQ";
+  if (t === "quotation" || t === "quote") return "Quotation";
+  return type || "—";
+}
+
 function productName(item: any) {
   return str(item?.product?.name ?? item?.productName ?? item?.name ?? item?.description, "—");
 }
@@ -294,10 +317,14 @@ export function PurchaseOrderDetailView({ detail }: { detail: any }) {
       </DetailSection>
       {deliveries.length > 0 && (
         <DetailSection title="Deliveries">
+          <p className="text-xs text-muted-foreground mb-2">
+            Each purchase order has two hops: supplier → warehouse, then warehouse → restaurant.
+          </p>
           <DetailTable
             rows={deliveries}
             columns={[
               { key: "number", label: "Delivery", render: (r) => str(r.number, "—") },
+              { key: "hop", label: "Hop", render: (r) => hopLabel(r) },
               { key: "status", label: "Status", render: (r) => str(r.status, "—") },
               { key: "eta", label: "ETA", render: (r) => iso(r.etaAt ?? r.scheduledAt) },
             ]}
@@ -332,9 +359,10 @@ export function DeliveryDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">PO: </span>{str(detail.purchaseOrder?.number ?? detail.purchaseOrderId, "—")}</div>
           <div><span className="text-muted-foreground">Buyer: </span>{str(detail.purchaseOrder?.buyerOrg?.name, "—")}</div>
           <div><span className="text-muted-foreground">Supplier: </span>{str(detail.purchaseOrder?.supplierOrg?.name, "—")}</div>
-          <div><span className="text-muted-foreground">Driver: </span>{str(detail.driverName ?? detail.driver?.name, "—")}</div>
+          <div><span className="text-muted-foreground">Driver: </span>{str(detail.driverName ?? ([detail.driver?.firstName, detail.driver?.lastName].filter(Boolean).join(" ") || detail.driver?.email), "—")}</div>
           <div><span className="text-muted-foreground">Scheduled: </span>{iso(detail.scheduledAt)}</div>
-          <div><span className="text-muted-foreground">ETA: </span>{iso(detail.etaAt)}</div>
+          <div><span className="text-muted-foreground">ETA: </span>{iso(detail.etaAt ?? detail.scheduledAt ?? detail.deliveredAt)}</div>
+          <div><span className="text-muted-foreground">Hop: </span>{hopLabel(detail)}</div>
           <div className="sm:col-span-2">
             <span className="text-muted-foreground">Proof: </span>
             {proofUrl ? (
@@ -425,19 +453,39 @@ export function InvoiceDetailView({ detail }: { detail: any }) {
 
 export function ApprovalDetailView({ detail }: { detail: any }) {
   const actions = Array.isArray(detail?.actions) ? detail.actions : [];
-  const entity = detail?.entity ?? detail?.entitySnapshot ?? null;
-  const steps = Array.isArray(detail?.metadata?.steps) ? detail.metadata.steps : [];
-  const currentLevel = Number(detail?.currentLevel || 0);
+  const entity =
+    detail?.entity
+    ?? detail?.entitySnapshot
+    ?? detail?.purchaseOrder
+    ?? detail?.rfq
+    ?? detail?.quotation
+    ?? null;
+  const rawMeta = detail?.metadata;
+  const metadata =
+    typeof rawMeta === "string"
+      ? (() => {
+          try {
+            return JSON.parse(rawMeta);
+          } catch {
+            return {};
+          }
+        })()
+      : rawMeta && typeof rawMeta === "object"
+        ? rawMeta
+        : {};
+  const steps = Array.isArray(metadata?.steps) ? metadata.steps : [];
+  const currentLevel = num(detail?.currentLevel);
+  const requiredLevels = num(detail?.requiredLevels ?? detail?.requiredLevels);
 
   return (
     <>
       <DetailSection title="Request">
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
           <div><span className="text-muted-foreground">Organization: </span>{str(detail.organization?.name, "—")}</div>
-          <div><span className="text-muted-foreground">Entity type: </span>{str(detail.entityType, "—")}</div>
+          <div><span className="text-muted-foreground">Entity type: </span>{approvalTypeLabel(str(detail.entityType, ""))}</div>
           <div><span className="text-muted-foreground">Entity ID: </span><span className="font-mono text-xs">{str(detail.entityId, "—")}</span></div>
           <div><span className="text-muted-foreground">Entity #: </span>{str(entity?.number ?? detail.entityNumber, "—")}</div>
-          <div><span className="text-muted-foreground">Level: </span>{`${num(detail.currentLevel)} / ${num(detail.requiredLevels)}`}</div>
+          <div><span className="text-muted-foreground">Level: </span>{`${currentLevel} / ${requiredLevels}`}</div>
           <div><span className="text-muted-foreground">Requested by: </span>{str(detail.requester?.email ?? detail.requestedBy, "—")}</div>
           <div><span className="text-muted-foreground">Created: </span>{iso(detail.createdAt)}</div>
           <div><span className="text-muted-foreground">Notes: </span>{str(detail.notes, "—")}</div>

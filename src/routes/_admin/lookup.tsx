@@ -178,7 +178,7 @@ function InvestigationView({ result }: { result: any }) {
           <Row label="Total" value={`${po.currency || "AED"} ${po.total ?? "—"}`} />
           <div className="pt-2">
             <Button asChild variant="outline" size="sm">
-              <Link to="/purchase-orders">ORDs / POs</Link>
+              <Link to="/purchase-orders">POs</Link>
             </Button>
           </div>
         </Section>
