@@ -111,7 +111,8 @@ function CatalogPage() {
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["catalog", "products"],
     queryFn: async () => {
-      const list = await fetchList("/catalog/products");
+      // Active only — archived/image-less seed leftovers clutter the picture column
+      const list = await fetchList("/catalog/products", { status: "active", limit: 500 });
       return list.map(mapProductRow);
     },
   });
