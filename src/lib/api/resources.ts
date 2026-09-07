@@ -363,11 +363,14 @@ export async function fetchActivityFeed() {
 export type CommissionRow = {
   id: string;
   po: string;
-  supplier: string;
+  order: string;
+  party: string;
+  organization: string;
   gross: number;
   rate: string;
   commission: number;
   status: string;
+  currency: string;
 };
 
 /** GET /admin/commissions — returns rows + optional aggregates from envelope. */
@@ -402,15 +405,31 @@ export async function fetchCommissions(query?: { status?: string }) {
   const rows: CommissionRow[] = list.map((r: any) => {
     const rateNum = num(r.rate);
     const amount = num(r.amount ?? r.commission);
-    const gross = num(r.gross ?? r.purchaseOrder?.total ?? (rateNum > 0 ? amount / (rateNum / 100) : 0));
+    const gross = num(
+      r.orderSubtotal ??
+        r.orderTotal ??
+        r.gross ??
+        r.purchaseOrder?.executionOrder?.subtotal ??
+        r.purchaseOrder?.subtotal ??
+        r.purchaseOrder?.executionOrder?.total ??
+        r.purchaseOrder?.total ??
+        (rateNum > 0 ? amount / (rateNum / 100) : 0),
+    );
+    const party = str(r.partyLabel ?? r.party, "—");
     return {
       id: str(r.id),
-      po: str(r.purchaseOrder?.number ?? r.purchaseOrderId, "—"),
-      supplier: str(r.supplierOrg?.name ?? r.supplier?.name ?? r.supplierOrgId, "—"),
+      po: str(r.poNumber ?? r.purchaseOrder?.number ?? r.purchaseOrderId, "—"),
+      order: str(r.orderNumber ?? r.purchaseOrder?.executionOrder?.number, "—"),
+      party,
+      organization: str(
+        r.organizationName ?? r.supplierOrg?.name ?? r.supplier?.name ?? r.supplierOrgId,
+        "—",
+      ),
       gross,
       rate: `${rateNum}%`,
       commission: amount,
       status: str(r.status, "pending"),
+      currency: str(r.currency ?? r.purchaseOrder?.currency, "AED"),
     };
   });
 

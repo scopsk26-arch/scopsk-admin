@@ -104,11 +104,7 @@ function Dashboard() {
   const revenueTrend = revenueByMonth.map((r: any) => ({
     month: monthLabel(str(r.month, "")),
     revenue: num(r.revenue ?? r.count),
-    commission: num(r.commission),
   }));
-
-  // Only show commission series if API provided it per month
-  const hasCommissionSeries = revenueByMonth.some((r: any) => r.commission != null);
 
   const topSuppliersRaw = asArray(d.topSuppliers);
   const supplierPerformance = topSuppliersRaw.slice(0, 5).map((s: any) => ({
@@ -284,7 +280,7 @@ function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <ChartCard title="Revenue & Commission" subtitle="Monthly, AED" to="/payments" className="xl:col-span-2">
+        <ChartCard title="Revenue" subtitle="Monthly, AED" to="/payments" className="xl:col-span-2">
           {revenueTrend.length === 0 ? (
             <EmptyChart />
           ) : (
@@ -295,7 +291,6 @@ function Dashboard() {
                 <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="revenue" fill="var(--chart-1)" radius={[6, 6, 0, 0]} />
-                {hasCommissionSeries && <Bar dataKey="commission" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />}
               </BarChart>
             </ResponsiveContainer>
           )}

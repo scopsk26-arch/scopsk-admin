@@ -44,14 +44,16 @@ function CommissionsPage() {
   return (
     <DataPage
       title="Commissions"
-      description="Marketplace commission accruals, tiers and payout schedule."
+      description="Admin-only ledger: commission cut per order (restaurant + supplier). Not shown on invoices or mobile."
       icon={<Percent className="h-5 w-5 text-primary" />}
       disableCrud
       viewFields={[
         { key: "id", label: "Ref" },
+        { key: "order", label: "Order" },
         { key: "po", label: "PO" },
-        { key: "supplier", label: "Supplier" },
-        { key: "gross", label: "Gross" },
+        { key: "party", label: "Party" },
+        { key: "organization", label: "Organization" },
+        { key: "gross", label: "Order value (subtotal)" },
         { key: "rate", label: "Rate" },
         { key: "commission", label: "Commission" },
         { key: "status", label: "Status" },
@@ -65,19 +67,20 @@ function CommissionsPage() {
       }}
       renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
-        { label: "Accrued (MTD)", value: AED(accrued), tone: "info" },
-        { label: "Paid (30d)", value: AED(paid), tone: "success" },
+        { label: "Accrued", value: AED(accrued), tone: "info" },
+        { label: "Settled", value: AED(paid), tone: "success" },
         { label: "Avg. rate", value: avgRate === "—" ? "—" : `${avgRate}%` },
-        { label: "Awaiting payout", value: AED(awaiting), tone: "warning" },
+        { label: "Pending", value: AED(awaiting), tone: "warning" },
       ]}
       rows={rows}
-      searchKeys={["id", "po", "supplier"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load commissions." : "No commissions found."}
+      searchKeys={["id", "order", "po", "organization", "party"]}
+      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load commissions." : "No commissions yet — they appear when a supplier accepts an order."}
       columns={[
-        { key: "id", label: "Ref", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
-        { key: "po", label: "PO", className: "font-mono text-xs", render: (r) => String(r.po).slice(0, 8) },
-        { key: "supplier", label: "Supplier", render: (r) => <span className="font-medium">{r.supplier}</span> },
-        { key: "gross", label: "Gross", render: (r) => AED(r.gross) },
+        { key: "order", label: "Order", className: "font-mono text-xs", render: (r) => r.order },
+        { key: "po", label: "PO", className: "font-mono text-xs", render: (r) => r.po },
+        { key: "party", label: "Party", render: (r) => <span className="capitalize">{r.party}</span> },
+        { key: "organization", label: "Organization", render: (r) => <span className="font-medium">{r.organization}</span> },
+        { key: "gross", label: "Order value", render: (r) => AED(r.gross) },
         { key: "rate", label: "Rate" },
         { key: "commission", label: "Commission", render: (r) => AED(r.commission) },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },

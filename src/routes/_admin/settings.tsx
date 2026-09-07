@@ -19,7 +19,8 @@ const SETTING_KEYS = [
   "default_currency",
   "default_timezone",
   "default_locale",
-  "default_commission",
+  "restaurant_commission",
+  "supplier_commission",
   "vat_rate",
   "payout_schedule",
   "min_payout",
@@ -75,7 +76,9 @@ function SettingsPage() {
     next.default_currency = next.default_currency || "AED";
     next.default_timezone = next.default_timezone || "Asia/Dubai";
     next.default_locale = next.default_locale || "en-AE";
-    next.default_commission = next.default_commission || "4.5";
+    const legacyCommission = getSetting("default_commission", "4.5") || "4.5";
+    next.restaurant_commission = next.restaurant_commission || legacyCommission;
+    next.supplier_commission = next.supplier_commission || legacyCommission;
     next.vat_rate = next.vat_rate || "5.0";
     next.payout_schedule = next.payout_schedule || "Weekly";
     next.min_payout = next.min_payout || "500";
@@ -156,9 +159,10 @@ function SettingsPage() {
     {
       icon: <CreditCard className="h-5 w-5 text-primary" />,
       title: "Commission & Tax",
-      description: "Default commission tiers and VAT configuration.",
+      description: "Restaurant and supplier commission rates (platform-only; never shown on invoices).",
       fields: [
-        { key: "default_commission", label: "Default commission %" },
+        { key: "restaurant_commission", label: "Restaurant commission %" },
+        { key: "supplier_commission", label: "Supplier commission %" },
         { key: "vat_rate", label: "VAT rate %" },
         { key: "payout_schedule", label: "Payout schedule" },
         { key: "min_payout", label: "Min. payout amount" },
