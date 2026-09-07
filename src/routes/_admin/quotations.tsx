@@ -9,7 +9,7 @@ import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/quotations")({
-  head: () => ({ meta: [{ title: "Quotations — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Quotations — ResPy" }] }),
   component: QuotationsPage,
 });
 

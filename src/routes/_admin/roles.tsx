@@ -7,7 +7,7 @@ import { fetchList, fetchRoleDetail } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/roles")({
-  head: () => ({ meta: [{ title: "Roles & Permissions — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Roles & Permissions — ResPy" }] }),
   component: RolesPage,
 });
 

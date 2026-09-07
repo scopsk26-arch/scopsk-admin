@@ -8,7 +8,7 @@ import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/subscriptions")({
-  head: () => ({ meta: [{ title: "Subscriptions — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Subscriptions — ResPy" }] }),
   component: SubscriptionsPage,
 });
 

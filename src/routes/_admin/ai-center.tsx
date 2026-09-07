@@ -6,7 +6,7 @@ import { Brain } from "lucide-react";
 import { api, asArray, num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/ai-center")({
-  head: () => ({ meta: [{ title: "AI Control Center — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "AI Control Center — ResPy" }] }),
   component: AiCenterPage,
 });
 

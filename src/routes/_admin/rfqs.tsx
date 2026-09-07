@@ -8,7 +8,7 @@ import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/rfqs")({
-  head: () => ({ meta: [{ title: "RFQs — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "RFQs — ResPy" }] }),
   component: RfqsPage,
 });
 

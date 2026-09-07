@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { api, asArray, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/fraud")({
-  head: () => ({ meta: [{ title: "Fraud Detection — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Fraud Detection — ResPy" }] }),
   component: FraudPage,
 });
 

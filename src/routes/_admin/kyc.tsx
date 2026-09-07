@@ -8,7 +8,7 @@ import { approveKyc, fetchKycDetail, fetchList, rejectKyc } from "@/lib/api/reso
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/kyc")({
-  head: () => ({ meta: [{ title: "KYC Queue — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "KYC Queue — ResPy" }] }),
   component: KycPage,
 });
 

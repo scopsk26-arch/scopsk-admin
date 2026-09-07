@@ -9,7 +9,7 @@ import { EMPTY_LIST, fetchCommissionDetail, fetchCommissions, settleCommission }
 import { num } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/commissions")({
-  head: () => ({ meta: [{ title: "Commissions — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Commissions — ResPy" }] }),
   component: CommissionsPage,
 });
 

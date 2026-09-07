@@ -7,7 +7,7 @@ import { fetchList } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/qualities")({
-  head: () => ({ meta: [{ title: "Qualities — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Qualities — ResPy" }] }),
   component: QualitiesPage,
 });
 

@@ -32,7 +32,7 @@ export function KpiCard({
         <div className={cn(
           "h-10 w-10 rounded-xl grid place-items-center",
           accent === "primary" && "bg-primary/12 text-primary",
-          accent === "accent" && "bg-accent/15 text-accent",
+          accent === "accent" && "bg-accent/20 text-foreground",
           accent === "success" && "bg-success/15 text-success",
           accent === "warning" && "bg-warning/20 text-warning",
           accent === "info" && "bg-info/15 text-info",

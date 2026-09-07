@@ -8,7 +8,7 @@ import { fetchList, fetchSupportTicketDetail } from "@/lib/api/resources";
 import { api, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/support")({
-  head: () => ({ meta: [{ title: "Support — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Support — ResPy" }] }),
   component: SupportPage,
 });
 

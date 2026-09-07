@@ -90,7 +90,7 @@ export function Topbar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 h-9 pl-1 pr-2 rounded-lg hover:bg-muted transition-colors">
-                  <div className="h-7 w-7 rounded-md gradient-primary grid place-items-center text-primary-foreground text-xs font-semibold">
+                  <div className="h-7 w-7 rounded-md bg-primary grid place-items-center text-primary-foreground text-xs font-semibold">
                     {initials}
                   </div>
                   <div className="hidden md:flex flex-col items-start leading-tight">

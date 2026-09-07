@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { groupedNav } from "./nav-config";
-import { ChefHat, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import respyMark from "@/assets/respy-mark.png";
 
 export function Sidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -9,12 +9,14 @@ export function Sidebar() {
   return (
     <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-2.5 px-5 h-16 border-b border-sidebar-border">
-        <div className="relative h-9 w-9 rounded-xl gradient-primary grid place-items-center shadow-glow">
-          <ChefHat className="h-5 w-5 text-primary-foreground" />
-        </div>
+        <img
+          src={respyMark}
+          alt="ResPy"
+          className="h-9 w-9 rounded-xl object-cover shadow-soft"
+        />
         <div className="flex flex-col leading-tight">
-          <span className="font-display font-semibold text-sm">Prime Plate</span>
-          <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Command Center</span>
+          <span className="font-display font-semibold text-sm">ResPy</span>
+          <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Admin</span>
         </div>
       </div>
 
@@ -35,8 +37,8 @@ export function Sidebar() {
                       className={cn(
                         "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors relative",
                         active
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                          : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                          ? "bg-primary/10 text-foreground font-medium"
+                          : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
                       )}
                     >
                       {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full bg-primary" />}
@@ -61,16 +63,18 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="m-3 rounded-xl p-3 glass relative overflow-hidden">
-        <div className="absolute inset-0 gradient-accent opacity-20" />
+      {/* AI Copilot sidebar card — hidden for now
+      <div className="m-3 rounded-xl p-3 border border-border bg-card shadow-soft relative overflow-hidden">
+        <div className="absolute inset-0 mesh-bg opacity-40" />
         <div className="relative flex items-start gap-2">
-          <Sparkles className="h-4 w-4 text-accent mt-0.5" />
+          <Sparkles className="h-4 w-4 text-primary mt-0.5" />
           <div className="text-xs">
             <div className="font-semibold">AI Copilot</div>
-            <div className="text-muted-foreground mt-0.5">14,280 recommendations this month</div>
+            <div className="text-muted-foreground mt-0.5">Insights powered by ResPy intelligence</div>
           </div>
         </div>
       </div>
+      */}
     </aside>
   );
 }

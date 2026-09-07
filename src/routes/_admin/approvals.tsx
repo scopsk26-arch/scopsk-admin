@@ -12,7 +12,7 @@ import {
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/approvals")({
-  head: () => ({ meta: [{ title: "Approvals — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Approvals — ResPy" }] }),
   component: ApprovalsPage,
 });
 
