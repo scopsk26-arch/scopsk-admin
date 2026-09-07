@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/reports")({
-  head: () => ({ meta: [{ title: "Reports & BI — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Reports & BI — ResPy" }] }),
   component: ReportsPage,
 });
 

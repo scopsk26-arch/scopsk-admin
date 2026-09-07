@@ -8,7 +8,7 @@ import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/invoices")({
-  head: () => ({ meta: [{ title: "Invoices — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Invoices — ResPy" }] }),
   component: InvoicesPage,
 });
 

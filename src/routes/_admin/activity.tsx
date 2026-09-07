@@ -4,7 +4,7 @@ import { Activity } from "lucide-react";
 import { EMPTY_LIST, fetchActivityFeed } from "@/lib/api/resources";
 
 export const Route = createFileRoute("/_admin/activity")({
-  head: () => ({ meta: [{ title: "Activity Feed — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Activity Feed — ResPy" }] }),
   component: ActivityPage,
 });
 

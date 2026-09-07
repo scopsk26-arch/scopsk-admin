@@ -4,14 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import { ChefHat, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
+import respyLogo from "@/assets/respy-logo.png";
+import respyMark from "@/assets/respy-mark.png";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Sign in — Prime Plate Command Center" }] }),
+  head: () => ({ meta: [{ title: "Sign in — ResPy Admin" }] }),
   component: LoginPage,
 });
 
@@ -52,19 +54,17 @@ function LoginPage() {
         <div className="absolute inset-0 mesh-bg opacity-90" />
         <div className="absolute inset-0 grid-bg opacity-40" />
 
-        <div className="relative flex items-center gap-2.5">
-          <div className="h-10 w-10 rounded-xl gradient-primary grid place-items-center shadow-glow">
-            <ChefHat className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div className="leading-tight">
-            <div className="font-display font-semibold">Prime Plate</div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Command Center</div>
-          </div>
+        <div className="relative">
+          <img
+            src={respyLogo}
+            alt="ResPy"
+            className="h-12 w-auto max-w-[220px] object-contain"
+          />
         </div>
 
         <div className="relative mt-auto max-w-md">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass text-xs mb-5">
-            <Sparkles className="h-3 w-3 text-accent" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-card/80 text-xs mb-5">
+            <Sparkles className="h-3 w-3 text-primary" />
             AI-powered procurement intelligence
           </div>
           <h1 className="text-4xl font-display font-semibold tracking-tight leading-tight">
@@ -93,11 +93,9 @@ function LoginPage() {
       {/* Right form */}
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-sm">
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="h-10 w-10 rounded-xl gradient-primary grid place-items-center">
-              <ChefHat className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="font-display font-semibold">Prime Plate</span>
+          <div className="lg:hidden flex items-center gap-2.5 mb-8">
+            <img src={respyMark} alt="ResPy" className="h-10 w-10 rounded-xl object-cover shadow-soft" />
+            <span className="font-display font-semibold">ResPy Admin</span>
           </div>
 
           <h2 className="text-2xl font-display font-semibold tracking-tight">Sign in to your workspace</h2>

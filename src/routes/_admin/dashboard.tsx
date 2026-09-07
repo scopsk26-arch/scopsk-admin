@@ -16,7 +16,7 @@ import { EMPTY_LIST, fetchAdminDashboard } from "@/lib/api/resources";
 import { getSessionUser } from "@/lib/auth-session";
 
 export const Route = createFileRoute("/_admin/dashboard")({
-  head: () => ({ meta: [{ title: "Command Center — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Command Center — ResPy" }] }),
   component: Dashboard,
 });
 
@@ -220,7 +220,7 @@ function Dashboard() {
               Generate Report
             </Link>
             <Link to="/ai-center" className="px-3 h-9 rounded-lg glass text-sm font-medium grid place-items-center hover:bg-muted/40 inline-flex">
-              <Brain className="h-4 w-4 mr-1.5 text-accent" /> AI Center
+              <Brain className="h-4 w-4 mr-1.5 text-primary" /> AI Center
             </Link>
           </div>
         </div>
@@ -548,7 +548,7 @@ function WidgetCard({
               "text-[10px] font-medium px-1.5 py-0.5 rounded-md",
               badgeTone === "primary" && "bg-primary/15 text-primary",
               badgeTone === "destructive" && "bg-destructive/15 text-destructive",
-              badgeTone === "accent" && "bg-accent/15 text-accent",
+              badgeTone === "accent" && "bg-accent/25 text-foreground",
             )}>{badge}</span>
           )}
         </div>

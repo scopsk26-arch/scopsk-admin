@@ -7,7 +7,7 @@ import { fetchAuditLogDetail, fetchList } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/audit-logs")({
-  head: () => ({ meta: [{ title: "Audit Logs — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Audit Logs — ResPy" }] }),
   component: AuditLogsPage,
 });
 

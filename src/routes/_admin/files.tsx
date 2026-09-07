@@ -7,7 +7,7 @@ import { fetchFileDetail, fetchList } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/files")({
-  head: () => ({ meta: [{ title: "Files — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Files — ResPy" }] }),
   component: FilesPage,
 });
 

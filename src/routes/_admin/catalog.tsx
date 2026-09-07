@@ -10,7 +10,7 @@ import { useAdminLookups } from "@/hooks/useAdminLookups";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
 
 export const Route = createFileRoute("/_admin/catalog")({
-  head: () => ({ meta: [{ title: "Product Catalog — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Product Catalog — ResPy" }] }),
   component: CatalogPage,
 });
 

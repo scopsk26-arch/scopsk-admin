@@ -12,7 +12,7 @@ import {
 } from "@/lib/api/resources";
 
 export const Route = createFileRoute("/_admin/api")({
-  head: () => ({ meta: [{ title: "API Management — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "API Management — ResPy" }] }),
   component: ApiKeysPage,
 });
 

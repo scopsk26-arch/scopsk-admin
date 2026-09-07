@@ -9,7 +9,7 @@ import { api, num, str } from "@/lib/api/client";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
 
 export const Route = createFileRoute("/_admin/categories")({
-  head: () => ({ meta: [{ title: "Categories — Prime Plate" }] }),
+  head: () => ({ meta: [{ title: "Categories — ResPy" }] }),
   component: CategoriesPage,
 });
 
