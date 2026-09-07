@@ -30,6 +30,7 @@ export const navItems: NavItem[] = [
 
   { group: "Finance", title: "Invoices", to: "/invoices", icon: Receipt },
   { group: "Finance", title: "Payments", to: "/payments", icon: CreditCard },
+  // Admin-only commission ledger (hidden from app / invoices)
   { group: "Finance", title: "Commissions", to: "/commissions", icon: Percent },
 
   { group: "Catalog", title: "Product Catalog", to: "/catalog", icon: Boxes },
