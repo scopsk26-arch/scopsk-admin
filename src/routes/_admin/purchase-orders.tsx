@@ -16,6 +16,14 @@ const PO_STATUSES = ["draft", "confirmed", "in_progress", "delivered", "complete
 
 function mapPo(r: any) {
   const items = Array.isArray(r.items) ? r.items : [];
+  const meta = (r.metadata || {}) as Record<string, unknown>;
+  const commissions = (meta.commissions || {}) as Record<string, unknown>;
+  const subtotal = num(r.subtotal);
+  const tax = num(r.tax);
+  const total = num(r.total ?? r.subtotal);
+  const commission = num(r.commissionAmount ?? commissions.totalAmount);
+  const vatRate =
+    num(meta.vatRate) || (subtotal > 0 && tax > 0 ? Math.round((tax / subtotal) * 1000) / 10 : 0);
   return {
     id: str(r.id),
     number: str(r.number ?? r.id),
@@ -26,7 +34,11 @@ function mapPo(r: any) {
     rfq: str(r.rfq?.number ?? r.rfqId, "—"),
     quotation: str(r.quotation?.number ?? r.quotationId, "—"),
     itemCount: items.length || num(r.itemCount),
-    amount: num(r.total ?? r.subtotal),
+    subtotal,
+    vat: tax,
+    vatRate,
+    commission,
+    amount: total,
     currency: str(r.currency, "AED"),
     createdAt: r.createdAt ? String(r.createdAt) : "",
     created: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
@@ -79,7 +91,11 @@ function PurchaseOrdersPage() {
         { key: "rfq", label: "RFQ" },
         { key: "quotation", label: "Quotation" },
         { key: "itemCount", label: "Line items" },
-        { key: "amount", label: "Amount" },
+        { key: "subtotal", label: "Actual value" },
+        { key: "vatRate", label: "VAT %" },
+        { key: "vat", label: "VAT amount" },
+        { key: "commission", label: "Commission" },
+        { key: "amount", label: "Total (incl. VAT)" },
         { key: "currency", label: "Currency" },
         { key: "created", label: "Created" },
         { key: "acceptedAt", label: "Supplier accepted" },
@@ -103,7 +119,10 @@ function PurchaseOrdersPage() {
         { key: "supplier", label: "Supplier" },
         { key: "rfq", label: "RFQ", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "itemCount", label: "Items", className: "whitespace-nowrap w-[1%]" },
-        { key: "amount", label: "Amount", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.amount) },
+        { key: "subtotal", label: "Value", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.subtotal) },
+        { key: "vat", label: "VAT", className: "whitespace-nowrap w-[1%]", render: (r) => (r.vatRate ? `${r.vatRate}% · ${AED(r.vat)}` : AED(r.vat)) },
+        { key: "commission", label: "Commission", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.commission) },
+        { key: "amount", label: "Total", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.amount) },
         { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onUpdate={async (id, data, row) => {

@@ -46,7 +46,6 @@ function mapRfqRow(r: any) {
     category: str(r.visibility ?? r.metadata?.category, "—"),
     quantity: quantityLabel,
     itemCount,
-    budget: num(r.estimatedBudget),
     quotations: num(r.quotationsCount ?? r.quotationCount ?? r.metadata?.quotations),
     deliveryDate: r.deliveryDate ? String(r.deliveryDate).slice(0, 10) : "—",
     created: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
@@ -74,13 +73,13 @@ function RfqsPage() {
   const open = rows.filter((r) =>
     ["open", "published", "active", "supplier_invited", "negotiation"].includes(r.status),
   ).length;
-  const openValue = rows.reduce((s, r) => s + (r.budget || 0), 0);
 
   return (
     <DataPage
       title="Requests for Quotation"
-      description="Live RFQs across categories with quotation counts and budgets."
+      description="Live RFQs across categories with quotation counts."
       icon={<FileText className="h-5 w-5 text-primary" />}
+      exportExcludeKeys={["budget", "estimatedBudget"]}
       lookups={{
         restaurant: restaurants.map((r) => ({ value: r.label, label: r.label })),
         category: categories.map((c) => ({ value: c.label, label: c.label })),
@@ -90,7 +89,6 @@ function RfqsPage() {
         { key: "restaurant", label: "Restaurant", type: "searchable", placeholder: "Search restaurants…" },
         { key: "category", label: "Category", type: "searchable", placeholder: "Search categories…" },
         { key: "quantity", label: "Quantity", type: "text" },
-        { key: "budget", label: "Budget", type: "number" },
         {
           key: "status",
           label: "Status",
@@ -105,7 +103,6 @@ function RfqsPage() {
         { key: "category", label: "Visibility" },
         { key: "quantity", label: "Quantity" },
         { key: "itemCount", label: "Line items" },
-        { key: "budget", label: "Budget" },
         { key: "quotations", label: "Quotations" },
         { key: "deliveryDate", label: "Delivery date" },
         { key: "created", label: "Created" },
@@ -123,7 +120,7 @@ function RfqsPage() {
             ? (rows.reduce((s, r) => s + r.quotations, 0) / rows.length).toFixed(1)
             : "0",
         },
-        { label: "Open value", value: AED(openValue), tone: "success" },
+        { label: "With quotes", value: String(rows.filter((r) => r.quotations > 0).length), tone: "success" },
       ]}
       rows={rows}
       searchKeys={["number", "restaurant", "category", "title"]}
@@ -137,12 +134,6 @@ function RfqsPage() {
         },
         { key: "category", label: "Visibility", className: "whitespace-nowrap w-[1%]" },
         { key: "quantity", label: "Quantity", className: "whitespace-nowrap w-[1%]" },
-        {
-          key: "budget",
-          label: "Budget",
-          className: "whitespace-nowrap w-[1%]",
-          render: (r) => AED(r.budget),
-        },
         { key: "quotations", label: "Quotes", className: "whitespace-nowrap w-[1%]" },
         { key: "created", label: "Created", className: "whitespace-nowrap w-[1%]" },
         {

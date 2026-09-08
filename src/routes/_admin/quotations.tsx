@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { approveQuotation, fetchList, fetchQuotationDetail, rejectQuotation } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
+import { computeQuotationAiScore } from "@/lib/admin-export";
 
 export const Route = createFileRoute("/_admin/quotations")({
   head: () => ({ meta: [{ title: "Quotations — ResPy" }] }),
@@ -14,6 +15,11 @@ export const Route = createFileRoute("/_admin/quotations")({
 });
 
 function mapQuotation(r: any) {
+  const validUntil = r.validUntil
+    ? String(r.validUntil).slice(0, 10)
+    : r.validityDate
+      ? String(r.validityDate).slice(0, 10)
+      : "—";
   return {
     id: str(r.id),
     number: str(r.number ?? r.id),
@@ -22,9 +28,9 @@ function mapQuotation(r: any) {
     restaurant: str(r.rfq?.organization?.name ?? r.buyerOrg?.name, "—"),
     buyerOrgId: str(r.rfq?.organizationId ?? r.buyerOrgId ?? r.rfq?.organization?.id, ""),
     amount: num(r.total ?? r.amount ?? r.subtotal),
-    aiScore: num(r.aiScore ?? r.metadata?.aiScore),
+    aiScore: computeQuotationAiScore(r),
     fulfillmentType: str(r.fulfillmentType, "—"),
-    validUntil: r.validUntil ? String(r.validUntil).slice(0, 10) : "—",
+    validUntil,
     created: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
     status: str(r.status, "pending"),
   };
@@ -81,7 +87,14 @@ function QuotationsPage() {
         { key: "created", label: "Created" },
         { key: "status", label: "Status" },
       ]}
-      loadDetail={async (row) => fetchQuotationDetail(row.id)}
+      loadDetail={async (row) => {
+        const detail = await fetchQuotationDetail(row.id);
+        return {
+          ...detail,
+          aiScore: computeQuotationAiScore({ ...detail, aiScore: detail?.aiScore ?? row.aiScore }),
+          validUntil: detail?.validUntil ?? detail?.validityDate ?? row.validUntil,
+        };
+      }}
       renderView={(detail) => <QuotationDetailView detail={detail} />}
       kpis={[
         { label: "Active quotations", value: String(rows.length) },

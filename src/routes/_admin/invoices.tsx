@@ -13,15 +13,32 @@ export const Route = createFileRoute("/_admin/invoices")({
 });
 
 function mapInvoice(r: any) {
+  const meta = (r.metadata || r.purchaseOrder?.metadata || {}) as Record<string, unknown>;
+  const commissions = (meta.commissions || {}) as Record<string, unknown>;
+  const subtotal = num(r.subtotal ?? r.amount);
+  const tax = num(r.tax ?? r.vat);
+  const total = num(r.total ?? r.subtotal);
+  const vatRate =
+    num(meta.vatRate)
+    || num(r.vatRate)
+    || (subtotal > 0 && tax > 0 ? Math.round((tax / subtotal) * 1000) / 10 : 0);
+  const commission = num(
+    r.commissionAmount
+      ?? r.purchaseOrder?.commissionAmount
+      ?? commissions.totalAmount,
+  );
   return {
     id: str(r.id),
     number: str(r.number ?? r.id),
     po: str(r.purchaseOrder?.number ?? r.purchaseOrderId, "—"),
     party: str(r.counterpartyOrg?.name ?? r.organization?.name ?? r.counterpartyOrgId, "—"),
     issuer: str(r.issuerOrg?.name ?? r.organization?.name, "—"),
-    amount: num(r.subtotal ?? r.total),
-    total: num(r.total ?? r.subtotal),
-    vat: num(r.tax ?? r.vat),
+    amount: subtotal,
+    subtotal,
+    total,
+    vat: tax,
+    vatRate,
+    commission,
     currency: str(r.currency, "AED"),
     due: r.dueDate ? String(r.dueDate).slice(0, 10) : "—",
     paidAt: r.paidAt ? String(r.paidAt).slice(0, 10) : "—",
@@ -75,9 +92,11 @@ function InvoicesPage() {
         { key: "po", label: "PO" },
         { key: "issuer", label: "Issuer" },
         { key: "party", label: "Counterparty" },
-        { key: "amount", label: "Subtotal" },
-        { key: "vat", label: "VAT" },
-        { key: "total", label: "Total" },
+        { key: "subtotal", label: "Actual value" },
+        { key: "vatRate", label: "VAT %" },
+        { key: "vat", label: "VAT amount" },
+        { key: "commission", label: "Commission" },
+        { key: "total", label: "Total (incl. VAT)" },
         { key: "currency", label: "Currency" },
         { key: "due", label: "Due" },
         { key: "paidAt", label: "Paid at" },
@@ -99,8 +118,10 @@ function InvoicesPage() {
         { key: "number", label: "Invoice", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "po", label: "PO", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "party", label: "Supplier", render: (r) => <span className="font-medium">{r.party}</span> },
-        { key: "amount", label: "Amount", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.amount) },
-        { key: "vat", label: "VAT", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.vat) },
+        { key: "subtotal", label: "Value", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.subtotal) },
+        { key: "vat", label: "VAT", className: "whitespace-nowrap w-[1%]", render: (r) => (r.vatRate ? `${r.vatRate}% · ${AED(r.vat)}` : AED(r.vat)) },
+        { key: "commission", label: "Commission", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.commission) },
+        { key: "total", label: "Total", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.total) },
         { key: "due", label: "Due", className: "whitespace-nowrap w-[1%]" },
         { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
       ]}
