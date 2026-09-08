@@ -71,6 +71,17 @@ function unwrap<T>(payload: unknown): T {
   return payload as T;
 }
 
+function unwrapEnvelope<T>(payload: unknown): { data: T; meta?: Record<string, unknown> } {
+  if (payload && typeof payload === "object" && "success" in payload && "data" in (payload as object)) {
+    const env = payload as ApiEnvelope<T>;
+    if (env.success === false) {
+      throw new ApiError(env.message || "Request failed", 400, payload);
+    }
+    return { data: env.data, meta: env.meta };
+  }
+  return { data: payload as T };
+}
+
 let refreshPromise: Promise<boolean> | null = null;
 
 async function tryRefresh(): Promise<boolean> {
@@ -162,9 +173,76 @@ export async function apiRequest<T = unknown>(path: string, options: RequestOpti
   return unwrap<T>(payload);
 }
 
+/** Like apiRequest but keeps pagination `meta` (page/limit/total/totalPages). */
+export async function apiRequestEnvelope<T = unknown>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<{ data: T; meta?: Record<string, unknown> }> {
+  const { method = "GET", body, headers = {}, auth = true, query, _retried, timeoutMs = 25_000 } = options;
+  const reqHeaders: Record<string, string> = {
+    Accept: "application/json",
+    ...headers,
+  };
+
+  if (body !== undefined && !(body instanceof FormData)) {
+    reqHeaders["Content-Type"] = reqHeaders["Content-Type"] || "application/json";
+  }
+
+  if (auth) {
+    const token = getAccessToken();
+    if (token) reqHeaders.Authorization = `Bearer ${token}`;
+    if (!reqHeaders["X-Organization-Id"] && !reqHeaders["x-organization-id"]) {
+      const orgId = getOrgId();
+      if (orgId) reqHeaders["X-Organization-Id"] = orgId;
+    }
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch(buildUrl(path, query), {
+      method,
+      headers: reqHeaders,
+      body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new ApiError("Request timed out — server is slow or unreachable. Try again.", 408);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const payload = await parseBody(res);
+
+  if (res.status === 401 && auth && !_retried) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      return apiRequestEnvelope<T>(path, { ...options, _retried: true });
+    }
+    clearSession();
+  }
+
+  if (!res.ok) {
+    const message =
+      payload && typeof payload === "object" && "message" in payload
+        ? String((payload as { message?: string }).message || "Request failed")
+        : `Request failed (${res.status})`;
+    throw new ApiError(message, res.status, payload);
+  }
+
+  return unwrapEnvelope<T>(payload);
+}
+
 export const api = {
   get: <T = unknown>(path: string, options?: Omit<RequestOptions, "method" | "body">) =>
     apiRequest<T>(path, { ...options, method: "GET" }),
+  getEnvelope: <T = unknown>(path: string, options?: Omit<RequestOptions, "method" | "body">) =>
+    apiRequestEnvelope<T>(path, { ...options, method: "GET" }),
   post: <T = unknown>(path: string, body?: unknown, options?: Omit<RequestOptions, "method" | "body">) =>
     apiRequest<T>(path, { ...options, method: "POST", body }),
   put: <T = unknown>(path: string, body?: unknown, options?: Omit<RequestOptions, "method" | "body">) =>

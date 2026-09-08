@@ -3,6 +3,47 @@ import { api, asArray, num, str } from "@/lib/api/client";
 /** Stable empty list for useQuery defaults (avoids re-render loops). */
 export const EMPTY_LIST: any[] = [];
 
+/**
+ * Fetch every page from a paginated admin list endpoint (API default limit is 20).
+ * Stops when a short page arrives or meta.totalPages is exhausted.
+ */
+export async function fetchAllPages(
+  path: string,
+  query?: Record<string, string | number | boolean | undefined | null>,
+  pageLimit = 100,
+): Promise<any[]> {
+  const limit = Math.min(100, Math.max(1, pageLimit));
+  const out: any[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  for (;;) {
+    const { data, meta } = await api.getEnvelope(path, {
+      query: { ...query, page, limit },
+    });
+    const chunk = asArray(data);
+    out.push(...chunk);
+
+    const metaTotalPages = Number(meta?.totalPages);
+    const metaTotal = Number(meta?.total);
+    if (Number.isFinite(metaTotalPages) && metaTotalPages > 0) {
+      totalPages = metaTotalPages;
+    } else if (Number.isFinite(metaTotal) && metaTotal >= 0) {
+      totalPages = Math.max(1, Math.ceil(metaTotal / limit));
+    } else if (chunk.length < limit) {
+      totalPages = page;
+    } else {
+      totalPages = page + 1;
+    }
+
+    if (!chunk.length || page >= totalPages || chunk.length < limit) break;
+    page += 1;
+    if (page > 50) break;
+  }
+
+  return out;
+}
+
 function relativeTime(iso: unknown): string {
   if (!iso) return "—";
   const t = new Date(String(iso)).getTime();
@@ -18,13 +59,10 @@ function relativeTime(iso: unknown): string {
 /** Try GET /organizations?type=…; fall back to /admin/users. */
 export async function fetchOrganizationsByType(type: "restaurant" | "supplier") {
   try {
-    const data = await api.get("/organizations", { query: { type } });
-    const rows = asArray(data);
-    if (rows.length || Array.isArray(data)) {
-      return rows
-        .filter((r: any) => !r.type || r.type === type)
-        .map((r: any) => mapOrgRow(r, type));
-    }
+    const rows = await fetchAllPages("/organizations", { type });
+    return rows
+      .filter((r: any) => !r.type || r.type === type)
+      .map((r: any) => mapOrgRow(r, type));
   } catch {
     // no list endpoint — fall through
   }
@@ -76,7 +114,10 @@ export async function fetchOrganizations(query?: {
   limit?: number;
 }) {
   try {
-    return asArray(await api.get("/organizations", { query }));
+    if (query?.page != null) {
+      return asArray(await api.get("/organizations", { query }));
+    }
+    return await fetchAllPages("/organizations", query as Record<string, string | number | boolean | undefined | null>);
   } catch {
     return [];
   }
@@ -307,7 +348,11 @@ export async function updateOrganization(
 }
 
 export async function fetchList(path: string, query?: Record<string, string | number | boolean | undefined | null>) {
-  return asArray(await api.get(path, { query: { limit: 100, ...query } }));
+  try {
+    return await fetchAllPages(path, query);
+  } catch {
+    return asArray(await api.get(path, { query: { limit: 100, ...query } }));
+  }
 }
 
 /** Admin-only secure decoder for enterprise tracking codes. */

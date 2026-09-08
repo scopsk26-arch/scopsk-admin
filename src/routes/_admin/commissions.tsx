@@ -1,17 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
-import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { EMPTY_LIST, fetchCommissionDetail, fetchCommissions, settleCommission } from "@/lib/api/resources";
-import { num } from "@/lib/api/client";
+import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/commissions")({
   head: () => ({ meta: [{ title: "Commissions — ResPy" }] }),
   component: CommissionsPage,
 });
+
+function DocCode({ value }: { value: string }) {
+  const v = String(value || "—");
+  return (
+    <span className="font-mono text-xs whitespace-nowrap inline-block max-w-[200px] truncate align-middle" title={v}>
+      {v}
+    </span>
+  );
+}
 
 function CommissionsPage() {
   const qc = useQueryClient();
@@ -47,25 +55,62 @@ function CommissionsPage() {
       description="Admin-only ledger: commission cut per order (restaurant + supplier). Not shown on invoices or mobile."
       icon={<Percent className="h-5 w-5 text-primary" />}
       disableCrud
+      entityName="Commission"
       viewFields={[
         { key: "id", label: "Ref" },
-        { key: "order", label: "Order" },
-        { key: "po", label: "PO" },
+        { key: "order", label: "Order #" },
+        { key: "po", label: "PO #" },
         { key: "party", label: "Party" },
         { key: "organization", label: "Organization" },
-        { key: "gross", label: "Order value (subtotal)" },
-        { key: "rate", label: "Rate" },
-        { key: "commission", label: "Commission" },
+        { key: "organizationCode", label: "Org code" },
+        { key: "gross", label: "Order subtotal" },
+        { key: "orderTotal", label: "Order total (incl. VAT)" },
+        { key: "vat", label: "VAT" },
+        { key: "rate", label: "Commission rate" },
+        { key: "commission", label: "Commission amount" },
         { key: "status", label: "Status" },
+        { key: "settledAt", label: "Settled at" },
+        { key: "currency", label: "Currency" },
       ]}
       loadDetail={async (row) => {
         try {
-          return await fetchCommissionDetail(String(row.id));
+          const d = await fetchCommissionDetail(String(row.id));
+          const po = (d as any)?.purchaseOrder || {};
+          const order = po.executionOrder || {};
+          const org = (d as any)?.supplierOrg || {};
+          const subtotal = num((d as any).orderSubtotal ?? po.subtotal ?? order.subtotal ?? row.gross);
+          const total = num((d as any).orderTotal ?? order.total ?? po.total ?? subtotal);
+          const vat = num((d as any).vat ?? po.tax ?? order.tax);
+          return {
+            id: str((d as any).id ?? row.id),
+            order: str((d as any).orderNumber ?? order.number ?? row.order, "—"),
+            po: str((d as any).poNumber ?? po.number ?? row.po, "—"),
+            party: str((d as any).partyLabel ?? (d as any).party ?? row.party, "—"),
+            organization: str((d as any).organizationName ?? org.name ?? row.organization, "—"),
+            organizationCode: str((d as any).organizationCode ?? org.publicCode, "—"),
+            gross: AED(subtotal),
+            orderTotal: AED(total),
+            vat: AED(vat),
+            rate: `${num((d as any).rate)}%`,
+            commission: AED(num((d as any).amount ?? (d as any).commission ?? row.commission)),
+            status: str((d as any).status ?? row.status, "pending"),
+            settledAt: (d as any).settledAt
+              ? String((d as any).settledAt).replace("T", " ").slice(0, 19)
+              : "—",
+            currency: str((d as any).currency ?? row.currency, "AED"),
+          };
         } catch {
-          return row;
+          return {
+            ...row,
+            gross: AED(num(row.gross)),
+            orderTotal: AED(num((row as any).orderTotal ?? row.gross)),
+            vat: AED(num((row as any).vat)),
+            commission: AED(num(row.commission)),
+            organizationCode: "—",
+            settledAt: "—",
+          };
         }
       }}
-      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Accrued", value: AED(accrued), tone: "info" },
         { label: "Settled", value: AED(paid), tone: "success" },
@@ -76,17 +121,28 @@ function CommissionsPage() {
       searchKeys={["id", "order", "po", "organization", "party"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load commissions." : "No commissions yet — they appear when a supplier accepts an order."}
       columns={[
-        { key: "order", label: "Order", className: "font-mono text-xs", render: (r) => r.order },
-        { key: "po", label: "PO", className: "font-mono text-xs", render: (r) => r.po },
-        { key: "party", label: "Party", render: (r) => <span className="capitalize">{r.party}</span> },
-        { key: "organization", label: "Organization", render: (r) => <span className="font-medium">{r.organization}</span> },
-        { key: "gross", label: "Order value", render: (r) => AED(r.gross) },
-        { key: "rate", label: "Rate" },
-        { key: "commission", label: "Commission", render: (r) => AED(r.commission) },
-        { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+        {
+          key: "order",
+          label: "Order",
+          className: "whitespace-nowrap min-w-[11rem]",
+          render: (r) => <DocCode value={r.order} />,
+        },
+        {
+          key: "po",
+          label: "PO",
+          className: "whitespace-nowrap min-w-[9rem]",
+          render: (r) => <DocCode value={r.po} />,
+        },
+        { key: "party", label: "Party", className: "whitespace-nowrap", render: (r) => <span className="capitalize">{r.party}</span> },
+        { key: "organization", label: "Organization", className: "whitespace-nowrap", render: (r) => <span className="font-medium">{r.organization}</span> },
+        { key: "gross", label: "Order value", className: "whitespace-nowrap", render: (r) => AED(r.gross) },
+        { key: "rate", label: "Rate", className: "whitespace-nowrap" },
+        { key: "commission", label: "Commission", className: "whitespace-nowrap", render: (r) => AED(r.commission) },
+        { key: "status", label: "Status", className: "whitespace-nowrap", render: (r) => <StatusBadge status={r.status} /> },
         {
           key: "actions",
           label: "",
+          className: "whitespace-nowrap",
           render: (r) =>
             r.status === "pending" ? (
               <Button

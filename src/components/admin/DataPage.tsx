@@ -141,6 +141,7 @@ export function DataPage<T extends Record<string, any>>({
   onCreate,
   onUpdate,
   onDelete,
+  pageSize = 20,
 }: {
   title: string;
   description: string;
@@ -170,6 +171,8 @@ export function DataPage<T extends Record<string, any>>({
   onCreate?: (data: Record<string, any>) => Promise<T | void> | T | void;
   onUpdate?: (id: string, data: Record<string, any>, row: T) => Promise<T | void> | T | void;
   onDelete?: (id: string, row: T) => Promise<void> | void;
+  /** Rows per page in the table footer (client-side). */
+  pageSize?: number;
 }) {
   // Prefer an explicit singular name so View titles stay "View Purchase Order", not "View ords (purchase orders)".
   const entity =
@@ -177,6 +180,7 @@ export function DataPage<T extends Record<string, any>>({
     ?? (title.replace(/\s*\([^)]*\)\s*/g, " ").replace(/s\s*$/i, "").trim() || "Item");
   const [rows, setRows] = useState<T[]>(initialRows);
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<T | null>(null);
   const [viewing, setViewing] = useState<T | null>(null);
   const [viewDetail, setViewDetail] = useState<Record<string, any> | null>(null);
@@ -205,9 +209,14 @@ export function DataPage<T extends Record<string, any>>({
   );
   useEffect(() => {
     setRows(initialRows);
+    setPage(1);
     // rowsSyncKey encodes identity of the incoming rows
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowsSyncKey]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q]);
 
   // Auto-derive form fields from columns when not provided — relation fields become searchable.
   const fields: FormField[] = useMemo(() => {
@@ -312,6 +321,19 @@ export function DataPage<T extends Record<string, any>>({
       })
     );
   }, [q, rows, searchKeys]);
+
+  const size = Math.max(1, Number(pageSize) || 20);
+  const totalFiltered = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / size));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const pageRows = useMemo(() => {
+    const start = (currentPage - 1) * size;
+    return filtered.slice(start, start + size);
+  }, [filtered, currentPage, size]);
+  const rangeFrom = totalFiltered === 0 ? 0 : (currentPage - 1) * size + 1;
+  const rangeTo = Math.min(currentPage * size, totalFiltered);
+  const canGoPrev = currentPage > 1;
+  const canGoNext = currentPage < totalPages;
 
   const canCreate = Boolean(onCreate) && !disableCrud;
   const canUpdate = Boolean(onUpdate) && !disableCrud;
@@ -464,14 +486,14 @@ export function DataPage<T extends Record<string, any>>({
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {pageRows.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length + (showRowActions ? 1 : 0)} className="px-4 py-12 text-center text-sm text-muted-foreground">
                     {emptyHint ?? "No results found."}
                   </td>
                 </tr>
               ) : (
-                filtered.map((row, i) => (
+                pageRows.map((row, i) => (
                   <tr key={String(row[idKey as keyof T] ?? i)} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                     {columns.map((c) => (
                       <td key={String(c.key)} className={cn("px-4 py-3", c.className)}>
@@ -506,11 +528,30 @@ export function DataPage<T extends Record<string, any>>({
           </table>
         </div>
 
-        <div className="px-4 py-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-          <span>Showing {filtered.length} of {rows.length}</span>
+        <div className="px-4 py-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground gap-3 flex-wrap">
+          <span>
+            {totalFiltered === 0
+              ? "Showing 0 of 0"
+              : `Showing ${rangeFrom}–${rangeTo} of ${totalFiltered}`}
+            {totalPages > 1 ? ` · Page ${currentPage} / ${totalPages}` : null}
+          </span>
           <div className="flex gap-1">
-            <Button variant="ghost" size="sm" disabled>Previous</Button>
-            <Button variant="ghost" size="sm" disabled>Next</Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!canGoPrev}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!canGoNext}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </Button>
           </div>
         </div>
       </div>
