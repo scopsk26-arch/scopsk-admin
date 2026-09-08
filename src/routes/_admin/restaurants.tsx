@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { OrganizationDetailView } from "@/components/admin/DetailViews";
+import { TagListDropdown } from "@/components/admin/TagListDropdown";
 import { ExternalLink, Store } from "lucide-react";
 import {
   fetchOrganizationDetail,
@@ -124,7 +125,12 @@ function RestaurantsPage() {
       columns={[
         { key: "id", label: "ID", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
         { key: "name", label: "Restaurant", render: (r) => <span className="font-medium">{r.name}</span> },
-        { key: "cuisines", label: "Cuisines" },
+        {
+          key: "cuisines",
+          label: "Cuisines",
+          className: "whitespace-nowrap max-w-[220px]",
+          render: (r) => <TagListDropdown value={r.cuisines || r.categories || r.industry} />,
+        },
         { key: "region", label: "Region" },
         { key: "tradeLicenseNumber", label: "Trade license", className: "font-mono text-xs" },
         {

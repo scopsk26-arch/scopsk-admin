@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { OrganizationDetailView } from "@/components/admin/DetailViews";
+import { TagListDropdown } from "@/components/admin/TagListDropdown";
 import { Truck } from "lucide-react";
 import {
   fetchOrganizationDetail,
@@ -99,7 +100,7 @@ function SuppliersPage() {
       columns={[
         { key: "id", label: "ID", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
         { key: "name", label: "Supplier", render: (r) => <span className="font-medium">{r.name}</span> },
-        { key: "categories", label: "Categories", render: (r) => (r.categories?.length ? r.categories.join(", ") : "—") },
+        { key: "categories", label: "Categories", className: "whitespace-nowrap max-w-[220px]", render: (r) => <TagListDropdown value={r.categories} /> },
         { key: "poApprovalLevels", label: "PO levels" },
         { key: "minRfqValueAed", label: "Min RFQ", render: (r) => AED(r.minRfqValueAed) },
         { key: "revenue", label: "Revenue (90d)", render: (r) => AED(r.revenue) },
