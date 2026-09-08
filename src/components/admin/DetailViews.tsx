@@ -1,5 +1,6 @@
 import { AED, DetailSection, DetailTable } from "@/components/admin/DataPage";
 import { num, str } from "@/lib/api/client";
+import { computeQuotationAiScore, extractFinanceBreakdown } from "@/lib/admin-export";
 
 function iso(v: unknown) {
   if (!v) return "—";
@@ -10,19 +11,126 @@ function money(v: unknown) {
   return AED(num(v));
 }
 
+/** Admin-only financial summary: actual value, VAT %, VAT amount, commission, grand total. */
+export function FinanceBreakdownSection({
+  detail,
+  title = "Pricing & marketplace fees",
+}: {
+  detail: any;
+  title?: string;
+}) {
+  if (!detail) return null;
+  const f = extractFinanceBreakdown(detail);
+  if (!(f.subtotal > 0 || f.total > 0 || f.tax > 0 || f.commission > 0)) return null;
+
+  return (
+    <DetailSection title={title}>
+      <div className="grid gap-3 sm:grid-cols-2 text-sm">
+        <div>
+          <span className="text-muted-foreground">Actual order value (subtotal): </span>
+          {AED(f.subtotal)}
+        </div>
+        <div>
+          <span className="text-muted-foreground">VAT rate: </span>
+          {f.vatRate > 0 ? `${f.vatRate}%` : "—"}
+        </div>
+        <div>
+          <span className="text-muted-foreground">VAT amount: </span>
+          {AED(f.tax)}
+        </div>
+        {f.shipping > 0 ? (
+          <div>
+            <span className="text-muted-foreground">Shipping: </span>
+            {AED(f.shipping)}
+          </div>
+        ) : null}
+        <div>
+          <span className="text-muted-foreground">Commission (platform): </span>
+          {AED(f.commission)}
+        </div>
+        {(f.supplierCommission > 0 || f.restaurantCommission > 0) && (
+          <>
+            <div>
+              <span className="text-muted-foreground">
+                Supplier commission{f.supplierRate ? ` (${f.supplierRate}%)` : ""}:{" "}
+              </span>
+              {AED(f.supplierCommission)}
+            </div>
+            <div>
+              <span className="text-muted-foreground">
+                Restaurant commission{f.restaurantRate ? ` (${f.restaurantRate}%)` : ""}:{" "}
+              </span>
+              {AED(f.restaurantCommission)}
+            </div>
+          </>
+        )}
+        <div className="sm:col-span-2 font-medium">
+          <span className="text-muted-foreground">Total (incl. VAT): </span>
+          {AED(f.total)}
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground mt-2">
+        Commission is platform-internal and is not shown on customer invoices. Totals above include VAT from Settings.
+      </p>
+    </DetailSection>
+  );
+}
+
 function hopLabel(row: any) {
-  const hop = String(row?.hop ?? row?.leg ?? row?.phase ?? "").toLowerCase();
+  // Prefer API enum `leg` — never trust list-row display strings stored as `hop`
+  const raw = row?.leg ?? row?.phase ?? row?.fulfillmentPhase ?? "";
+  const hop = String(raw).toLowerCase().replace(/\s+/g, "_");
+  const notes = String(row?.notes || "").toLowerCase();
+  const displayHint = String(row?.hopDisplay || row?.hop || "").toLowerCase();
   if (
-    hop === "to_warehouse" || hop === "to_warehouse" || hop === "inbound" || hop === "warehouse" || hop === "1"
+    hop === "to_warehouse"
+    || hop === "inbound"
+    || hop === "warehouse"
+    || hop === "1"
+    || hop.includes("warehouse")
+    || notes.includes("hop 1")
+    || notes.includes("to warehouse")
+    || displayHint.includes("warehouse")
   ) {
     return "Hop 1 · To warehouse";
   }
   if (
-    hop === "to_restaurant" || hop === "to_restaurant" || hop === "outbound" || hop === "restaurant" || hop === "2"
+    hop === "to_restaurant"
+    || hop === "outbound"
+    || hop === "restaurant"
+    || hop === "2"
+    || hop.includes("restaurant")
+    || notes.includes("hop 2")
+    || notes.includes("to restaurant")
+    || displayHint.includes("restaurant")
   ) {
     return "Hop 2 · To restaurant";
   }
+  // Default when leg missing but delivery exists
+  if (row?.status || row?.number) return "Hop 2 · To restaurant";
   return "—";
+}
+
+function deliveryItemQty(r: any) {
+  const expected = num(r.qtyExpected ?? r.qty_expected ?? r.quantity ?? r.qty);
+  const delivered = num(r.qtyDelivered ?? r.qty_delivered ?? r.deliveredQty);
+  if (delivered > 0 && expected > 0 && delivered !== expected) {
+    return `${delivered} / ${expected}`;
+  }
+  if (delivered > 0) return String(delivered);
+  if (expected > 0) return String(expected);
+  const poQty = num(r.poItem?.quantity ?? r.po_item?.quantity);
+  return poQty > 0 ? String(poQty) : "—";
+}
+
+function deliveryItemStatus(r: any, deliveryStatus?: string) {
+  const damaged = num(r.qtyDamaged ?? r.qty_damaged);
+  if (damaged > 0) return `damaged (${damaged})`;
+  const delivered = num(r.qtyDelivered ?? r.qty_delivered);
+  const expected = num(r.qtyExpected ?? r.qty_expected ?? r.quantity);
+  if (delivered > 0 && expected > 0 && delivered < expected) return "partial";
+  if (delivered > 0 || String(deliveryStatus).toLowerCase() === "delivered") return "delivered";
+  return str(r.status ?? deliveryStatus, "pending");
 }
 
 function approvalTypeLabel(type: string) {
@@ -190,6 +298,7 @@ export function QuotationDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">Buyer: </span>{str(detail.rfq?.organization?.name, "—")}</div>
           <div><span className="text-muted-foreground">Status: </span>{str(detail.displayStatus ?? detail.status, "—")}</div>
           <div><span className="text-muted-foreground">Total: </span>{money(detail.total ?? detail.subtotal)}</div>
+          <div><span className="text-muted-foreground">AI score: </span>{computeQuotationAiScore(detail)}</div>
           <div><span className="text-muted-foreground">Valid until: </span>{iso(detail.validUntil ?? detail.validityDate)}</div>
           <div><span className="text-muted-foreground">Fulfillment: </span>{str(detail.fulfillmentType, "—")}</div>
           <div className="sm:col-span-2"><span className="text-muted-foreground">Terms: </span>{str(detail.terms ?? detail.notes, "—")}</div>
@@ -301,9 +410,10 @@ export function PurchaseOrderDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">RFQ: </span>{str(detail.rfq?.number ?? detail.rfqId, "—")}</div>
           <div><span className="text-muted-foreground">Quotation: </span>{str(detail.quotation?.number ?? detail.quotationId, "—")}</div>
           <div><span className="text-muted-foreground">Currency: </span>{str(detail.currency, "AED")}</div>
-          <div><span className="text-muted-foreground">Total: </span>{money(detail.total)}</div>
+          <div><span className="text-muted-foreground">Total (incl. VAT): </span>{money(detail.total)}</div>
         </div>
       </DetailSection>
+      <FinanceBreakdownSection detail={detail} />
       <DetailSection title="Line items">
         <DetailTable
           rows={items}
@@ -337,6 +447,8 @@ export function PurchaseOrderDetailView({ detail }: { detail: any }) {
             rows={invoices}
             columns={[
               { key: "number", label: "Invoice", render: (r) => str(r.number, "—") },
+              { key: "subtotal", label: "Subtotal", render: (r) => money(r.subtotal) },
+              { key: "vat", label: "VAT", render: (r) => money(r.tax ?? r.vat) },
               { key: "total", label: "Total", render: (r) => money(r.total ?? r.subtotal) },
               { key: "status", label: "Status", render: (r) => str(r.status, "—") },
             ]}
@@ -350,34 +462,50 @@ export function PurchaseOrderDetailView({ detail }: { detail: any }) {
 export function DeliveryDetailView({ detail }: { detail: any }) {
   const items = Array.isArray(detail?.items) ? detail.items : [];
   const timeline = Array.isArray(detail?.timeline) ? detail.timeline : [];
-  const proofUrl = detail?.proofFile?.cdnUrl ?? detail?.proofFile?.url ?? detail?.proofUrl;
+  const proofUrl =
+    detail?.proofFile?.cdnUrl
+    ?? detail?.proofFile?.url
+    ?? detail?.proofUrl
+    ?? detail?.signatureFile?.cdnUrl;
+  const po = detail?.purchaseOrder;
 
   return (
     <>
       <DetailSection title="Summary">
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
-          <div><span className="text-muted-foreground">PO: </span>{str(detail.purchaseOrder?.number ?? detail.purchaseOrderId, "—")}</div>
-          <div><span className="text-muted-foreground">Buyer: </span>{str(detail.purchaseOrder?.buyerOrg?.name, "—")}</div>
-          <div><span className="text-muted-foreground">Supplier: </span>{str(detail.purchaseOrder?.supplierOrg?.name, "—")}</div>
+          <div><span className="text-muted-foreground">Delivery: </span>{str(detail.number, "—")}</div>
+          <div><span className="text-muted-foreground">Status: </span>{str(detail.status, "—")}</div>
+          <div><span className="text-muted-foreground">PO: </span>{str(po?.number ?? detail.purchaseOrderId, "—")}</div>
+          <div><span className="text-muted-foreground">Buyer: </span>{str(po?.buyerOrg?.name, "—")}</div>
+          <div><span className="text-muted-foreground">Supplier: </span>{str(po?.supplierOrg?.name, "—")}</div>
           <div><span className="text-muted-foreground">Driver: </span>{str(detail.driverName ?? ([detail.driver?.firstName, detail.driver?.lastName].filter(Boolean).join(" ") || detail.driver?.email), "—")}</div>
           <div><span className="text-muted-foreground">Scheduled: </span>{iso(detail.scheduledAt)}</div>
           <div><span className="text-muted-foreground">ETA: </span>{iso(detail.etaAt ?? detail.scheduledAt ?? detail.deliveredAt)}</div>
           <div><span className="text-muted-foreground">Hop: </span>{hopLabel(detail)}</div>
+          <div><span className="text-muted-foreground">Address: </span>{str(detail.address, "—")}</div>
           <div className="sm:col-span-2">
             <span className="text-muted-foreground">Proof: </span>
-            {proofUrl ? (
+            { proofUrl ? (
               <a href={String(proofUrl)} target="_blank" rel="noreferrer" className="text-primary hover:underline">Open POD</a>
-            ) : "—"}
+            ) : detail.proofFileId ? (
+              "Attached (file)"
+            ) : (
+              "Not uploaded"
+            )}
           </div>
+          {detail.notes ? (
+            <div className="sm:col-span-2"><span className="text-muted-foreground">Notes: </span>{str(detail.notes)}</div>
+          ) : null}
         </div>
       </DetailSection>
+      {po ? <FinanceBreakdownSection detail={po} title="Linked order pricing (VAT & commission)" /> : null}
       <DetailSection title="Items">
         <DetailTable
           rows={items}
           columns={[
             { key: "product", label: "Product", render: (r) => productName(r.poItem ?? r) },
-            { key: "qty", label: "Qty", render: (r) => str(r.quantity ?? r.deliveredQty, "—") },
-            { key: "status", label: "Status", render: (r) => str(r.status, "—") },
+            { key: "qty", label: "Qty", render: (r) => deliveryItemQty(r) },
+            { key: "status", label: "Status", render: (r) => deliveryItemStatus(r, detail.status) },
           ]}
         />
       </DetailSection>
@@ -410,8 +538,8 @@ export function InvoiceDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">Counterparty: </span>{str(detail.counterpartyOrg?.name, "—")}</div>
           <div><span className="text-muted-foreground">PO: </span>{str(detail.purchaseOrder?.number ?? detail.purchaseOrderId, "—")}</div>
           <div><span className="text-muted-foreground">Subtotal: </span>{money(detail.subtotal)}</div>
-          <div><span className="text-muted-foreground">Tax: </span>{money(detail.tax ?? detail.vat)}</div>
-          <div><span className="text-muted-foreground">Total: </span>{money(detail.total)}</div>
+          <div><span className="text-muted-foreground">VAT: </span>{money(detail.tax ?? detail.vat)}</div>
+          <div><span className="text-muted-foreground">Total (incl. VAT): </span>{money(detail.total)}</div>
           <div><span className="text-muted-foreground">Due: </span>{iso(detail.dueDate)}</div>
           <div><span className="text-muted-foreground">Paid at: </span>{iso(detail.paidAt)}</div>
           <div className="sm:col-span-2">
@@ -422,6 +550,7 @@ export function InvoiceDetailView({ detail }: { detail: any }) {
           </div>
         </div>
       </DetailSection>
+      <FinanceBreakdownSection detail={detail.purchaseOrder ? { ...detail.purchaseOrder, tax: detail.tax, subtotal: detail.subtotal, total: detail.total } : detail} />
       {payments.length > 0 && (
         <DetailSection title="Payments">
           <DetailTable
@@ -447,6 +576,40 @@ export function InvoiceDetailView({ detail }: { detail: any }) {
           />
         </DetailSection>
       )}
+    </>
+  );
+}
+
+export function PaymentDetailView({ detail }: { detail: any }) {
+  const inv = detail?.invoiceDetail || detail?.invoice || {};
+  const po = detail?.purchaseOrder || inv?.purchaseOrder || null;
+  const financeSource = po
+    ? { ...po, tax: inv.tax ?? po.tax, subtotal: inv.subtotal ?? po.subtotal, total: inv.total ?? po.total }
+    : inv?.id
+      ? inv
+      : detail;
+
+  return (
+    <>
+      <DetailSection title="Payment">
+        <div className="grid gap-3 sm:grid-cols-2 text-sm">
+          <div><span className="text-muted-foreground">Payment ID: </span>{str(detail.id, "—")}</div>
+          <div><span className="text-muted-foreground">Provider ref: </span>{str(detail.providerRef, "—")}</div>
+          <div><span className="text-muted-foreground">Invoice: </span>{str(inv.number ?? detail.invoice, "—")}</div>
+          <div><span className="text-muted-foreground">Method: </span>{str(detail.method, "—")}</div>
+          <div><span className="text-muted-foreground">Paid amount: </span>{money(detail.amount)}</div>
+          {num(detail.fee) > 0 ? (
+            <div><span className="text-muted-foreground">Fee: </span>{money(detail.fee)}</div>
+          ) : null}
+          {detail.provider && detail.provider !== "—" ? (
+            <div><span className="text-muted-foreground">Provider: </span>{str(detail.provider)}</div>
+          ) : null}
+          <div><span className="text-muted-foreground">Organization: </span>{str(detail.organization, "—")}</div>
+          <div><span className="text-muted-foreground">Paid at: </span>{str(detail.paidAt, "—")}</div>
+          <div><span className="text-muted-foreground">Status: </span>{str(detail.status, "—")}</div>
+        </div>
+      </DetailSection>
+      <FinanceBreakdownSection detail={financeSource} title="Linked invoice pricing (VAT & commission)" />
     </>
   );
 }

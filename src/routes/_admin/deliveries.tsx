@@ -46,9 +46,25 @@ function etaValue(r: any) {
 }
 
 function hopText(r: any) {
-  const hop = String(r?.leg ?? r?.hop ?? "").toLowerCase();
-  if (hop === "to_warehouse" || hop === "to_warehouse" || hop === "inbound") return "To warehouse";
-  if (hop === "to_restaurant" || hop === "to_restaurant" || hop === "outbound") return "To restaurant";
+  const hop = String(r?.leg ?? r?.hop ?? "").toLowerCase().replace(/\s+/g, "_");
+  const notes = String(r?.notes || "").toLowerCase();
+  if (
+    hop === "to_warehouse"
+    || hop === "inbound"
+    || hop.includes("warehouse")
+    || notes.includes("hop 1")
+  ) {
+    return "To warehouse";
+  }
+  if (
+    hop === "to_restaurant"
+    || hop === "outbound"
+    || hop.includes("restaurant")
+    || notes.includes("hop 2")
+  ) {
+    return "To restaurant";
+  }
+  if (r?.status || r?.number) return "To restaurant";
   return "—";
 }
 
@@ -64,12 +80,13 @@ function mapDelivery(r: any) {
     supplier: str(r.purchaseOrder?.supplierOrg?.name ?? r.supplierOrg?.name, "—"),
     driver: driverName(r),
     eta: etaValue(r),
-    hop: hopText(r),
+    // Display-only — do not use key `hop` (conflicts with hopLabel enum when list+API merge)
+    hopDisplay: hopText(r),
     scheduled: (r.scheduledAt ?? r.scheduled_at)
       ? String(r.scheduledAt ?? r.scheduled_at).replace("T", " ").slice(0, 16)
       : "—",
     createdAt: r.createdAt ? String(r.createdAt) : "",
-    leg: str(r.leg ?? r.hop, ""),
+    leg: str(r.leg ?? "", ""),
     status: str(r.status, "processing"),
     organizationId: str(
       r.organizationId
@@ -127,7 +144,7 @@ function DeliveriesPage() {
         { key: "po", label: "PO" },
         { key: "restaurant", label: "Buyer" },
         { key: "supplier", label: "Supplier" },
-        { key: "hop", label: "Hop" },
+        { key: "hopDisplay", label: "Hop" },
         { key: "driver", label: "Driver" },
         { key: "scheduled", label: "Scheduled" },
         { key: "eta", label: "ETA" },
@@ -149,7 +166,7 @@ function DeliveriesPage() {
         { key: "po", label: "PO", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "restaurant", label: "Buyer", render: (r) => <span className="font-medium">{r.restaurant}</span> },
         { key: "supplier", label: "Supplier" },
-        { key: "hop", label: "Hop", className: "whitespace-nowrap w-[1%]" },
+        { key: "hopDisplay", label: "Hop", className: "whitespace-nowrap w-[1%]" },
         { key: "driver", label: "Driver", className: "whitespace-nowrap w-[1%]" },
         { key: "eta", label: "ETA", className: "whitespace-nowrap w-[1%]" },
         { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },

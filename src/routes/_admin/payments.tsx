@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
-import { GenericJsonDetailView } from "@/components/admin/DetailViews";
+import { PaymentDetailView } from "@/components/admin/DetailViews";
 import { CreditCard } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
+import { fetchInvoiceDetail, fetchList } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/payments")({
@@ -12,16 +12,26 @@ export const Route = createFileRoute("/_admin/payments")({
 });
 
 function mapPayment(r: any) {
+  const inv = r.invoice || {};
+  const meta = (r.metadata || {}) as Record<string, unknown>;
+  const subtotal = num(inv.subtotal ?? r.subtotal);
+  const tax = num(inv.tax ?? r.tax ?? r.vat);
+  const total = num(inv.total ?? r.amount);
+  const vatRate = subtotal > 0 && tax > 0 ? Math.round((tax / subtotal) * 1000) / 10 : num(r.vatRate);
   return {
     id: str(r.id ?? r.providerRef),
     providerRef: str(r.providerRef, "—"),
-    invoice: str(r.invoice?.number ?? r.invoiceId, "—"),
-    invoiceId: str(r.invoiceId ?? r.invoice?.id, ""),
+    invoice: str(inv.number ?? r.invoiceId, "—"),
+    invoiceId: str(r.invoiceId ?? inv.id, ""),
     method: str(r.method ?? r.paymentMethod, "—"),
-    provider: str(r.provider ?? r.gateway, "—"),
-    currency: str(r.currency, "AED"),
-    amount: num(r.amount),
-    fee: num(r.fee ?? r.processingFee),
+    provider: str(meta.provider ?? meta.gateway ?? r.provider ?? r.gateway, "—"),
+    currency: str(r.currency ?? inv.currency, "AED"),
+    amount: num(r.amount, total),
+    fee: num(meta.fee ?? meta.processingFee ?? r.fee ?? r.processingFee),
+    subtotal,
+    vat: tax,
+    vatRate,
+    total,
     organization: str(r.organization?.name ?? r.organizationId, "—"),
     date: r.paidAt
       ? String(r.paidAt).slice(0, 10)
@@ -43,7 +53,7 @@ function PaymentsPage() {
   });
 
   const processed = rows
-    .filter((r) => ["completed", "paid", "succeeded", "active"].includes(r.status))
+    .filter((r) => ["succeeded", "completed", "paid", "active"].includes(r.status))
     .reduce((s, r) => s + r.amount, 0);
   const pending = rows.filter((r) => r.status === "pending").reduce((s, r) => s + r.amount, 0);
   const failed = rows.filter((r) => r.status === "failed").length;
@@ -61,15 +71,26 @@ function PaymentsPage() {
         { key: "method", label: "Method" },
         { key: "provider", label: "Provider" },
         { key: "currency", label: "Currency" },
-        { key: "amount", label: "Amount" },
+        { key: "subtotal", label: "Actual value" },
+        { key: "vatRate", label: "VAT %" },
+        { key: "vat", label: "VAT amount" },
+        { key: "amount", label: "Paid amount" },
         { key: "fee", label: "Fee" },
         { key: "organization", label: "Organization" },
         { key: "date", label: "Date" },
         { key: "paidAt", label: "Paid at" },
         { key: "status", label: "Status" },
       ]}
-      loadDetail={async (row) => row}
-      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
+      loadDetail={async (row) => {
+        if (!row.invoiceId) return row;
+        try {
+          const inv = await fetchInvoiceDetail(row.invoiceId);
+          return { ...row, invoiceDetail: inv, purchaseOrder: inv?.purchaseOrder };
+        } catch {
+          return row;
+        }
+      }}
+      renderView={(detail) => <PaymentDetailView detail={detail} />}
       kpis={[
         { label: "Processed", value: AED(processed), tone: "success" },
         { label: "Pending", value: AED(pending), tone: "warning" },
@@ -84,7 +105,9 @@ function PaymentsPage() {
         { key: "invoice", label: "Invoice", className: "font-mono text-xs" },
         { key: "method", label: "Method" },
         { key: "provider", label: "Provider" },
-        { key: "amount", label: "Amount", render: (r) => AED(r.amount) },
+        { key: "subtotal", label: "Value", render: (r) => (r.subtotal ? AED(r.subtotal) : "—") },
+        { key: "vat", label: "VAT", render: (r) => (r.vatRate ? `${r.vatRate}% · ${AED(r.vat)}` : AED(r.vat)) },
+        { key: "amount", label: "Paid", render: (r) => AED(r.amount) },
         { key: "date", label: "Date" },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}

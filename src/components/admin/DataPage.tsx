@@ -138,10 +138,12 @@ export function DataPage<T extends Record<string, any>>({
   entityName: entityNameProp,
   disableCrud = false,
   hideView = false,
+  hideExport = false,
   onCreate,
   onUpdate,
   onDelete,
   pageSize = 20,
+  exportExcludeKeys = [],
 }: {
   title: string;
   description: string;
@@ -168,11 +170,15 @@ export function DataPage<T extends Record<string, any>>({
   disableCrud?: boolean;
   /** Hide the Eye/View action (rare). */
   hideView?: boolean;
+  /** Hide the header Export button (e.g. reports page uses per-row export). */
+  hideExport?: boolean;
   onCreate?: (data: Record<string, any>) => Promise<T | void> | T | void;
   onUpdate?: (id: string, data: Record<string, any>, row: T) => Promise<T | void> | T | void;
   onDelete?: (id: string, row: T) => Promise<void> | void;
   /** Rows per page in the table footer (client-side). */
   pageSize?: number;
+  /** Keys omitted from detailed CSV export. */
+  exportExcludeKeys?: string[];
 }) {
   // Prefer an explicit singular name so View titles stay "View Purchase Order", not "View ords (purchase orders)".
   const entity =
@@ -396,25 +402,55 @@ export function DataPage<T extends Record<string, any>>({
   };
 
   const handleExport = () => {
-    const headerKeys = columns.filter((c) => typeof c.key === "string" && c.key !== "actions").map((c) => c.key as string);
+    const skip = new Set(["actions", "payload", "detail", ...exportExcludeKeys.map(String)]);
+    const viewKeys = (viewFields?.length ? viewFields : columns)
+      .map((c) => String("key" in c ? c.key : ""))
+      .filter((k) => k && !skip.has(k));
+    // Prefer detailed row keys (all scalar fields) so export is richer than visible columns
+    const sample = filtered[0] || {};
+    const extraKeys = Object.keys(sample).filter(
+      (k) => !skip.has(k) && !viewKeys.includes(k) && typeof (sample as any)[k] !== "function",
+    );
+    const headerKeys = [...viewKeys, ...extraKeys];
+    const labels = headerKeys.map((k) => {
+      const fromView = viewFields?.find((f) => f.key === k)?.label;
+      const fromCol = columns.find((c) => String(c.key) === k)?.label;
+      return fromView || fromCol || k;
+    });
+
+    const cell = (r: T, k: string) => {
+      const v = (r as any)[k];
+      if (v == null) return "";
+      if (Array.isArray(v)) return v.map((x) => (typeof x === "object" ? JSON.stringify(x) : String(x))).join("; ");
+      if (typeof v === "object") {
+        try {
+          return JSON.stringify(v);
+        } catch {
+          return String(v);
+        }
+      }
+      return String(v);
+    };
+
     const csv = [
-      headerKeys.join(","),
+      labels.map((l) => (/[",\n]/.test(l) ? `"${l.replace(/"/g, '""')}"` : l)).join(","),
       ...filtered.map((r) =>
-        headerKeys.map((k) => {
-          const v = r[k as keyof T];
-          const s = Array.isArray(v) ? v.join("; ") : String(v ?? "");
-          return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-        }).join(",")
+        headerKeys
+          .map((k) => {
+            const s = cell(r, k);
+            return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+          })
+          .join(","),
       ),
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${title.toLowerCase().replace(/\s+/g, "-")}.csv`;
+    a.download = `${title.toLowerCase().replace(/\s+/g, "-")}-detailed.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Export complete", { description: `${filtered.length} rows` });
+    toast.success("Detailed export complete", { description: `${filtered.length} rows` });
   };
 
   return (
@@ -432,7 +468,9 @@ export function DataPage<T extends Record<string, any>>({
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1.5" />Export</Button>
+          {!hideExport && (
+            <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1.5" />Export</Button>
+          )}
           {canCreate && (
             <Button size="sm" onClick={() => setCreating(true)}>
               <Plus className="h-4 w-4 mr-1.5" />New {entity}
