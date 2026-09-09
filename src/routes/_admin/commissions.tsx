@@ -88,11 +88,12 @@ function CommissionsPage() {
             party: str((d as any).partyLabel ?? (d as any).party ?? row.party, "—"),
             organization: str((d as any).organizationName ?? org.name ?? row.organization, "—"),
             organizationCode: str((d as any).organizationCode ?? org.publicCode, "—"),
-            gross: AED(subtotal),
+            // Numeric for fields that reuse column AED() renders; preformat the rest once.
+            gross: subtotal,
             orderTotal: AED(total),
             vat: AED(vat),
             rate: `${num((d as any).rate)}%`,
-            commission: AED(num((d as any).amount ?? (d as any).commission ?? row.commission)),
+            commission: num((d as any).amount ?? (d as any).commission ?? row.commission),
             status: str((d as any).status ?? row.status, "pending"),
             settledAt: (d as any).settledAt
               ? String((d as any).settledAt).replace("T", " ").slice(0, 19)
@@ -102,10 +103,10 @@ function CommissionsPage() {
         } catch {
           return {
             ...row,
-            gross: AED(num(row.gross)),
+            gross: num(row.gross),
             orderTotal: AED(num((row as any).orderTotal ?? row.gross)),
             vat: AED(num((row as any).vat)),
-            commission: AED(num(row.commission)),
+            commission: num(row.commission),
             organizationCode: "—",
             settledAt: "—",
           };

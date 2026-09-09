@@ -801,10 +801,11 @@ function RecordDialog({
   const [form, setForm] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+  const wasOpenRef = useRef(false);
 
-  // Reset form when dialog opens — normalize arrays (e.g. categories) for inputs
+  // Reset form only when the dialog opens (not on every fields/lookups identity change).
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
       const init: Record<string, any> = {};
       fields.forEach((f) => {
         const raw = initial?.[f.key];
@@ -831,6 +832,7 @@ function RecordDialog({
       setSaving(false);
       savingRef.current = false;
     }
+    wasOpenRef.current = open;
   }, [open, initial, fields]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1094,4 +1096,16 @@ function inferTone(status: string): "success" | "warning" | "destructive" | "inf
   return "default";
 }
 
-export const AED = (n: number) => `AED ${n.toLocaleString("en-AE", { maximumFractionDigits: 0 })}`;
+export const AED = (n: number | string | null | undefined) => {
+  if (n == null || n === "") return "—";
+  if (typeof n === "string") {
+    const trimmed = n.trim();
+    // Already formatted (e.g. "AED 1,250") — don't prefix again.
+    if (/^AED\s/i.test(trimmed)) return trimmed;
+    const parsed = Number(trimmed.replace(/,/g, "").replace(/[^\d.-]/g, ""));
+    if (!Number.isFinite(parsed)) return trimmed || "—";
+    return `AED ${parsed.toLocaleString("en-AE", { maximumFractionDigits: 0 })}`;
+  }
+  if (!Number.isFinite(n)) return "—";
+  return `AED ${n.toLocaleString("en-AE", { maximumFractionDigits: 0 })}`;
+};
