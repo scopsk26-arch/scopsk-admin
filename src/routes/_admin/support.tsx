@@ -18,6 +18,12 @@ function mapTicket(r: any) {
     number: str(r.number ?? r.id),
     subject: str(r.subject ?? r.title, "—"),
     requester: str(r.requester?.email ?? r.user?.email ?? r.creator?.email ?? r.createdBy, "—"),
+    organization: str(
+      r.organization?.name ?? r.organization?.publicCode ?? r.organizationName,
+      "—",
+    ),
+    relatedCode: str(r.relatedCode ?? r.related_code, "—"),
+    category: str(r.category, "—"),
     agent: str(r.assignee?.email ?? r.assignedTo, "—"),
     priority: str(r.priority, "medium"),
     sla: str(r.slaDueAt ? String(r.slaDueAt).slice(0, 16) : r.sla, "—"),
@@ -36,11 +42,15 @@ function SupportPage() {
   });
 
   const open = rows.filter((r) => ["open", "pending", "review", "in_progress"].includes(r.status)).length;
+  const complaints = rows.filter((r) =>
+    ["order_complaint", "complaint"].includes(String(r.category || "").toLowerCase()) ||
+    String(r.relatedCode || "").includes("/"),
+  ).length;
 
   return (
     <DataPage
       title="Support Center"
-      description="Customer tickets with SLA tracking. Status updates persist to the API."
+      description="Customer tickets and restaurant order complaints (ORDR / PO tracking codes). Status updates persist to the API."
       icon={<LifeBuoy className="h-5 w-5 text-primary" />}
       formFields={[
         { key: "subject", label: "Subject", type: "text" },
@@ -55,6 +65,9 @@ function SupportPage() {
       viewFields={[
         { key: "number", label: "Ticket" },
         { key: "subject", label: "Subject" },
+        { key: "relatedCode", label: "Order / PO codes" },
+        { key: "category", label: "Category" },
+        { key: "organization", label: "Organization" },
         { key: "requester", label: "Requester" },
         { key: "agent", label: "Agent" },
         { key: "priority", label: "Priority" },
@@ -63,7 +76,13 @@ function SupportPage() {
       ]}
       loadDetail={async (row) => {
         try {
-          return await fetchSupportTicketDetail(row.id);
+          const d = await fetchSupportTicketDetail(row.id);
+          return {
+            ...mapTicket({ ...row, ...d }),
+            ...d,
+            relatedCode: str((d as any).relatedCode ?? (d as any).related_code ?? row.relatedCode, "—"),
+            messages: (d as any).messages,
+          };
         } catch {
           return row;
         }
@@ -71,24 +90,34 @@ function SupportPage() {
       renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Open tickets", value: String(open), tone: "info" },
-        { label: "Total", value: String(rows.length), tone: "success" },
+        { label: "Order complaints", value: String(complaints), tone: "warning" },
         { label: "High priority", value: String(rows.filter((r) => r.priority === "high" || r.priority === "urgent").length), tone: "destructive" },
         { label: "Resolved", value: String(rows.filter((r) => r.status === "resolved").length), tone: "success" },
       ]}
       rows={rows}
-      searchKeys={["number", "subject", "requester", "agent"]}
+      searchKeys={["number", "subject", "requester", "agent", "relatedCode", "organization", "category"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load tickets." : "No support tickets."}
       columns={[
         { key: "number", label: "Ticket", className: "font-mono text-xs" },
         { key: "subject", label: "Subject", render: (r) => <span className="font-medium">{r.subject}</span> },
+        {
+          key: "relatedCode",
+          label: "Order / PO",
+          className: "font-mono text-xs max-w-[220px]",
+          render: (r) => (
+            <span className="truncate inline-block max-w-[220px]" title={r.relatedCode}>
+              {r.relatedCode}
+            </span>
+          ),
+        },
+        { key: "category", label: "Category", className: "text-xs capitalize" },
+        { key: "organization", label: "Org" },
         { key: "requester", label: "Requester" },
-        { key: "agent", label: "Agent" },
         { key: "priority", label: "Priority", render: (r) => (
           <span className={cn("text-xs font-medium",
             r.priority === "high" || r.priority === "urgent" ? "text-destructive" : r.priority === "medium" ? "text-warning" : "text-muted-foreground"
           )}>{r.priority}</span>
         ) },
-        { key: "sla", label: "SLA" },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onCreate={async (data) => {
