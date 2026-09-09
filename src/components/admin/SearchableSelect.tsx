@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent, type WheelEvent } from "react";
+import { useMemo, useState, type MouseEvent, type PointerEvent, type WheelEvent } from "react";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -67,14 +67,24 @@ export function SearchableSelect({
           </span>
           <span className="flex items-center gap-1 shrink-0 ml-2">
             {allowClear && selected && (
-              <X
-                className="h-3.5 w-3.5 opacity-60 hover:opacity-100"
+              <span
+                role="button"
+                tabIndex={-1}
+                aria-label="Clear selection"
+                className="inline-flex"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onChange("");
+                }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   onChange("");
                 }}
-              />
+              >
+                <X className="h-3.5 w-3.5 opacity-60 hover:opacity-100" />
+              </span>
             )}
             <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
           </span>
@@ -162,10 +172,15 @@ export function SearchableMultiSelect({
     }
   };
 
-  const remove = (id: string, e: MouseEvent) => {
+  const remove = (id: string) => {
+    onChange(selectedIds.filter((x) => x !== id));
+  };
+
+  /** Stop PopoverTrigger from opening before click; remove on pointerdown. */
+  const stopTriggerAndRemove = (id: string, e: PointerEvent | MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    onChange(selectedIds.filter((x) => x !== id));
+    remove(id);
   };
 
   return (
@@ -189,10 +204,16 @@ export function SearchableMultiSelect({
                   className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium max-w-full"
                 >
                   <span className="truncate">{o.label}</span>
-                  <X
-                    className="h-3 w-3 shrink-0 opacity-60 hover:opacity-100"
-                    onClick={(e) => remove(o.value, e)}
-                  />
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    aria-label={`Remove ${o.label}`}
+                    className="inline-flex shrink-0 rounded-sm opacity-60 hover:opacity-100 cursor-pointer"
+                    onPointerDown={(e) => stopTriggerAndRemove(o.value, e)}
+                    onClick={(e) => stopTriggerAndRemove(o.value, e)}
+                  >
+                    <X className="h-3 w-3" />
+                  </span>
                 </span>
               ))
             )}
