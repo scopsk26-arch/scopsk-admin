@@ -732,6 +732,11 @@ export function OrganizationDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">Food license: </span>{str(profile.foodLicenseNumber ?? detail.foodLicenseNumber, "—")}</div>
           <div><span className="text-muted-foreground">PO approval levels: </span>{str(settings.poApprovalLevels, "—")}</div>
           <div><span className="text-muted-foreground">Min RFQ (AED): </span>{str(settings.minRfqValueAed, "—")}</div>
+          <div><span className="text-muted-foreground">Delivery fee: </span>{str(settings.deliveryFeeMode, "none")} · {money(settings.deliveryFeeValue)}</div>
+          <div><span className="text-muted-foreground">Credit limit: </span>{money(settings.creditLimit)}</div>
+          <div><span className="text-muted-foreground">Payment terms (days): </span>{str(settings.paymentTermsDays, "—")}</div>
+          <div><span className="text-muted-foreground">Discount: </span>{str(settings.discountMode, "none")} · {money(settings.discountValue)}</div>
+          <div><span className="text-muted-foreground">RFQ intake: </span>{str(settings.rfqIntakeMode, "manual")}</div>
           <div><span className="text-muted-foreground">Verification: </span>{str(detail.verificationStatus, "—")}</div>
           <div><span className="text-muted-foreground">KYC: </span>{str(detail.kycApplication?.status, "—")}</div>
         </div>
@@ -879,6 +884,7 @@ export function ProductDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">Unit: </span>{str(detail.unit?.name ?? detail.unit?.symbol, "—")}</div>
           <div><span className="text-muted-foreground">Org: </span>{str(detail.organization?.name, "—")}</div>
           <div><span className="text-muted-foreground">Price: </span>{money(detail.price ?? detail.unitPrice)}</div>
+          <div><span className="text-muted-foreground">Excise applicable: </span>{detail.exciseApplicable ? "Yes" : "No"}</div>
           <div><span className="text-muted-foreground">Picture: </span>
             {(() => {
               const url =

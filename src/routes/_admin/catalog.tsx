@@ -31,6 +31,7 @@ type ProductRow = {
   status: string;
   imageUrl: string;
   imageFileId: string;
+  exciseApplicable: string;
 };
 
 function mapProductRow(r: any): ProductRow {
@@ -72,6 +73,9 @@ function mapProductRow(r: any): ProductRow {
     // Preview only — API resolves from product_images (never products.image_url)
     imageUrl: str(primaryImage || r.imageUrl, ""),
     imageFileId: primaryFileId,
+    exciseApplicable: r.exciseApplicable === true || r.exciseApplicable === "true" || r.exciseApplicable === 1
+      ? "true"
+      : "false",
   };
 }
 
@@ -100,6 +104,11 @@ function toProductPayload(data: Record<string, any>) {
     status: data.status || "active",
     price: data.price === "" || data.price == null ? undefined : Number(data.price),
     stock: data.stock === "" || data.stock == null ? undefined : Number(data.stock),
+    exciseApplicable:
+      data.exciseApplicable === true
+      || data.exciseApplicable === "true"
+      || data.exciseApplicable === "yes"
+      || data.exciseApplicable === 1,
     ...imagePatch,
   };
 }
@@ -203,6 +212,12 @@ function CatalogPage() {
         },
         { key: "stock", label: "Stock", type: "number" },
         {
+          key: "exciseApplicable",
+          label: "Excise applicable",
+          type: "select",
+          options: ["false", "true"],
+        },
+        {
           key: "status",
           label: "Status",
           type: "select",
@@ -219,6 +234,7 @@ function CatalogPage() {
         { key: "price", label: "Price" },
         { key: "supplier", label: "Supplier" },
         { key: "stock", label: "Stock" },
+        { key: "exciseApplicable", label: "Excise applicable" },
         { key: "description", label: "Description" },
         { key: "status", label: "Status" },
       ]}
@@ -282,6 +298,12 @@ function CatalogPage() {
             suppliers.find((s) => s.value === r.organizationId)?.label ?? r.supplier,
         },
         { key: "stock", label: "Stock", className: "whitespace-nowrap w-[1%]" },
+        {
+          key: "exciseApplicable",
+          label: "Excise",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => (r.exciseApplicable === "true" ? "Yes" : "No"),
+        },
         { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onCreate={async (data) => {

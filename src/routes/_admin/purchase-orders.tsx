@@ -8,7 +8,7 @@ import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/purchase-orders")({
-  head: () => ({ meta: [{ title: "Purchase Orders — Nexora Admin" }] }),
+  head: () => ({ meta: [{ title: "Purchase Orders — ResPy Admin" }] }),
   component: PurchaseOrdersPage,
 });
 

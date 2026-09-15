@@ -64,6 +64,12 @@ function SuppliersPage() {
         { key: "poApprovalLevels", label: "PO approval levels", type: "number" },
         { key: "minRfqValueAed", label: "Min RFQ value (AED)", type: "number" },
         {
+          key: "rfqIntakeMode",
+          label: "RFQ intake mode",
+          type: "select",
+          options: ["manual", "auto"],
+        },
+        {
           key: "status",
           label: "Status",
           type: "select",
@@ -81,6 +87,7 @@ function SuppliersPage() {
         { key: "vatRegistrationNumber", label: "VAT #" },
         { key: "poApprovalLevels", label: "PO approval levels" },
         { key: "minRfqValueAed", label: "Min RFQ (AED)" },
+        { key: "rfqIntakeMode", label: "RFQ intake" },
         { key: "revenue", label: "Revenue (90d)" },
         { key: "winRate", label: "Win rate" },
         { key: "verificationStatus", label: "Verification" },
@@ -103,6 +110,12 @@ function SuppliersPage() {
         { key: "categories", label: "Categories", className: "whitespace-nowrap max-w-[220px]", render: (r) => <TagListDropdown value={r.categories} /> },
         { key: "poApprovalLevels", label: "PO levels" },
         { key: "minRfqValueAed", label: "Min RFQ", render: (r) => AED(r.minRfqValueAed) },
+        {
+          key: "rfqIntakeMode",
+          label: "RFQ intake",
+          className: "capitalize whitespace-nowrap",
+          render: (r) => String(r.rfqIntakeMode || "manual"),
+        },
         { key: "revenue", label: "Revenue (90d)", render: (r) => AED(r.revenue) },
         { key: "winRate", label: "Win rate", render: (r) => `${r.winRate}%` },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
@@ -122,6 +135,7 @@ function SuppliersPage() {
         await updateOrgSettings(id, {
           poApprovalLevels: data.poApprovalLevels,
           minRfqValueAed: data.minRfqValueAed,
+          rfqIntakeMode: data.rfqIntakeMode,
         });
         await updateOrgProfile(id, data);
         await queryClient.invalidateQueries({ queryKey: ["organizations", "supplier"] });
@@ -129,6 +143,7 @@ function SuppliersPage() {
           ...updated,
           poApprovalLevels: Number(data.poApprovalLevels ?? updated.poApprovalLevels),
           minRfqValueAed: Number(data.minRfqValueAed ?? updated.minRfqValueAed),
+          rfqIntakeMode: String(data.rfqIntakeMode ?? updated.rfqIntakeMode ?? "manual"),
           ownerName: String(data.ownerName ?? updated.ownerName ?? ""),
           tradeLicenseNumber: String(data.tradeLicenseNumber ?? updated.tradeLicenseNumber ?? ""),
           vatRegistrationNumber: String(

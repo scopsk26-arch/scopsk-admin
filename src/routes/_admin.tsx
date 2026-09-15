@@ -1,7 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Topbar } from "@/components/admin/Topbar";
-import { ThemeProvider } from "@/components/admin/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { clearSession, hasAccessToken } from "@/lib/auth-session";
 import { me } from "@/lib/api/auth";
@@ -46,7 +45,7 @@ export const Route = createFileRoute("/_admin")({
 
 function AdminLayout() {
   return (
-    <ThemeProvider>
+    <>
       <div className="min-h-screen flex bg-background text-foreground">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
@@ -57,6 +56,6 @@ function AdminLayout() {
         </div>
       </div>
       <Toaster position="top-right" richColors closeButton />
-    </ThemeProvider>
+    </>
   );
 }

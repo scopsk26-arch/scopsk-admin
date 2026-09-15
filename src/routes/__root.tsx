@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { ThemeProvider } from "@/components/admin/ThemeProvider";
 
 function NotFoundComponent() {
   return (
@@ -77,24 +78,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ResPy - admin" },
-      { name: "description", content: "ResPy Admin is an enterprise SaaS admin panel for managing a B2B restaurant procurement marketplace." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "ResPy - admin" },
-      { property: "og:description", content: "ResPy Admin is an enterprise SaaS admin panel for managing a B2B restaurant procurement marketplace." },
+      { title: "ResPy Admin" },
+      { name: "description", content: "ResPy Admin — B2B restaurant procurement marketplace operations." },
+      { name: "author", content: "ResPy" },
+      { property: "og:title", content: "ResPy Admin" },
+      { property: "og:description", content: "ResPy Admin — B2B restaurant procurement marketplace operations." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "ResPy - admin" },
-      { name: "twitter:description", content: "ResPy Admin is an enterprise SaaS admin panel for managing a B2B restaurant procurement marketplace." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/dd10eaf9-d99d-4f99-a85d-d288ac425551/id-preview-9ea9500b--096cfc2a-cddd-485f-8abe-ddea06869d50.lovable.app-1780318563144.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/dd10eaf9-d99d-4f99-a85d-d288ac425551/id-preview-9ea9500b--096cfc2a-cddd-485f-8abe-ddea06869d50.lovable.app-1780318563144.png" },
+      { name: "twitter:title", content: "ResPy Admin" },
+      { name: "twitter:description", content: "ResPy Admin — B2B restaurant procurement marketplace operations." },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
   }),
   shellComponent: RootShell,
@@ -122,8 +121,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <ThemeProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

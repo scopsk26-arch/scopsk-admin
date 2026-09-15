@@ -38,12 +38,18 @@ function mapRfqRow(r: any) {
     quantityLabel = `${itemCount} items`;
   }
 
+  const isCk =
+    r.cloudKitchen === true ||
+    r.channel === "cloud_kitchen" ||
+    r.metadata?.channel === "cloud_kitchen" ||
+    r.metadata?.cloudKitchen === true;
+
   return {
     id: str(r.id),
     number: str(r.number ?? r.id),
     title: str(r.title, ""),
     restaurant: str(r.organization?.name ?? r.title, "—"),
-    category: str(r.visibility ?? r.metadata?.category, "—"),
+    category: isCk ? "Cloud Kitchen" : str(r.visibility ?? r.metadata?.category, "—"),
     quantity: quantityLabel,
     itemCount,
     quotations: num(r.quotationsCount ?? r.quotationCount ?? r.metadata?.quotations),
@@ -54,6 +60,7 @@ function mapRfqRow(r: any) {
       "—",
     ),
     status: str(r.status, "draft"),
+    cloudKitchen: isCk,
   };
 }
 
@@ -130,7 +137,16 @@ function RfqsPage() {
         {
           key: "restaurant",
           label: "Restaurant",
-          render: (r) => <span className="font-medium">{r.restaurant}</span>,
+          render: (r) => (
+            <span className="font-medium">
+              {r.restaurant}
+              {r.cloudKitchen ? (
+                <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  CK
+                </span>
+              ) : null}
+            </span>
+          ),
         },
         { key: "category", label: "Visibility", className: "whitespace-nowrap w-[1%]" },
         { key: "quantity", label: "Quantity", className: "whitespace-nowrap w-[1%]" },

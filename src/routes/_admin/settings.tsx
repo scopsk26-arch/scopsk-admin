@@ -22,6 +22,7 @@ const SETTING_KEYS = [
   "restaurant_commission",
   "supplier_commission",
   "vat_rate",
+  "excise_rate",
   "payout_schedule",
   "min_payout",
   "sender_email",
@@ -80,6 +81,7 @@ function SettingsPage() {
     next.restaurant_commission = next.restaurant_commission || legacyCommission;
     next.supplier_commission = next.supplier_commission || legacyCommission;
     next.vat_rate = next.vat_rate || "5.0";
+    next.excise_rate = next.excise_rate || "0";
     next.payout_schedule = next.payout_schedule || "Weekly";
     next.min_payout = next.min_payout || "500";
     next.sender_email = next.sender_email || "no-reply@primeplate.ae";
@@ -164,6 +166,7 @@ function SettingsPage() {
         { key: "restaurant_commission", label: "Restaurant commission %" },
         { key: "supplier_commission", label: "Supplier commission %" },
         { key: "vat_rate", label: "VAT rate %" },
+        { key: "excise_rate", label: "Excise rate %" },
         { key: "payout_schedule", label: "Payout schedule" },
         { key: "min_payout", label: "Min. payout amount" },
       ],
