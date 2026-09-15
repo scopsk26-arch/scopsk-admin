@@ -47,6 +47,7 @@ import { Route as AdminCmsRouteImport } from './routes/_admin/cms'
 import { Route as AdminCkRequestsRouteImport } from './routes/_admin/ck-requests'
 import { Route as AdminCkProductionRouteImport } from './routes/_admin/ck-production'
 import { Route as AdminCkImportRouteImport } from './routes/_admin/ck-import'
+import { Route as AdminCkDishesRouteImport } from './routes/_admin/ck-dishes'
 import { Route as AdminCategoryCommissionsRouteImport } from './routes/_admin/category-commissions'
 import { Route as AdminCategoriesRouteImport } from './routes/_admin/categories'
 import { Route as AdminCatalogRouteImport } from './routes/_admin/catalog'
@@ -246,6 +247,11 @@ const AdminCkImportRoute = AdminCkImportRouteImport.update({
   path: '/ck-import',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCkDishesRoute = AdminCkDishesRouteImport.update({
+  id: '/ck-dishes',
+  path: '/ck-dishes',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminCategoryCommissionsRoute =
   AdminCategoryCommissionsRouteImport.update({
     id: '/category-commissions',
@@ -299,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/catalog': typeof AdminCatalogRoute
   '/categories': typeof AdminCategoriesRoute
   '/category-commissions': typeof AdminCategoryCommissionsRoute
+  '/ck-dishes': typeof AdminCkDishesRoute
   '/ck-import': typeof AdminCkImportRoute
   '/ck-production': typeof AdminCkProductionRoute
   '/ck-requests': typeof AdminCkRequestsRoute
@@ -346,6 +353,7 @@ export interface FileRoutesByTo {
   '/catalog': typeof AdminCatalogRoute
   '/categories': typeof AdminCategoriesRoute
   '/category-commissions': typeof AdminCategoryCommissionsRoute
+  '/ck-dishes': typeof AdminCkDishesRoute
   '/ck-import': typeof AdminCkImportRoute
   '/ck-production': typeof AdminCkProductionRoute
   '/ck-requests': typeof AdminCkRequestsRoute
@@ -395,6 +403,7 @@ export interface FileRoutesById {
   '/_admin/catalog': typeof AdminCatalogRoute
   '/_admin/categories': typeof AdminCategoriesRoute
   '/_admin/category-commissions': typeof AdminCategoryCommissionsRoute
+  '/_admin/ck-dishes': typeof AdminCkDishesRoute
   '/_admin/ck-import': typeof AdminCkImportRoute
   '/_admin/ck-production': typeof AdminCkProductionRoute
   '/_admin/ck-requests': typeof AdminCkRequestsRoute
@@ -444,6 +453,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/categories'
     | '/category-commissions'
+    | '/ck-dishes'
     | '/ck-import'
     | '/ck-production'
     | '/ck-requests'
@@ -491,6 +501,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/categories'
     | '/category-commissions'
+    | '/ck-dishes'
     | '/ck-import'
     | '/ck-production'
     | '/ck-requests'
@@ -539,6 +550,7 @@ export interface FileRouteTypes {
     | '/_admin/catalog'
     | '/_admin/categories'
     | '/_admin/category-commissions'
+    | '/_admin/ck-dishes'
     | '/_admin/ck-import'
     | '/_admin/ck-production'
     | '/_admin/ck-requests'
@@ -850,6 +862,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCkImportRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/ck-dishes': {
+      id: '/_admin/ck-dishes'
+      path: '/ck-dishes'
+      fullPath: '/ck-dishes'
+      preLoaderRoute: typeof AdminCkDishesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/category-commissions': {
       id: '/_admin/category-commissions'
       path: '/category-commissions'
@@ -918,6 +937,7 @@ interface AdminRouteChildren {
   AdminCatalogRoute: typeof AdminCatalogRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCategoryCommissionsRoute: typeof AdminCategoryCommissionsRoute
+  AdminCkDishesRoute: typeof AdminCkDishesRoute
   AdminCkImportRoute: typeof AdminCkImportRoute
   AdminCkProductionRoute: typeof AdminCkProductionRoute
   AdminCkRequestsRoute: typeof AdminCkRequestsRoute
@@ -964,6 +984,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCatalogRoute: AdminCatalogRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCategoryCommissionsRoute: AdminCategoryCommissionsRoute,
+  AdminCkDishesRoute: AdminCkDishesRoute,
   AdminCkImportRoute: AdminCkImportRoute,
   AdminCkProductionRoute: AdminCkProductionRoute,
   AdminCkRequestsRoute: AdminCkRequestsRoute,

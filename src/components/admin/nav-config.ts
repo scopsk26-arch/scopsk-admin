@@ -3,7 +3,7 @@ import {
   PackageCheck, Receipt, CreditCard, Percent, Boxes, FolderTree, Brain,
   AlertTriangle, MessageSquare, LifeBuoy, BarChart3, ScrollText, UsersRound,
   Settings, Activity, UtensilsCrossed, Award, CheckSquare, Warehouse, Search,
-  Wallet, Upload, ChefHat, BadgeCheck, Share2, Gift, SlidersHorizontal,
+  Wallet, Upload, ChefHat, BadgeCheck, Share2, Gift, SlidersHorizontal, Soup,
   // Megaphone, Bell, BookOpen, FolderOpen, Code2 — used by commented nav items
 } from "lucide-react";
 
@@ -47,6 +47,7 @@ export const navItems: NavItem[] = [
   { group: "Catalog", title: "Qualities", to: "/qualities", icon: Award },
   { group: "Catalog", title: "Restaurant Inventory", to: "/inventory", icon: Warehouse },
 
+  { group: "Cloud Kitchen", title: "CK Dishes", to: "/ck-dishes", icon: Soup },
   { group: "Cloud Kitchen", title: "CK Requests", to: "/ck-requests", icon: ChefHat },
   { group: "Cloud Kitchen", title: "CK Bulk Import", to: "/ck-import", icon: Upload },
   { group: "Cloud Kitchen", title: "CK Production", to: "/ck-production", icon: ChefHat },
