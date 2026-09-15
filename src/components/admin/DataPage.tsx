@@ -458,7 +458,7 @@ export function DataPage<T extends Record<string, any>>({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3">
           {icon && (
-            <div className="h-11 w-11 rounded-xl glass grid place-items-center shrink-0">
+            <div className="h-11 w-11 rounded-xl border border-border bg-card shadow-soft grid place-items-center shrink-0">
               {icon}
             </div>
           )}
@@ -483,9 +483,9 @@ export function DataPage<T extends Record<string, any>>({
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {kpis.map((k) => (
             <div key={k.label} className="rounded-xl border border-border bg-card p-4 shadow-soft">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">{k.label}</div>
+              <div className="label-caps">{k.label}</div>
               <div className={cn(
-                "mt-1 text-2xl font-display font-semibold",
+                "mt-1 text-2xl font-display font-semibold tabular-nums",
                 k.tone === "success" && "text-success",
                 k.tone === "warning" && "text-warning",
                 k.tone === "destructive" && "text-destructive",
@@ -497,15 +497,15 @@ export function DataPage<T extends Record<string, any>>({
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden">
-        <div className="p-4 flex flex-wrap items-center gap-2 border-b border-border">
+      <div className="rounded-xl border border-border bg-card shadow-soft overflow-hidden">
+        <div className="p-4 flex flex-wrap items-center gap-2 border-b border-border bg-muted/20">
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search..."
-              className="pl-9 h-9"
+              className="pl-9 h-9 bg-card"
             />
           </div>
           {filters}
@@ -514,9 +514,9 @@ export function DataPage<T extends Record<string, any>>({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/30 text-left">
+              <tr className="border-b border-border bg-muted/40 text-left">
                 {columns.map((c) => (
-                  <th key={String(c.key)} className={cn("px-4 py-3 font-medium text-xs uppercase tracking-wider text-muted-foreground", c.className)}>
+                  <th key={String(c.key)} className={cn("px-4 py-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground", c.className)}>
                     {c.label}
                   </th>
                 ))}
@@ -526,15 +526,16 @@ export function DataPage<T extends Record<string, any>>({
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length + (showRowActions ? 1 : 0)} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    {emptyHint ?? "No results found."}
+                  <td colSpan={columns.length + (showRowActions ? 1 : 0)} className="px-4 py-14 text-center">
+                    <div className="text-sm font-medium text-foreground">No results</div>
+                    <div className="text-xs text-muted-foreground mt-1">{emptyHint ?? "Try adjusting search or filters."}</div>
                   </td>
                 </tr>
               ) : (
                 pageRows.map((row, i) => (
-                  <tr key={String(row[idKey as keyof T] ?? i)} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                  <tr key={String(row[idKey as keyof T] ?? i)} className="border-b border-border last:border-0 hover:bg-primary/[0.04] transition-colors">
                     {columns.map((c) => (
-                      <td key={String(c.key)} className={cn("px-4 py-3", c.className)}>
+                      <td key={String(c.key)} className={cn("px-4 py-3 align-middle", c.className)}>
                         {c.render ? c.render(row) : String(row[c.key as keyof T] ?? "—")}
                       </td>
                     ))}
@@ -614,7 +615,7 @@ export function DataPage<T extends Record<string, any>>({
           {viewLoading ? (
             <div className="py-10 text-center text-sm text-muted-foreground">Loading details…</div>
           ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-6 py-1 pr-1 max-h-[calc(90vh-11.5rem)]">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-6 px-1 py-1 max-h-[calc(90vh-11.5rem)]">
               <div className="grid gap-4 sm:grid-cols-2">
                 {displayViewFields.map((f) => {
                   // Use list-row primitives for the grid. GET /:id often replaces
@@ -656,7 +657,7 @@ export function DataPage<T extends Record<string, any>>({
               ) : null}
             </div>
           )}
-          <DialogFooter className="shrink-0 border-t border-border pt-4 bg-background">
+          <DialogFooter className="shrink-0 border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={closeView}>Close</Button>
             {canUpdate && viewing && (
               <Button type="button" onClick={() => { void openEdit(viewing); closeView(); }}>
@@ -865,7 +866,7 @@ function RecordDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 max-h-[calc(90vh-11.5rem)]">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 py-1 max-h-[calc(90vh-11.5rem)]">
             <fieldset disabled={saving} className="min-w-0 border-0 p-0 m-0">
             <div className="grid gap-4 sm:grid-cols-2 pb-4">
               {fields.map((f) => (
@@ -941,7 +942,7 @@ function RecordDialog({
             </div>
             </fieldset>
           </div>
-          <DialogFooter className="shrink-0 border-t border-border pt-4 mt-0 bg-background">
+          <DialogFooter className="shrink-0 border-t border-border pt-4 mt-0">
             <Button
               type="button"
               variant="outline"
@@ -1063,23 +1064,25 @@ export function DetailTable({
   );
 }
 
-export function StatusBadge({ status, tone }: { status: string; tone?: "success" | "warning" | "destructive" | "info" | "default" }) {
+export function StatusBadge({ status, tone }: { status: string; tone?: "success" | "warning" | "destructive" | "info" | "default" | "brand" }) {
   const t = tone ?? inferTone(status);
   return (
     <span className={cn(
-      "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border",
+      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold border",
       t === "success" && "bg-success/10 text-success border-success/20",
-      t === "warning" && "bg-warning/10 text-warning border-warning/20",
+      t === "warning" && "bg-warning/12 text-warning border-warning/25",
       t === "destructive" && "bg-destructive/10 text-destructive border-destructive/20",
       t === "info" && "bg-info/10 text-info border-info/20",
+      t === "brand" && "bg-primary/12 text-primary border-primary/25",
       t === "default" && "bg-muted text-muted-foreground border-border",
     )}>
       <span className={cn(
-        "h-1.5 w-1.5 rounded-full",
+        "h-1.5 w-1.5 rounded-full shrink-0",
         t === "success" && "bg-success",
         t === "warning" && "bg-warning",
         t === "destructive" && "bg-destructive",
         t === "info" && "bg-info",
+        t === "brand" && "bg-primary",
         t === "default" && "bg-muted-foreground",
       )} />
       {status}
@@ -1087,12 +1090,26 @@ export function StatusBadge({ status, tone }: { status: string; tone?: "success"
   );
 }
 
-function inferTone(status: string): "success" | "warning" | "destructive" | "info" | "default" {
-  const s = status.toLowerCase();
-  if (["active","verified","approved","delivered","paid","resolved","sent","published","success","completed","online","open"].includes(s)) return "success";
-  if (["pending","processing","draft","review","queued","dispatched","ready","scheduled"].includes(s)) return "info";
-  if (["flagged","delayed","warning","at risk","overdue","high"].includes(s)) return "warning";
-  if (["suspended","rejected","failed","closed","critical","blocked","banned"].includes(s)) return "destructive";
+/** Semantic tones mirror mobile Badge tones: sage/success, brand, warning, default. */
+function inferTone(status: string): "success" | "warning" | "destructive" | "info" | "default" | "brand" {
+  const s = status.toLowerCase().replace(/[_-]+/g, " ").trim();
+  if ([
+    "active", "verified", "approved", "delivered", "paid", "resolved", "sent",
+    "published", "success", "completed", "online", "open", "awarded", "settled",
+  ].includes(s)) return "success";
+  if ([
+    "in progress", "in_progress", "processing", "dispatched", "ready", "confirmed",
+    "preparing", "accepted", "bid",
+  ].includes(s) || s.includes("progress")) return "brand";
+  if ([
+    "pending", "pending approval", "pending_approval", "draft", "review", "queued",
+    "scheduled", "awaiting approval", "awaiting_approval", "unverified",
+  ].includes(s) || s.includes("pending")) return "warning";
+  if ([
+    "suspended", "rejected", "failed", "closed", "critical", "blocked", "banned",
+    "cancelled", "canceled", "void", "overdue", "expired",
+  ].includes(s)) return "destructive";
+  if (["flagged", "delayed", "warning", "at risk", "high"].includes(s)) return "warning";
   return "default";
 }
 

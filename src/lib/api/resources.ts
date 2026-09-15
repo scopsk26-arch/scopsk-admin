@@ -92,6 +92,13 @@ export async function fetchOrganizationsByType(type: "restaurant" | "supplier") 
       type,
       poApprovalLevels: 0,
       minRfqValueAed: 0,
+      deliveryFeeMode: "none",
+      deliveryFeeValue: 0,
+      creditLimit: 0,
+      paymentTermsDays: 0,
+      discountMode: "none",
+      discountValue: 0,
+      rfqIntakeMode: "manual",
       ownerName: "",
       tradeLicenseNumber: "",
       vatRegistrationNumber: "",
@@ -99,6 +106,8 @@ export async function fetchOrganizationsByType(type: "restaurant" | "supplier") 
       documents: [] as { id?: string; type: string; url?: string; fileName?: string }[],
       documentCount: 0,
       kycApplication: null,
+      rejectReason: "",
+      submitted: "—",
     }));
   } catch {
     return [];
@@ -110,6 +119,7 @@ export async function fetchOrganizations(query?: {
   type?: string;
   status?: string;
   search?: string;
+  pendingApproval?: boolean | string;
   page?: number;
   limit?: number;
 }) {
@@ -158,8 +168,22 @@ function mapOrgCuisines(r: any) {
   };
 }
 
+function mapOrgCommercial(r: any) {
+  const s = r.settings ?? r.orgSettings ?? {};
+  return {
+    deliveryFeeMode: str(s.deliveryFeeMode ?? r.deliveryFeeMode, "none"),
+    deliveryFeeValue: num(s.deliveryFeeValue ?? r.deliveryFeeValue),
+    creditLimit: num(s.creditLimit ?? r.creditLimit),
+    paymentTermsDays: num(s.paymentTermsDays ?? r.paymentTermsDays),
+    discountMode: str(s.discountMode ?? r.discountMode, "none"),
+    discountValue: num(s.discountValue ?? r.discountValue),
+    rfqIntakeMode: str(s.rfqIntakeMode ?? r.rfqIntakeMode, "manual"),
+  };
+}
+
 function mapOrgRow(r: any, type: "restaurant" | "supplier") {
   const { cuisineIds, cuisineLabel } = mapOrgCuisines(r);
+  const commercial = mapOrgCommercial(r);
   return {
     id: str(r.id),
     name: str(r.name, "Untitled"),
@@ -183,6 +207,7 @@ function mapOrgRow(r: any, type: "restaurant" | "supplier") {
     type,
     poApprovalLevels: num(r.poApprovalLevels ?? r.settings?.poApprovalLevels),
     minRfqValueAed: num(r.minRfqValueAed ?? r.settings?.minRfqValueAed),
+    ...commercial,
     ownerName: str(r.ownerName ?? r.profile?.ownerName, ""),
     tradeLicenseNumber: str(r.tradeLicenseNumber ?? r.profile?.tradeLicenseNumber, ""),
     vatRegistrationNumber: str(r.vatRegistrationNumber ?? r.profile?.vatRegistrationNumber, ""),
@@ -198,6 +223,12 @@ function mapOrgRow(r: any, type: "restaurant" | "supplier") {
       : [],
     documentCount: num(r.documentCount, Array.isArray(r.documents) ? r.documents.length : 0),
     kycApplication: r.kycApplication ?? null,
+    rejectReason: str(r.metadata?.rejectReason ?? r.rejectReason, ""),
+    submitted: r.createdAt
+      ? String(r.createdAt).slice(0, 10)
+      : r.submittedAt
+        ? String(r.submittedAt).slice(0, 10)
+        : "—",
   };
 }
 
@@ -232,17 +263,44 @@ export async function enrichOrganizationRow<T extends { id: string }>(
   };
 }
 
-export async function updateOrgSettings(
-  organizationId: string,
-  data: { poApprovalLevels?: number | string; minRfqValueAed?: number | string },
-) {
-  const payload: Record<string, number> = {};
-  if (data.poApprovalLevels != null && String(data.poApprovalLevels).trim() !== "") {
-    payload.poApprovalLevels = Number(data.poApprovalLevels);
+export type OrgSettingsPatch = {
+  poApprovalLevels?: number | string;
+  minRfqValueAed?: number | string;
+  deliveryFeeMode?: string;
+  deliveryFeeValue?: number | string;
+  creditLimit?: number | string;
+  paymentTermsDays?: number | string;
+  discountMode?: string;
+  discountValue?: number | string;
+  rfqIntakeMode?: string;
+};
+
+export async function updateOrgSettings(organizationId: string, data: OrgSettingsPatch) {
+  const payload: Record<string, string | number> = {};
+  const numKeys = [
+    "poApprovalLevels",
+    "minRfqValueAed",
+    "deliveryFeeValue",
+    "creditLimit",
+    "paymentTermsDays",
+    "discountValue",
+  ] as const;
+  for (const key of numKeys) {
+    if (data[key] != null && String(data[key]).trim() !== "") {
+      payload[key] = Number(data[key]);
+    }
   }
-  if (data.minRfqValueAed != null && String(data.minRfqValueAed).trim() !== "") {
-    payload.minRfqValueAed = Number(data.minRfqValueAed);
+  if (data.deliveryFeeMode != null && String(data.deliveryFeeMode).trim() !== "") {
+    payload.deliveryFeeMode = String(data.deliveryFeeMode).trim();
   }
+  if (data.discountMode != null && String(data.discountMode).trim() !== "") {
+    payload.discountMode = String(data.discountMode).trim();
+  }
+  if (data.rfqIntakeMode != null && String(data.rfqIntakeMode).trim() !== "") {
+    payload.rfqIntakeMode = String(data.rfqIntakeMode).trim();
+  }
+  if (payload.deliveryFeeMode === "none") payload.deliveryFeeValue = 0;
+  if (payload.discountMode === "none") payload.discountValue = 0;
   if (!Object.keys(payload).length) return null;
   return api.patch(`/organizations/${organizationId}/settings`, payload);
 }
@@ -754,5 +812,374 @@ export async function fetchSubscriptionDetail(id: string) {
 
 export async function fetchRoleDetail(id: string) {
   return api.get<any>(`/admin/roles/${id}`);
+}
+
+/** Pending org approval queue: GET /organizations?type=&pendingApproval=true */
+export async function fetchPendingOrganizations(type: "restaurant" | "supplier") {
+  const list = await fetchOrganizations({ type, pendingApproval: true });
+  return list
+    .filter((r: any) => !r.type || r.type === type)
+    .map((r: any) => mapOrgRow(r, type));
+}
+
+export async function approveOrganization(id: string, reason?: string) {
+  return api.post(`/organizations/${id}/approve`, { reason: reason || undefined });
+}
+
+export async function rejectOrganization(id: string, reason: string) {
+  return api.post(`/organizations/${id}/reject`, { reason });
+}
+
+export async function activateOrganization(id: string, reason?: string) {
+  return api.post(`/organizations/${id}/activate`, { reason: reason || undefined });
+}
+
+export async function deactivateOrganization(id: string, reason?: string) {
+  return api.post(`/organizations/${id}/deactivate`, { reason: reason || undefined });
+}
+
+export type CategoryCommissionRow = {
+  id: string;
+  categoryId: string;
+  category: string;
+  restaurantRate: number;
+  supplierRate: number;
+};
+
+export async function fetchCategoryCommissions() {
+  const list = await fetchList("/admin/category-commissions");
+  return list.map((r: any): CategoryCommissionRow => ({
+    id: str(r.categoryId ?? r.id),
+    categoryId: str(r.categoryId ?? r.category?.id),
+    category: str(r.category?.name ?? r.categoryName, "—"),
+    restaurantRate: num(r.restaurantRate),
+    supplierRate: num(r.supplierRate),
+  }));
+}
+
+export async function upsertCategoryCommission(data: {
+  categoryId: string;
+  restaurantRate: number;
+  supplierRate: number;
+}) {
+  return api.put("/admin/category-commissions", {
+    categoryId: data.categoryId,
+    restaurantRate: Number(data.restaurantRate),
+    supplierRate: Number(data.supplierRate),
+  });
+}
+
+export async function deleteCategoryCommission(categoryId: string) {
+  return api.delete(`/admin/category-commissions/${categoryId}`);
+}
+
+export async function fetchOrgWallet(orgId: string) {
+  return api.get<any>(`/admin/wallets/${orgId}`);
+}
+
+export type AdminWalletRow = {
+  id: string;
+  organizationId: string;
+  organization: string;
+  orgType: string;
+  orgStatus: string;
+  publicCode: string;
+  referralCode: string;
+  availableBalance: number;
+  heldBalance: number;
+  currency: string;
+  status: string;
+  updated: string;
+};
+
+/** GET /admin/wallets — API filters to restaurants unless type is given, so default to all. */
+export async function fetchAdminWallets(query?: {
+  type?: string;
+  status?: string;
+  walletStatus?: string;
+  search?: string;
+}) {
+  const rows = await fetchAllPages("/admin/wallets", { type: "all", ...query });
+  return rows.map((r: any): AdminWalletRow => {
+    const org = r.organization ?? {};
+    return {
+      id: str(r.id),
+      organizationId: str(r.organizationId ?? org.id, ""),
+      organization: str(org.name, "—"),
+      orgType: str(org.type, "—"),
+      orgStatus: str(org.status, "—"),
+      publicCode: str(org.publicCode, "—"),
+      referralCode: str(org.referralCode, "—"),
+      availableBalance: num(r.availableBalance),
+      heldBalance: num(r.heldBalance),
+      currency: str(r.currency, "AED"),
+      status: str(r.status, "active"),
+      updated: r.updatedAt ? String(r.updatedAt).replace("T", " ").slice(0, 16) : "—",
+    };
+  });
+}
+
+export type WalletTransactionRow = {
+  id: string;
+  type: string;
+  amount: number;
+  balanceBefore: number | null;
+  balanceAfter: number;
+  reference: string;
+  description: string;
+  status: string;
+  createdAt: string;
+};
+
+/** GET /admin/wallets/:orgId/transactions → `{ wallet, transactions }` in the envelope data. */
+export async function fetchOrgWalletTransactions(orgId: string, limit = 50) {
+  const payload = await api.get<any>(`/admin/wallets/${orgId}/transactions`, {
+    query: { limit: Math.min(100, Math.max(1, limit)) },
+  });
+  const list = Array.isArray(payload?.transactions) ? payload.transactions : asArray(payload);
+  return {
+    wallet: (payload?.wallet ?? null) as Record<string, any> | null,
+    transactions: list.map((t: any): WalletTransactionRow => ({
+      id: str(t.id),
+      type: str(t.type, "—"),
+      amount: num(t.amount),
+      balanceBefore: t.balanceBefore == null ? null : num(t.balanceBefore),
+      balanceAfter: num(t.balanceAfter),
+      reference: t.referenceType
+        ? `${str(t.referenceType, "")}${t.referenceId ? `:${str(t.referenceId, "")}` : ""}`
+        : "—",
+      description: str(t.description, "—"),
+      status: str(t.status, "posted"),
+      createdAt: t.createdAt ? String(t.createdAt).replace("T", " ").slice(0, 16) : "—",
+    })),
+  };
+}
+
+export type ReferralRow = {
+  id: string;
+  referralCode: string;
+  referrer: string;
+  referrerCode: string;
+  referrerOrganizationId: string;
+  referred: string;
+  referredCode: string;
+  referredOrganizationId: string;
+  referredOrgStatus: string;
+  status: string;
+  qualificationEvent: string;
+  qualifyingAmount: number;
+  rewardedAt: string;
+  created: string;
+};
+
+function mapReferralRow(r: any): ReferralRow {
+  const referrer = r.referrerOrganization ?? {};
+  const referred = r.referredOrganization ?? {};
+  return {
+    id: str(r.id),
+    referralCode: str(r.referralCode, "—"),
+    referrer: str(referrer.name, "—"),
+    referrerCode: str(referrer.publicCode, "—"),
+    referrerOrganizationId: str(r.referrerOrganizationId ?? referrer.id, ""),
+    referred: str(referred.name, "—"),
+    referredCode: str(referred.publicCode, "—"),
+    referredOrganizationId: str(r.referredOrganizationId ?? referred.id, ""),
+    referredOrgStatus: str(referred.status, "—"),
+    status: str(r.status, "pending"),
+    qualificationEvent: str(r.qualificationEvent, "—"),
+    qualifyingAmount: num(r.qualifyingAmount),
+    rewardedAt: r.rewardedAt ? String(r.rewardedAt).replace("T", " ").slice(0, 16) : "—",
+    created: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
+  };
+}
+
+/** GET /admin/referrals — optional status / org filters are applied server-side. */
+export async function fetchAdminReferrals(query?: {
+  status?: string;
+  referrerOrganizationId?: string;
+  referredOrganizationId?: string;
+  search?: string;
+}) {
+  const rows = await fetchAllPages("/admin/referrals", query);
+  return rows.map(mapReferralRow);
+}
+
+/** GET /admin/referrals/:id — includes both reward records. */
+export async function fetchAdminReferral(id: string) {
+  const detail = await api.get<any>(`/admin/referrals/${id}`);
+  return {
+    ...mapReferralRow(detail),
+    qualifyingPurchaseOrderId: str(detail?.qualifyingPurchaseOrderId, "—"),
+    referrerReward: detail?.referrerReward ?? null,
+    referredReward: detail?.referredReward ?? null,
+    metadata: detail?.metadata ?? null,
+  };
+}
+
+export type RewardRow = {
+  id: string;
+  organization: string;
+  organizationId: string;
+  orgCode: string;
+  type: string;
+  source: string;
+  amount: number;
+  currency: string;
+  status: string;
+  reference: string;
+  description: string;
+  expiresAt: string;
+  created: string;
+};
+
+/** GET /admin/rewards — read-only reward ledger across all organizations. */
+export async function fetchAdminRewards(query?: {
+  status?: string;
+  type?: string;
+  organizationId?: string;
+}) {
+  const rows = await fetchAllPages("/admin/rewards", query);
+  return rows.map((r: any): RewardRow => {
+    const org = r.organization ?? {};
+    return {
+      id: str(r.id),
+      organization: str(org.name, "—"),
+      organizationId: str(r.organizationId ?? org.id, ""),
+      orgCode: str(org.publicCode, "—"),
+      type: str(r.type, "—"),
+      source: str(r.source, "—"),
+      amount: num(r.amount),
+      currency: str(r.currency, "AED"),
+      status: str(r.status, "pending"),
+      reference: r.referenceType
+        ? `${str(r.referenceType, "")}${r.referenceId ? `:${str(r.referenceId, "")}` : ""}`
+        : "—",
+      description: str(r.description, "—"),
+      expiresAt: r.expiresAt ? String(r.expiresAt).slice(0, 10) : "—",
+      created: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
+    };
+  });
+}
+
+export type ReferralProgramSettings = {
+  enabled: boolean;
+  qualificationEvent: string;
+  currency: string;
+  referrerRewardAmount: number;
+  referredRewardAmount: number;
+  minimumOrderAmount: number;
+  maxRewardsPerReferrer: number | null;
+  rewardExpiryDays: number | null;
+  shareBaseUrl: string;
+};
+
+export const REFERRAL_SETTINGS_FALLBACK: ReferralProgramSettings = {
+  enabled: false,
+  qualificationEvent: "FIRST_COMPLETED_ORDER",
+  currency: "AED",
+  referrerRewardAmount: 0,
+  referredRewardAmount: 0,
+  minimumOrderAmount: 0,
+  maxRewardsPerReferrer: null,
+  rewardExpiryDays: null,
+  shareBaseUrl: "",
+};
+
+export async function fetchReferralSettings(): Promise<ReferralProgramSettings> {
+  const raw = await api.get<any>("/admin/referral-settings");
+  return {
+    enabled: Boolean(raw?.enabled),
+    qualificationEvent: str(raw?.qualificationEvent, "FIRST_COMPLETED_ORDER"),
+    currency: str(raw?.currency, "AED"),
+    referrerRewardAmount: num(raw?.referrerRewardAmount),
+    referredRewardAmount: num(raw?.referredRewardAmount),
+    minimumOrderAmount: num(raw?.minimumOrderAmount),
+    maxRewardsPerReferrer: raw?.maxRewardsPerReferrer == null ? null : num(raw.maxRewardsPerReferrer),
+    rewardExpiryDays: raw?.rewardExpiryDays == null ? null : num(raw.rewardExpiryDays),
+    shareBaseUrl: str(raw?.shareBaseUrl, ""),
+  };
+}
+
+/** PUT /admin/referral-settings — blank optional numbers clear the cap (null), not zero. */
+export async function updateReferralSettings(input: {
+  enabled: boolean;
+  qualificationEvent: string;
+  currency: string;
+  referrerRewardAmount: number | string;
+  referredRewardAmount: number | string;
+  minimumOrderAmount: number | string;
+  maxRewardsPerReferrer: number | string | null;
+  rewardExpiryDays: number | string | null;
+  shareBaseUrl: string;
+}) {
+  const currency = String(input.currency || "").trim().toUpperCase();
+  if (currency.length !== 3) throw new Error("Currency must be a 3-letter code (e.g. AED)");
+
+  const shareBaseUrl = String(input.shareBaseUrl || "").trim();
+  if (!/^https?:\/\/.+/i.test(shareBaseUrl)) {
+    throw new Error("Share base URL must be a full URL starting with http:// or https://");
+  }
+
+  const amount = (v: number | string, label: string) => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0) throw new Error(`${label} must be 0 or more`);
+    return n;
+  };
+
+  const optionalInt = (v: number | string | null, label: string, min: number) => {
+    if (v == null || String(v).trim() === "") return null;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < min) throw new Error(`${label} must be a whole number ≥ ${min}`);
+    return n;
+  };
+
+  return api.put<ReferralProgramSettings>("/admin/referral-settings", {
+    enabled: Boolean(input.enabled),
+    qualificationEvent: str(input.qualificationEvent, "FIRST_COMPLETED_ORDER"),
+    currency,
+    referrerRewardAmount: amount(input.referrerRewardAmount, "Referrer reward"),
+    referredRewardAmount: amount(input.referredRewardAmount, "Referred reward"),
+    minimumOrderAmount: amount(input.minimumOrderAmount, "Minimum order amount"),
+    maxRewardsPerReferrer: optionalInt(input.maxRewardsPerReferrer, "Max rewards per referrer", 0),
+    rewardExpiryDays: optionalInt(input.rewardExpiryDays, "Reward expiry days", 1),
+    shareBaseUrl,
+  });
+}
+
+export async function creditOrgWallet(
+  orgId: string,
+  body: { amount: number; description?: string; idempotencyKey?: string },
+) {
+  return api.post(`/admin/wallets/${orgId}/credit`, body);
+}
+
+export async function debitOrgWallet(
+  orgId: string,
+  body: { amount: number; description?: string; idempotencyKey?: string },
+) {
+  return api.post(`/admin/wallets/${orgId}/debit`, body);
+}
+
+export async function importCloudKitchenDishes(file: File, cloudKitchenId?: string) {
+  const form = new FormData();
+  form.append("file", file);
+  if (cloudKitchenId) form.append("cloudKitchenId", cloudKitchenId);
+  return api.post<{
+    imported?: number;
+    failed?: number;
+    errors?: Array<{ row: number; error: string }>;
+    dishes?: any[];
+  }>("/admin/cloud-kitchen/dishes/import", form);
+}
+
+export async function fetchCloudKitchenProduction(query?: {
+  date?: string;
+  cloudKitchenId?: string;
+}) {
+  return api.get<{
+    date?: string;
+    totals?: { produced?: number; sold?: number; remaining?: number };
+    rows?: any[];
+  }>("/admin/cloud-kitchen/production", { query });
 }
 

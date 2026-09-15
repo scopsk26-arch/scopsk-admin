@@ -1,27 +1,55 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
-type Theme = "dark" | "light";
-const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: "light", toggle: () => {} });
+export type Theme = "dark" | "light";
+
+const STORAGE_KEY = "ppp-theme";
+
+function readStoredTheme(): Theme {
+  if (typeof window === "undefined") return "light";
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return stored === "dark" || stored === "light" ? stored : "light";
+}
+
+function applyThemeClass(theme: Theme) {
+  if (typeof document === "undefined") return;
+  document.documentElement.classList.toggle("dark", theme === "dark");
+}
+
+const ThemeCtx = createContext<{ theme: Theme; toggle: () => void; setTheme: (t: Theme) => void }>({
+  theme: "light",
+  toggle: () => {},
+  setTheme: () => {},
+});
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const initial = readStoredTheme();
+    applyThemeClass(initial);
+    return initial;
+  });
 
   useEffect(() => {
-    const stored = (typeof window !== "undefined" && (localStorage.getItem("ppp-theme") as Theme)) || "light";
-    setTheme(stored === "dark" || stored === "light" ? stored : "light");
-  }, []);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("ppp-theme", theme);
+    applyThemeClass(theme);
+    localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
-  return (
-    <ThemeCtx.Provider value={{ theme, toggle: () => setTheme((t) => (t === "dark" ? "light" : "dark")) }}>
-      {children}
-    </ThemeCtx.Provider>
+  const setTheme = useCallback((t: Theme) => setThemeState(t), []);
+  const toggle = useCallback(
+    () => setThemeState((t) => (t === "dark" ? "light" : "dark")),
+    [],
   );
+
+  const value = useMemo(() => ({ theme, toggle, setTheme }), [theme, toggle, setTheme]);
+
+  return <ThemeCtx.Provider value={value}>{children}</ThemeCtx.Provider>;
 }
 
 export const useTheme = () => useContext(ThemeCtx);

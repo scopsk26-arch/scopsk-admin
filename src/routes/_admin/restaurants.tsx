@@ -63,6 +63,22 @@ function RestaurantsPage() {
         { key: "poApprovalLevels", label: "PO approval levels", type: "number" },
         { key: "minRfqValueAed", label: "Min RFQ value (AED)", type: "number" },
         {
+          key: "deliveryFeeMode",
+          label: "Delivery fee mode",
+          type: "select",
+          options: ["none", "fixed", "percent"],
+        },
+        { key: "deliveryFeeValue", label: "Delivery fee value", type: "number" },
+        { key: "creditLimit", label: "Credit limit (AED)", type: "number" },
+        { key: "paymentTermsDays", label: "Payment terms (days)", type: "number" },
+        {
+          key: "discountMode",
+          label: "Discount mode",
+          type: "select",
+          options: ["none", "fixed", "percent"],
+        },
+        { key: "discountValue", label: "Discount value", type: "number" },
+        {
           key: "status",
           label: "Status",
           type: "select",
@@ -82,6 +98,12 @@ function RestaurantsPage() {
         { key: "foodLicenseNumber", label: "Food license" },
         { key: "poApprovalLevels", label: "PO approval levels" },
         { key: "minRfqValueAed", label: "Min RFQ (AED)" },
+        { key: "deliveryFeeMode", label: "Delivery fee mode" },
+        { key: "deliveryFeeValue", label: "Delivery fee value" },
+        { key: "creditLimit", label: "Credit limit" },
+        { key: "paymentTermsDays", label: "Payment terms (days)" },
+        { key: "discountMode", label: "Discount mode" },
+        { key: "discountValue", label: "Discount value" },
         { key: "verificationStatus", label: "Verification" },
         { key: "status", label: "Status" },
         { key: "documentCount", label: "Documents" },
@@ -110,7 +132,16 @@ function RestaurantsPage() {
             .filter((o) => names.includes(o.label.toLowerCase()))
             .map((o) => o.value);
         }
-        return { cuisineIds, cuisines: mapped.cuisines };
+        return {
+          cuisineIds,
+          cuisines: mapped.cuisines,
+          deliveryFeeMode: mapped.deliveryFeeMode,
+          deliveryFeeValue: mapped.deliveryFeeValue,
+          creditLimit: mapped.creditLimit,
+          paymentTermsDays: mapped.paymentTermsDays,
+          discountMode: mapped.discountMode,
+          discountValue: mapped.discountValue,
+        };
       }}
       renderView={(detail) => <OrganizationDetailView detail={detail} />}
       kpis={[
@@ -175,6 +206,8 @@ function RestaurantsPage() {
         },
         { key: "poApprovalLevels", label: "PO levels" },
         { key: "minRfqValueAed", label: "Min RFQ", render: (r) => AED(r.minRfqValueAed) },
+        { key: "creditLimit", label: "Credit", render: (r) => AED(r.creditLimit) },
+        { key: "paymentTermsDays", label: "Terms (d)" },
         {
           key: "verificationStatus",
           label: "KYC",
@@ -199,6 +232,12 @@ function RestaurantsPage() {
         await updateOrgSettings(id, {
           poApprovalLevels: data.poApprovalLevels,
           minRfqValueAed: data.minRfqValueAed,
+          deliveryFeeMode: data.deliveryFeeMode,
+          deliveryFeeValue: data.deliveryFeeValue,
+          creditLimit: data.creditLimit,
+          paymentTermsDays: data.paymentTermsDays,
+          discountMode: data.discountMode,
+          discountValue: data.discountValue,
         });
         await updateOrgProfile(id, data);
         await queryClient.invalidateQueries({ queryKey: ["organizations", "restaurant"] });
@@ -206,6 +245,12 @@ function RestaurantsPage() {
           ...updated,
           poApprovalLevels: Number(data.poApprovalLevels ?? updated.poApprovalLevels),
           minRfqValueAed: Number(data.minRfqValueAed ?? updated.minRfqValueAed),
+          deliveryFeeMode: String(data.deliveryFeeMode ?? updated.deliveryFeeMode ?? "none"),
+          deliveryFeeValue: Number(data.deliveryFeeValue ?? updated.deliveryFeeValue),
+          creditLimit: Number(data.creditLimit ?? updated.creditLimit),
+          paymentTermsDays: Number(data.paymentTermsDays ?? updated.paymentTermsDays),
+          discountMode: String(data.discountMode ?? updated.discountMode ?? "none"),
+          discountValue: Number(data.discountValue ?? updated.discountValue),
           ownerName: String(data.ownerName ?? updated.ownerName ?? ""),
           tradeLicenseNumber: String(data.tradeLicenseNumber ?? updated.tradeLicenseNumber ?? ""),
           vatRegistrationNumber: String(

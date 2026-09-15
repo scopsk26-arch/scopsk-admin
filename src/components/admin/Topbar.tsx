@@ -47,16 +47,16 @@ export function Topbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 h-16 border-b border-border glass-strong">
+      <header className="sticky top-0 z-30 h-16 border-b border-border bg-card/95 backdrop-blur-md supports-[backdrop-filter]:bg-card/85">
         <div className="h-full px-4 lg:px-6 flex items-center gap-4">
-          <nav className="hidden md:flex items-center gap-1.5 text-sm">
+          <nav className="hidden md:flex items-center gap-1.5 text-sm font-sans">
             {crumbs.length === 0 && <span className="text-muted-foreground">Home</span>}
             {crumbs.map((c, i) => (
               <span key={c.to} className="flex items-center gap-1.5">
                 {i > 0 && <span className="text-muted-foreground/40">/</span>}
                 <Link
                   to={c.to}
-                  className={i === crumbs.length - 1 ? "font-medium" : "text-muted-foreground hover:text-foreground"}
+                  className={i === crumbs.length - 1 ? "font-medium text-foreground" : "text-muted-foreground hover:text-foreground"}
                 >
                   {c.label}
                 </Link>
@@ -67,11 +67,11 @@ export function Topbar() {
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={() => setPaletteOpen(true)}
-              className="hidden sm:flex items-center gap-2 text-sm h-9 px-3 rounded-lg border border-border bg-muted/40 hover:bg-muted text-muted-foreground transition-colors w-72"
+              className="hidden sm:flex items-center gap-2 text-sm h-9 px-3 rounded-lg border border-border bg-muted/50 hover:bg-muted text-muted-foreground transition-colors w-72 shadow-soft"
             >
               <Search className="h-4 w-4" />
               <span className="flex-1 text-left">Search anything…</span>
-              <kbd className="text-[10px] font-mono bg-background border border-border px-1.5 py-0.5 rounded">⌘K</kbd>
+              <kbd className="text-[10px] font-mono bg-card border border-border px-1.5 py-0.5 rounded-md">⌘K</kbd>
             </button>
 
             <Button variant="ghost" size="icon" onClick={() => setPaletteOpen(true)} className="sm:hidden">
@@ -82,15 +82,15 @@ export function Topbar() {
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
 
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
               <Bell className="h-4 w-4" />
-              <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-destructive" />
+              <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-primary" />
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 h-9 pl-1 pr-2 rounded-lg hover:bg-muted transition-colors">
-                  <div className="h-7 w-7 rounded-md bg-primary grid place-items-center text-primary-foreground text-xs font-semibold">
+                  <div className="h-7 w-7 rounded-lg bg-primary grid place-items-center text-primary-foreground text-xs font-semibold shadow-soft">
                     {initials}
                   </div>
                   <div className="hidden md:flex flex-col items-start leading-tight">

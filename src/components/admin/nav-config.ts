@@ -3,7 +3,8 @@ import {
   PackageCheck, Receipt, CreditCard, Percent, Boxes, FolderTree, Brain,
   AlertTriangle, MessageSquare, LifeBuoy, BarChart3, ScrollText, UsersRound,
   Settings, Activity, UtensilsCrossed, Award, CheckSquare, Warehouse, Search,
-  // Megaphone, Bell, BookOpen, BadgeCheck, FolderOpen, Code2 — used by commented nav items
+  Wallet, Upload, ChefHat, BadgeCheck, Share2, Gift, SlidersHorizontal,
+  // Megaphone, Bell, BookOpen, FolderOpen, Code2 — used by commented nav items
 } from "lucide-react";
 
 export type NavItem = {
@@ -20,6 +21,8 @@ export const navItems: NavItem[] = [
 
   { group: "Marketplace", title: "Restaurants", to: "/restaurants", icon: Store },
   { group: "Marketplace", title: "Suppliers", to: "/suppliers", icon: Truck },
+  { group: "Marketplace", title: "Restaurant Approvals", to: "/restaurant-approvals", icon: BadgeCheck },
+  { group: "Marketplace", title: "Supplier Approvals", to: "/supplier-approvals", icon: BadgeCheck },
   { group: "Marketplace", title: "KYC Queue", to: "/kyc", icon: ShieldCheck },
 
   { group: "Trade", title: "RFQs", to: "/rfqs", icon: FileText },
@@ -32,12 +35,21 @@ export const navItems: NavItem[] = [
   { group: "Finance", title: "Payments", to: "/payments", icon: CreditCard },
   // Admin-only commission ledger (hidden from app / invoices)
   { group: "Finance", title: "Commissions", to: "/commissions", icon: Percent },
+  { group: "Finance", title: "Category Commissions", to: "/category-commissions", icon: Percent },
+  { group: "Finance", title: "Wallets", to: "/wallets", icon: Wallet },
+  { group: "Finance", title: "Referrals", to: "/referrals", icon: Share2 },
+  { group: "Finance", title: "Rewards", to: "/rewards", icon: Gift },
+  { group: "Finance", title: "Referral Settings", to: "/referral-settings", icon: SlidersHorizontal },
 
   { group: "Catalog", title: "Product Catalog", to: "/catalog", icon: Boxes },
   { group: "Catalog", title: "Categories", to: "/categories", icon: FolderTree },
   { group: "Catalog", title: "Cuisines", to: "/cuisines", icon: UtensilsCrossed },
   { group: "Catalog", title: "Qualities", to: "/qualities", icon: Award },
   { group: "Catalog", title: "Restaurant Inventory", to: "/inventory", icon: Warehouse },
+
+  { group: "Cloud Kitchen", title: "CK Requests", to: "/ck-requests", icon: ChefHat },
+  { group: "Cloud Kitchen", title: "CK Bulk Import", to: "/ck-import", icon: Upload },
+  { group: "Cloud Kitchen", title: "CK Production", to: "/ck-production", icon: ChefHat },
 
   { group: "Intelligence", title: "AI Control Center", to: "/ai-center", icon: Brain },
   { group: "Intelligence", title: "Fraud Detection", to: "/fraud", icon: AlertTriangle },

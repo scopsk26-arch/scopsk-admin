@@ -4,6 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * ResPy Admin theme — aligned with res-py-mobile-app theme tokens.
+ * Brand orange #FF7A00 + forest #2F5D3A, cream light / deep dark surfaces.
+ */
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -54,19 +59,19 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 :root {
   --radius: 0.75rem;
 
-  /* ResPy brand palette */
-  --brand: #c4654a;
+  /* Mobile lightColors */
+  --brand: #FF7A00;
   --sage: #87a878;
   --clay: #e8a87c;
   --cream: #f5f0e8;
-  --forest: #4a6741;
+  --forest: #2F5D3A;
 
   --background: #f9f5ef;
   --foreground: #3d3229;
@@ -74,13 +79,13 @@
   --card-foreground: #3d3229;
   --popover: #ffffff;
   --popover-foreground: #3d3229;
-  --primary: #c4654a;
+  --primary: #FF7A00;
   --primary-foreground: #ffffff;
   --secondary: #ebe4d8;
   --secondary-foreground: #3d3229;
   --muted: #ebe4d8;
   --muted-foreground: #7a6f63;
-  --accent: #e8a87c;
+  --accent: #e8dfd0;
   --accent-foreground: #3d3229;
   --destructive: #c44a3a;
   --destructive-foreground: #ffffff;
@@ -88,41 +93,42 @@
   --success-foreground: #ffffff;
   --warning: #d4a84b;
   --warning-foreground: #3d3229;
-  --info: #4a6741;
+  --info: #2F5D3A;
   --info-foreground: #ffffff;
   --border: #ddd4c5;
   --input: #ddd4c5;
-  --ring: #c4654a;
-  --chart-1: #c4654a;
+  --ring: #FF7A00;
+  --chart-1: #FF7A00;
   --chart-2: #87a878;
-  --chart-3: #4a6741;
+  --chart-3: #2F5D3A;
   --chart-4: #e8a87c;
   --chart-5: #d4a84b;
   --sidebar: #f5f0e8;
   --sidebar-foreground: #3d3229;
-  --sidebar-primary: #c4654a;
+  --sidebar-primary: #FF7A00;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #ebe4d8;
   --sidebar-accent-foreground: #3d3229;
   --sidebar-border: #ddd4c5;
-  --sidebar-ring: #c4654a;
+  --sidebar-ring: #FF7A00;
 
-  --glass-bg: color-mix(in srgb, var(--card) 82%, transparent);
-  --glass-border: color-mix(in srgb, var(--border) 80%, transparent);
-  --gradient-primary: linear-gradient(135deg, #c4654a, #a8543c);
-  --gradient-accent: linear-gradient(135deg, #e8a87c, #87a878);
+  --glass-bg: color-mix(in srgb, var(--card) 88%, transparent);
+  --glass-border: color-mix(in srgb, var(--border) 85%, transparent);
+  --gradient-primary: linear-gradient(135deg, #FF7A00, #e56e00);
+  --gradient-accent: linear-gradient(135deg, #FF7A00, #2F5D3A);
   --gradient-mesh:
-    radial-gradient(at 18% 12%, color-mix(in srgb, #c4654a 14%, transparent) 0, transparent 48%),
-    radial-gradient(at 82% 18%, color-mix(in srgb, #87a878 12%, transparent) 0, transparent 52%),
-    radial-gradient(at 48% 88%, color-mix(in srgb, #e8a87c 14%, transparent) 0, transparent 50%);
-  --shadow-soft: 0 1px 2px 0 rgb(61 50 41 / 0.04), 0 1px 3px 0 rgb(61 50 41 / 0.05);
-  --shadow-elevated: 0 8px 24px -12px rgb(61 50 41 / 0.14), 0 3px 10px -4px rgb(61 50 41 / 0.06);
-  --shadow-glow: 0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent),
-    0 6px 20px -8px color-mix(in srgb, var(--primary) 28%, transparent);
+    radial-gradient(at 16% 10%, color-mix(in srgb, #FF7A00 10%, transparent) 0, transparent 46%),
+    radial-gradient(at 84% 16%, color-mix(in srgb, #2F5D3A 8%, transparent) 0, transparent 50%),
+    radial-gradient(at 50% 90%, color-mix(in srgb, #e8a87c 8%, transparent) 0, transparent 48%);
+  /* Mobile hairline elevation philosophy */
+  --shadow-soft: 0 1px 2px 0 rgb(61 50 41 / 0.06);
+  --shadow-elevated: 0 8px 20px -10px rgb(61 50 41 / 0.12), 0 2px 6px -2px rgb(61 50 41 / 0.06);
+  --shadow-glow: 0 8px 20px -8px rgb(255 122 0 / 0.32);
 }
 
 .dark {
-  --brand: #c4654a;
+  /* Mobile darkColors */
+  --brand: #FF8C2A;
   --sage: #87a878;
   --clay: #e8a87c;
   --cream: #f5f0e8;
@@ -134,14 +140,14 @@
   --card-foreground: #f9f5ef;
   --popover: #2a2420;
   --popover-foreground: #f9f5ef;
-  --primary: #c4654a;
+  --primary: #FF8C2A;
   --primary-foreground: #ffffff;
   --secondary: #3a322c;
   --secondary-foreground: #f9f5ef;
   --muted: #3a322c;
   --muted-foreground: #a89e92;
-  --accent: #e8a87c;
-  --accent-foreground: #1a1614;
+  --accent: #453c34;
+  --accent-foreground: #f9f5ef;
   --destructive: #e06b5c;
   --destructive-foreground: #ffffff;
   --success: #87a878;
@@ -150,32 +156,32 @@
   --warning-foreground: #1a1614;
   --info: #6b8f5e;
   --info-foreground: #1a1614;
-  --border: #4a4038;
-  --input: #4a4038;
-  --ring: #c4654a;
-  --chart-1: #c4654a;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #FF8C2A;
+  --chart-1: #FF8C2A;
   --chart-2: #87a878;
   --chart-3: #6b8f5e;
   --chart-4: #e8a87c;
   --chart-5: #d4a84b;
   --sidebar: #221e1b;
   --sidebar-foreground: #f9f5ef;
-  --sidebar-primary: #c4654a;
+  --sidebar-primary: #FF8C2A;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #3a322c;
   --sidebar-accent-foreground: #f9f5ef;
-  --sidebar-border: #4a4038;
-  --sidebar-ring: #c4654a;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #FF8C2A;
 
-  --glass-bg: color-mix(in srgb, var(--card) 78%, transparent);
+  --glass-bg: color-mix(in srgb, var(--card) 82%, transparent);
   --glass-border: color-mix(in srgb, var(--border) 70%, transparent);
   --gradient-mesh:
-    radial-gradient(at 18% 12%, color-mix(in srgb, #c4654a 18%, transparent) 0, transparent 48%),
-    radial-gradient(at 82% 18%, color-mix(in srgb, #87a878 14%, transparent) 0, transparent 52%),
-    radial-gradient(at 48% 88%, color-mix(in srgb, #e8a87c 12%, transparent) 0, transparent 50%);
-  --shadow-elevated: 0 10px 28px -12px rgb(0 0 0 / 0.45), 0 4px 12px -6px rgb(0 0 0 / 0.3);
-  --shadow-glow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent),
-    0 8px 28px -10px color-mix(in srgb, var(--primary) 40%, transparent);
+    radial-gradient(at 16% 10%, color-mix(in srgb, #FF8C2A 14%, transparent) 0, transparent 46%),
+    radial-gradient(at 84% 16%, color-mix(in srgb, #6b8f5e 10%, transparent) 0, transparent 50%),
+    radial-gradient(at 50% 90%, color-mix(in srgb, #e8a87c 8%, transparent) 0, transparent 48%);
+  --shadow-soft: 0 1px 2px 0 rgb(0 0 0 / 0.35);
+  --shadow-elevated: 0 10px 24px -12px rgb(0 0 0 / 0.45);
+  --shadow-glow: 0 8px 24px -8px rgb(255 140 42 / 0.35);
 }
 
 @layer base {
@@ -186,7 +192,7 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
   }
   h1, h2, h3, h4 {
@@ -194,21 +200,22 @@
     letter-spacing: -0.02em;
   }
   :focus-visible {
-    outline-color: var(--ring);
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 
 @layer utilities {
   .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(10px) saturate(120%);
-    -webkit-backdrop-filter: blur(10px) saturate(120%);
+    backdrop-filter: blur(8px) saturate(115%);
+    -webkit-backdrop-filter: blur(8px) saturate(115%);
     border: 1px solid var(--glass-border);
   }
   .glass-strong {
-    background: color-mix(in srgb, var(--card) 92%, transparent);
-    backdrop-filter: blur(14px) saturate(130%);
-    -webkit-backdrop-filter: blur(14px) saturate(130%);
+    background: color-mix(in srgb, var(--card) 94%, transparent);
+    backdrop-filter: blur(10px) saturate(120%);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
     border: 1px solid var(--glass-border);
   }
   .mesh-bg {
@@ -221,7 +228,7 @@
     background: var(--gradient-accent);
   }
   .text-gradient {
-    background: linear-gradient(135deg, #c4654a, #4a6741);
+    background: linear-gradient(135deg, #FF7A00, #2F5D3A);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -231,22 +238,30 @@
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .grid-bg {
     background-image:
-      linear-gradient(to right, color-mix(in srgb, var(--foreground) 4%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 4%, transparent) 1px, transparent 1px);
+      linear-gradient(to right, color-mix(in srgb, var(--foreground) 3.5%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 3.5%, transparent) 1px, transparent 1px);
     background-size: 32px 32px;
   }
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
+  /* Mobile smallcaps label pattern */
+  .label-caps {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
 }
 
 @font-face {
-  font-family: "Inter";
+  font-family: "DM Sans";
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
-  src: url("https://fonts.gstatic.com/s/inter/v19/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2") format("woff2");
+  src: url("https://fonts.gstatic.com/s/dmsans/v15/rP2tp2ywxg089UriI5-g4vlH9VoD8Cmcqbu6-K6z9mXgjU0.woff2") format("woff2");
 }
 @font-face {
   font-family: "Space Grotesk";

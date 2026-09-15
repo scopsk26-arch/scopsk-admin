@@ -4,13 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import { Sparkles } from "lucide-react";
+import { Sparkles, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
-import respyLogo from "@/assets/respy-logo.png";
-import respyMark from "@/assets/respy-mark.png";
+import { BrandLogo } from "@/components/admin/BrandLogo";
+import { useTheme } from "@/components/admin/ThemeProvider";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — ResPy Admin" }] }),
@@ -19,6 +19,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { theme, toggle } = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -55,11 +56,7 @@ function LoginPage() {
         <div className="absolute inset-0 grid-bg opacity-40" />
 
         <div className="relative">
-          <img
-            src={respyLogo}
-            alt="ResPy"
-            className="h-12 w-auto max-w-[220px] object-contain"
-          />
+          <BrandLogo className="h-14 max-w-[260px]" />
         </div>
 
         <div className="relative mt-auto max-w-md">
@@ -81,9 +78,9 @@ function LoginPage() {
               { v: "1,293", l: "Suppliers" },
               { v: "AED 28.4M", l: "Volume" },
             ].map((s) => (
-              <div key={s.l} className="glass rounded-xl p-3">
-                <div className="font-display text-xl font-semibold">{s.v}</div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.l}</div>
+            <div key={s.l} className="rounded-xl border border-border bg-card/90 p-3 shadow-soft">
+                <div className="font-display text-xl font-semibold tabular-nums">{s.v}</div>
+                <div className="label-caps mt-1">{s.l}</div>
               </div>
             ))}
           </div>
@@ -91,16 +88,25 @@ function LoginPage() {
       </div>
 
       {/* Right form */}
-      <div className="flex items-center justify-center p-6 lg:p-12">
+      <div className="relative flex items-center justify-center p-6 lg:p-12">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={toggle}
+          aria-label="Toggle theme"
+          className="absolute top-4 right-4"
+        >
+          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </Button>
         <div className="w-full max-w-sm">
           <div className="lg:hidden flex items-center gap-2.5 mb-8">
-            <img src={respyMark} alt="ResPy" className="h-10 w-10 rounded-xl object-cover shadow-soft" />
-            <span className="font-display font-semibold">ResPy Admin</span>
+            <BrandLogo className="h-12 max-w-[200px]" />
           </div>
 
           <h2 className="text-2xl font-display font-semibold tracking-tight">Sign in to your workspace</h2>
           <p className="text-sm text-muted-foreground mt-1.5">
-            Use your enterprise credentials to access the command center.
+            Use your enterprise credentials to access the ResPy command center.
           </p>
 
           <form onSubmit={onSubmit} className="mt-5 space-y-4">
