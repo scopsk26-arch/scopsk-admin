@@ -17,6 +17,8 @@ export const Route = createFileRoute("/_admin/ck-import")({
 
 type ImportResult = {
   imported?: number;
+  created?: number;
+  updated?: number;
   failed?: number;
   errors?: Array<{ row: number; error: string }>;
 };
@@ -53,9 +55,15 @@ function CkImportPage() {
     },
     onSuccess: (data) => {
       setResult(data || {});
-      const imported = num(data?.imported);
+      const created = num(data?.created ?? data?.imported);
+      const updated = num(data?.updated);
       const failed = num(data?.failed);
-      toast.success(`Import finished — ${imported} imported, ${failed} failed`);
+      const parts = [
+        created ? `${created} created` : "",
+        updated ? `${updated} updated` : "",
+        failed ? `${failed} failed` : "",
+      ].filter(Boolean);
+      toast.success(`Import finished — ${parts.join(", ") || "done"}`);
     },
     onError: (err: Error) => toast.error(err.message || "Import failed"),
   });
@@ -69,8 +77,15 @@ function CkImportPage() {
         <div>
           <h1 className="text-2xl font-display font-semibold tracking-tight">CK Bulk Import</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Upload a CSV of cloud-kitchen dishes. Required columns: name, basePrice. Optional:
-            cloudKitchenId, description, category, currency, status, prepMinutes, produced.
+            Upload a CSV of cloud-kitchen dishes. Required columns: <code>name</code>,{" "}
+            <code>basePrice</code>. Include an <code>id</code> column (dish UUID) to update an
+            existing row instead of creating a new one.
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Optional columns: <code>cloudKitchenId</code>, <code>description</code>,{" "}
+            <code>category</code>, <code>currency</code>, <code>status</code> (or{" "}
+            <code>availability</code>), <code>prepMinutes</code>, <code>produced</code>,{" "}
+            <code>ingredients</code>, <code>bulkPricing</code> (JSON), <code>imageUrl</code>.
           </p>
         </div>
       </div>
@@ -116,8 +131,14 @@ function CkImportPage() {
         <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-4">
           <div className="flex flex-wrap gap-4 text-sm">
             <div>
-              <span className="text-muted-foreground">Imported: </span>
-              <span className="font-semibold text-primary">{num(result.imported)}</span>
+              <span className="text-muted-foreground">Created: </span>
+              <span className="font-semibold text-primary">
+                {num(result.created ?? result.imported)}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Updated: </span>
+              <span className="font-semibold text-primary">{num(result.updated)}</span>
             </div>
             <div>
               <span className="text-muted-foreground">Failed: </span>

@@ -1,10 +1,11 @@
 import {
   LayoutDashboard, Store, Truck, ShieldCheck, FileText, Quote, ClipboardList,
-  PackageCheck, Receipt, CreditCard, Percent, Boxes, FolderTree, Brain,
+  PackageCheck, Receipt, CreditCard, Percent, Boxes, FolderTree, Brain, Star, Landmark,
   AlertTriangle, MessageSquare, LifeBuoy, BarChart3, ScrollText, UsersRound,
   Settings, Activity, UtensilsCrossed, Award, CheckSquare, Warehouse, Search,
   Wallet, Upload, ChefHat, BadgeCheck, Share2, Gift, SlidersHorizontal, Soup,
-  // Megaphone, Bell, BookOpen, FolderOpen, Code2 — used by commented nav items
+  Megaphone,
+  // Bell, BookOpen, FolderOpen, Code2 — used by commented nav items
 } from "lucide-react";
 
 export type NavItem = {
@@ -32,6 +33,7 @@ export const navItems: NavItem[] = [
   { group: "Trade", title: "Deliveries", to: "/deliveries", icon: PackageCheck },
 
   { group: "Finance", title: "Invoices", to: "/invoices", icon: Receipt },
+  { group: "Finance", title: "Outstanding", to: "/outstanding", icon: Landmark },
   { group: "Finance", title: "Payments", to: "/payments", icon: CreditCard },
   // Admin-only commission ledger (hidden from app / invoices)
   { group: "Finance", title: "Commissions", to: "/commissions", icon: Percent },
@@ -56,8 +58,10 @@ export const navItems: NavItem[] = [
   { group: "Intelligence", title: "Fraud Detection", to: "/fraud", icon: AlertTriangle },
   { group: "Intelligence", title: "Reports & BI", to: "/reports", icon: BarChart3 },
 
+  { group: "Engagement", title: "Ratings", to: "/ratings", icon: Star },
   { group: "Engagement", title: "Communications", to: "/communications", icon: MessageSquare },
   { group: "Engagement", title: "Support", to: "/support", icon: LifeBuoy },
+  { group: "Engagement", title: "Banners", to: "/banners", icon: Megaphone },
   // { group: "Engagement", title: "Marketing", to: "/marketing", icon: Megaphone },
   // { group: "Engagement", title: "Notifications", to: "/notifications", icon: Bell },
 

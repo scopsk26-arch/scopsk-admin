@@ -26,10 +26,12 @@ import { Route as AdminRestaurantApprovalsRouteImport } from './routes/_admin/re
 import { Route as AdminReportsRouteImport } from './routes/_admin/reports'
 import { Route as AdminReferralsRouteImport } from './routes/_admin/referrals'
 import { Route as AdminReferralSettingsRouteImport } from './routes/_admin/referral-settings'
+import { Route as AdminRatingsRouteImport } from './routes/_admin/ratings'
 import { Route as AdminQuotationsRouteImport } from './routes/_admin/quotations'
 import { Route as AdminQualitiesRouteImport } from './routes/_admin/qualities'
 import { Route as AdminPurchaseOrdersRouteImport } from './routes/_admin/purchase-orders'
 import { Route as AdminPaymentsRouteImport } from './routes/_admin/payments'
+import { Route as AdminOutstandingRouteImport } from './routes/_admin/outstanding'
 import { Route as AdminNotificationsRouteImport } from './routes/_admin/notifications'
 import { Route as AdminMarketingRouteImport } from './routes/_admin/marketing'
 import { Route as AdminLookupRouteImport } from './routes/_admin/lookup'
@@ -51,6 +53,7 @@ import { Route as AdminCkDishesRouteImport } from './routes/_admin/ck-dishes'
 import { Route as AdminCategoryCommissionsRouteImport } from './routes/_admin/category-commissions'
 import { Route as AdminCategoriesRouteImport } from './routes/_admin/categories'
 import { Route as AdminCatalogRouteImport } from './routes/_admin/catalog'
+import { Route as AdminBannersRouteImport } from './routes/_admin/banners'
 import { Route as AdminAuditLogsRouteImport } from './routes/_admin/audit-logs'
 import { Route as AdminApprovalsRouteImport } from './routes/_admin/approvals'
 import { Route as AdminApiRouteImport } from './routes/_admin/api'
@@ -142,6 +145,11 @@ const AdminReferralSettingsRoute = AdminReferralSettingsRouteImport.update({
   path: '/referral-settings',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminRatingsRoute = AdminRatingsRouteImport.update({
+  id: '/ratings',
+  path: '/ratings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminQuotationsRoute = AdminQuotationsRouteImport.update({
   id: '/quotations',
   path: '/quotations',
@@ -160,6 +168,11 @@ const AdminPurchaseOrdersRoute = AdminPurchaseOrdersRouteImport.update({
 const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
   id: '/payments',
   path: '/payments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOutstandingRoute = AdminOutstandingRouteImport.update({
+  id: '/outstanding',
+  path: '/outstanding',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
@@ -268,6 +281,11 @@ const AdminCatalogRoute = AdminCatalogRouteImport.update({
   path: '/catalog',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminBannersRoute = AdminBannersRouteImport.update({
+  id: '/banners',
+  path: '/banners',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAuditLogsRoute = AdminAuditLogsRouteImport.update({
   id: '/audit-logs',
   path: '/audit-logs',
@@ -302,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/api': typeof AdminApiRoute
   '/approvals': typeof AdminApprovalsRoute
   '/audit-logs': typeof AdminAuditLogsRoute
+  '/banners': typeof AdminBannersRoute
   '/catalog': typeof AdminCatalogRoute
   '/categories': typeof AdminCategoriesRoute
   '/category-commissions': typeof AdminCategoryCommissionsRoute
@@ -323,10 +342,12 @@ export interface FileRoutesByFullPath {
   '/lookup': typeof AdminLookupRoute
   '/marketing': typeof AdminMarketingRoute
   '/notifications': typeof AdminNotificationsRoute
+  '/outstanding': typeof AdminOutstandingRoute
   '/payments': typeof AdminPaymentsRoute
   '/purchase-orders': typeof AdminPurchaseOrdersRoute
   '/qualities': typeof AdminQualitiesRoute
   '/quotations': typeof AdminQuotationsRoute
+  '/ratings': typeof AdminRatingsRoute
   '/referral-settings': typeof AdminReferralSettingsRoute
   '/referrals': typeof AdminReferralsRoute
   '/reports': typeof AdminReportsRoute
@@ -350,6 +371,7 @@ export interface FileRoutesByTo {
   '/api': typeof AdminApiRoute
   '/approvals': typeof AdminApprovalsRoute
   '/audit-logs': typeof AdminAuditLogsRoute
+  '/banners': typeof AdminBannersRoute
   '/catalog': typeof AdminCatalogRoute
   '/categories': typeof AdminCategoriesRoute
   '/category-commissions': typeof AdminCategoryCommissionsRoute
@@ -371,10 +393,12 @@ export interface FileRoutesByTo {
   '/lookup': typeof AdminLookupRoute
   '/marketing': typeof AdminMarketingRoute
   '/notifications': typeof AdminNotificationsRoute
+  '/outstanding': typeof AdminOutstandingRoute
   '/payments': typeof AdminPaymentsRoute
   '/purchase-orders': typeof AdminPurchaseOrdersRoute
   '/qualities': typeof AdminQualitiesRoute
   '/quotations': typeof AdminQuotationsRoute
+  '/ratings': typeof AdminRatingsRoute
   '/referral-settings': typeof AdminReferralSettingsRoute
   '/referrals': typeof AdminReferralsRoute
   '/reports': typeof AdminReportsRoute
@@ -400,6 +424,7 @@ export interface FileRoutesById {
   '/_admin/api': typeof AdminApiRoute
   '/_admin/approvals': typeof AdminApprovalsRoute
   '/_admin/audit-logs': typeof AdminAuditLogsRoute
+  '/_admin/banners': typeof AdminBannersRoute
   '/_admin/catalog': typeof AdminCatalogRoute
   '/_admin/categories': typeof AdminCategoriesRoute
   '/_admin/category-commissions': typeof AdminCategoryCommissionsRoute
@@ -421,10 +446,12 @@ export interface FileRoutesById {
   '/_admin/lookup': typeof AdminLookupRoute
   '/_admin/marketing': typeof AdminMarketingRoute
   '/_admin/notifications': typeof AdminNotificationsRoute
+  '/_admin/outstanding': typeof AdminOutstandingRoute
   '/_admin/payments': typeof AdminPaymentsRoute
   '/_admin/purchase-orders': typeof AdminPurchaseOrdersRoute
   '/_admin/qualities': typeof AdminQualitiesRoute
   '/_admin/quotations': typeof AdminQuotationsRoute
+  '/_admin/ratings': typeof AdminRatingsRoute
   '/_admin/referral-settings': typeof AdminReferralSettingsRoute
   '/_admin/referrals': typeof AdminReferralsRoute
   '/_admin/reports': typeof AdminReportsRoute
@@ -450,6 +477,7 @@ export interface FileRouteTypes {
     | '/api'
     | '/approvals'
     | '/audit-logs'
+    | '/banners'
     | '/catalog'
     | '/categories'
     | '/category-commissions'
@@ -471,10 +499,12 @@ export interface FileRouteTypes {
     | '/lookup'
     | '/marketing'
     | '/notifications'
+    | '/outstanding'
     | '/payments'
     | '/purchase-orders'
     | '/qualities'
     | '/quotations'
+    | '/ratings'
     | '/referral-settings'
     | '/referrals'
     | '/reports'
@@ -498,6 +528,7 @@ export interface FileRouteTypes {
     | '/api'
     | '/approvals'
     | '/audit-logs'
+    | '/banners'
     | '/catalog'
     | '/categories'
     | '/category-commissions'
@@ -519,10 +550,12 @@ export interface FileRouteTypes {
     | '/lookup'
     | '/marketing'
     | '/notifications'
+    | '/outstanding'
     | '/payments'
     | '/purchase-orders'
     | '/qualities'
     | '/quotations'
+    | '/ratings'
     | '/referral-settings'
     | '/referrals'
     | '/reports'
@@ -547,6 +580,7 @@ export interface FileRouteTypes {
     | '/_admin/api'
     | '/_admin/approvals'
     | '/_admin/audit-logs'
+    | '/_admin/banners'
     | '/_admin/catalog'
     | '/_admin/categories'
     | '/_admin/category-commissions'
@@ -568,10 +602,12 @@ export interface FileRouteTypes {
     | '/_admin/lookup'
     | '/_admin/marketing'
     | '/_admin/notifications'
+    | '/_admin/outstanding'
     | '/_admin/payments'
     | '/_admin/purchase-orders'
     | '/_admin/qualities'
     | '/_admin/quotations'
+    | '/_admin/ratings'
     | '/_admin/referral-settings'
     | '/_admin/referrals'
     | '/_admin/reports'
@@ -715,6 +751,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReferralSettingsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/ratings': {
+      id: '/_admin/ratings'
+      path: '/ratings'
+      fullPath: '/ratings'
+      preLoaderRoute: typeof AdminRatingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/quotations': {
       id: '/_admin/quotations'
       path: '/quotations'
@@ -741,6 +784,13 @@ declare module '@tanstack/react-router' {
       path: '/payments'
       fullPath: '/payments'
       preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/outstanding': {
+      id: '/_admin/outstanding'
+      path: '/outstanding'
+      fullPath: '/outstanding'
+      preLoaderRoute: typeof AdminOutstandingRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_admin/notifications': {
@@ -890,6 +940,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCatalogRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/banners': {
+      id: '/_admin/banners'
+      path: '/banners'
+      fullPath: '/banners'
+      preLoaderRoute: typeof AdminBannersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/audit-logs': {
       id: '/_admin/audit-logs'
       path: '/audit-logs'
@@ -934,6 +991,7 @@ interface AdminRouteChildren {
   AdminApiRoute: typeof AdminApiRoute
   AdminApprovalsRoute: typeof AdminApprovalsRoute
   AdminAuditLogsRoute: typeof AdminAuditLogsRoute
+  AdminBannersRoute: typeof AdminBannersRoute
   AdminCatalogRoute: typeof AdminCatalogRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCategoryCommissionsRoute: typeof AdminCategoryCommissionsRoute
@@ -955,10 +1013,12 @@ interface AdminRouteChildren {
   AdminLookupRoute: typeof AdminLookupRoute
   AdminMarketingRoute: typeof AdminMarketingRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
+  AdminOutstandingRoute: typeof AdminOutstandingRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminPurchaseOrdersRoute: typeof AdminPurchaseOrdersRoute
   AdminQualitiesRoute: typeof AdminQualitiesRoute
   AdminQuotationsRoute: typeof AdminQuotationsRoute
+  AdminRatingsRoute: typeof AdminRatingsRoute
   AdminReferralSettingsRoute: typeof AdminReferralSettingsRoute
   AdminReferralsRoute: typeof AdminReferralsRoute
   AdminReportsRoute: typeof AdminReportsRoute
@@ -981,6 +1041,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminApiRoute: AdminApiRoute,
   AdminApprovalsRoute: AdminApprovalsRoute,
   AdminAuditLogsRoute: AdminAuditLogsRoute,
+  AdminBannersRoute: AdminBannersRoute,
   AdminCatalogRoute: AdminCatalogRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCategoryCommissionsRoute: AdminCategoryCommissionsRoute,
@@ -1002,10 +1063,12 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminLookupRoute: AdminLookupRoute,
   AdminMarketingRoute: AdminMarketingRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
+  AdminOutstandingRoute: AdminOutstandingRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminPurchaseOrdersRoute: AdminPurchaseOrdersRoute,
   AdminQualitiesRoute: AdminQualitiesRoute,
   AdminQuotationsRoute: AdminQuotationsRoute,
+  AdminRatingsRoute: AdminRatingsRoute,
   AdminReferralSettingsRoute: AdminReferralSettingsRoute,
   AdminReferralsRoute: AdminReferralsRoute,
   AdminReportsRoute: AdminReportsRoute,

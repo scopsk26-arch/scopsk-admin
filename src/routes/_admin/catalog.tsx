@@ -32,6 +32,8 @@ type ProductRow = {
   imageUrl: string;
   imageFileId: string;
   exciseApplicable: string;
+  exciseRate: string;
+  vatRate: string;
 };
 
 function mapProductRow(r: any): ProductRow {
@@ -76,6 +78,8 @@ function mapProductRow(r: any): ProductRow {
     exciseApplicable: r.exciseApplicable === true || r.exciseApplicable === "true" || r.exciseApplicable === 1
       ? "true"
       : "false",
+    exciseRate: r.exciseRate != null && r.exciseRate !== "" ? String(r.exciseRate) : "",
+    vatRate: r.vatRate != null && r.vatRate !== "" ? String(r.vatRate) : "",
   };
 }
 
@@ -109,6 +113,10 @@ function toProductPayload(data: Record<string, any>) {
       || data.exciseApplicable === "true"
       || data.exciseApplicable === "yes"
       || data.exciseApplicable === 1,
+    exciseRate:
+      data.exciseRate === "" || data.exciseRate == null ? null : Number(data.exciseRate),
+    vatRate:
+      data.vatRate === "" || data.vatRate == null ? null : Number(data.vatRate),
     ...imagePatch,
   };
 }
@@ -217,6 +225,8 @@ function CatalogPage() {
           type: "select",
           options: ["false", "true"],
         },
+        { key: "exciseRate", label: "Excise % override", type: "number" },
+        { key: "vatRate", label: "VAT % override", type: "number" },
         {
           key: "status",
           label: "Status",
@@ -235,6 +245,7 @@ function CatalogPage() {
         { key: "supplier", label: "Supplier" },
         { key: "stock", label: "Stock" },
         { key: "exciseApplicable", label: "Excise applicable" },
+        { key: "vatRate", label: "VAT % override" },
         { key: "description", label: "Description" },
         { key: "status", label: "Status" },
       ]}
