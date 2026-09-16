@@ -28,12 +28,12 @@ type DishRow = {
   imageUrl: string;
 };
 
-function mapDish(r: any): DishRow {
+function mapDish(r: any, kitchenNameFallback = ""): DishRow {
   return {
     id: str(r.id),
     name: str(r.name, "—"),
     cloudKitchenId: str(r.cloudKitchenId ?? r.cloudKitchen?.id),
-    kitchen: str(r.cloudKitchen?.name, "—"),
+    kitchen: str(r.cloudKitchen?.name || kitchenNameFallback, "—"),
     category: str(r.category, "—"),
     basePrice: num(r.basePrice),
     currency: str(r.currency, "AED"),
@@ -42,6 +42,60 @@ function mapDish(r: any): DishRow {
     description: str(r.description, ""),
     imageUrl: str(r.imageUrl, ""),
   };
+}
+
+/** Prefer admin list; fall back to kitchen/featured endpoints when admin routes are not deployed. */
+async function loadCkDishes(): Promise<DishRow[]> {
+  try {
+    const list = await fetchList("/admin/cloud-kitchen/dishes", { limit: 100 });
+    return list.map((r) => mapDish(r));
+  } catch {
+    // Admin route missing / forbidden — use marketplace CK endpoints.
+  }
+
+  try {
+    const featured = await fetchList("/cloud-kitchen/dishes", { limit: 100 });
+    if (featured.length) return featured.map((r) => mapDish(r));
+  } catch {
+    // continue to per-kitchen aggregation
+  }
+
+  const kitchens = await fetchList("/cloud-kitchen/kitchens", { limit: 100 });
+  const byId = new Map<string, DishRow>();
+
+  for (const k of kitchens) {
+    const kitchenId = str(k.id, "");
+    const kitchenName = str(k.name, kitchenId);
+    if (!kitchenId) continue;
+
+    const nested = Array.isArray(k.dishes) ? k.dishes : [];
+    for (const d of nested) {
+      const row = mapDish(
+        { ...d, cloudKitchenId: d.cloudKitchenId || kitchenId, cloudKitchen: d.cloudKitchen || { id: kitchenId, name: kitchenName } },
+        kitchenName,
+      );
+      if (row.id && row.id !== "—") byId.set(row.id, row);
+    }
+
+    try {
+      const dishes = await fetchList(`/cloud-kitchen/kitchens/${kitchenId}/dishes`, { limit: 100 });
+      for (const d of dishes) {
+        const row = mapDish(
+          {
+            ...d,
+            cloudKitchenId: d.cloudKitchenId || kitchenId,
+            cloudKitchen: d.cloudKitchen || { id: kitchenId, name: kitchenName },
+          },
+          kitchenName,
+        );
+        if (row.id && row.id !== "—") byId.set(row.id, row);
+      }
+    } catch {
+      // kitchen may be empty or inaccessible
+    }
+  }
+
+  return Array.from(byId.values());
 }
 
 function CkDishesPage() {
@@ -72,10 +126,7 @@ function CkDishesPage() {
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["admin", "ck-dishes"],
-    queryFn: async () => {
-      const list = await fetchList("/admin/cloud-kitchen/dishes", { limit: 100 });
-      return list.map(mapDish);
-    },
+    queryFn: loadCkDishes,
   });
 
   const active = rows.filter((r) => r.status === "active").length;
@@ -175,13 +226,9 @@ function CkDishesPage() {
           label: "Price",
           className: "whitespace-nowrap w-[1%]",
           render: (r) =>
-            r.currency === "AED" || !r.currency ? (
-              <AED amount={r.basePrice} />
-            ) : (
-              <span>
-                {r.currency} {r.basePrice.toLocaleString()}
-              </span>
-            ),
+            r.currency === "AED" || !r.currency
+              ? AED(r.basePrice)
+              : `${r.currency} ${r.basePrice.toLocaleString()}`,
         },
         {
           key: "prepMinutes",
@@ -205,7 +252,7 @@ function CkDishesPage() {
         if (!Number.isFinite(basePrice) || basePrice < 0) {
           throw new Error("Base price must be 0 or more");
         }
-        const created = await api.post<any>("/admin/cloud-kitchen/dishes", {
+        const payload = {
           cloudKitchenId,
           name,
           basePrice,
@@ -218,7 +265,17 @@ function CkDishesPage() {
             data.prepMinutes !== "" && data.prepMinutes != null
               ? Number(data.prepMinutes)
               : undefined,
-        });
+        };
+        let created: any;
+        try {
+          created = await api.post<any>("/admin/cloud-kitchen/dishes", payload);
+        } catch {
+          const { cloudKitchenId: _ck, ...kitchenPayload } = payload;
+          created = await api.post<any>(
+            `/cloud-kitchen/kitchens/${cloudKitchenId}/dishes`,
+            kitchenPayload,
+          );
+        }
         await invalidate();
         return mapDish({
           ...created,
@@ -236,7 +293,7 @@ function CkDishesPage() {
         if (!Number.isFinite(basePrice) || basePrice < 0) {
           throw new Error("Base price must be 0 or more");
         }
-        const updated = await api.patch<any>(`/admin/cloud-kitchen/dishes/${id}`, {
+        const payload = {
           ...(cloudKitchenId ? { cloudKitchenId } : {}),
           name,
           basePrice,
@@ -251,7 +308,14 @@ function CkDishesPage() {
             data.prepMinutes !== "" && data.prepMinutes != null
               ? Number(data.prepMinutes)
               : undefined,
-        });
+        };
+        let updated: any;
+        try {
+          updated = await api.patch<any>(`/admin/cloud-kitchen/dishes/${id}`, payload);
+        } catch {
+          const { cloudKitchenId: _ck, ...dishPayload } = payload;
+          updated = await api.patch<any>(`/cloud-kitchen/dishes/${id}`, dishPayload);
+        }
         await invalidate();
         const kid = str(updated.cloudKitchenId ?? cloudKitchenId);
         return mapDish({
@@ -263,7 +327,11 @@ function CkDishesPage() {
         });
       }}
       onDelete={async (id) => {
-        await api.delete(`/admin/cloud-kitchen/dishes/${id}`);
+        try {
+          await api.delete(`/admin/cloud-kitchen/dishes/${id}`);
+        } catch {
+          await api.delete(`/cloud-kitchen/dishes/${id}`);
+        }
         await invalidate();
       }}
     />
