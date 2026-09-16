@@ -413,6 +413,14 @@ export async function fetchList(path: string, query?: Record<string, string | nu
   }
 }
 
+export async function fetchAdminOutstanding(query?: Record<string, string | number | boolean | undefined | null>) {
+  return fetchAllPages("/admin/outstanding", query);
+}
+
+export async function updateRating(id: string, body: { status?: string; score?: number; comment?: string | null }) {
+  return api.patch(`/ratings/${id}`, body);
+}
+
 /** Admin-only secure decoder for enterprise tracking codes. */
 export async function fetchLookup(q: string) {
   return api.get("/admin/lookup", { query: { q } });
@@ -887,6 +895,7 @@ export type AdminWalletRow = {
   referralCode: string;
   availableBalance: number;
   heldBalance: number;
+  pendingBalance: number;
   currency: string;
   status: string;
   updated: string;
@@ -912,6 +921,7 @@ export async function fetchAdminWallets(query?: {
       referralCode: str(org.referralCode, "—"),
       availableBalance: num(r.availableBalance),
       heldBalance: num(r.heldBalance),
+      pendingBalance: num(r.pendingBalance ?? r.heldBalance),
       currency: str(r.currency, "AED"),
       status: str(r.status, "active"),
       updated: r.updatedAt ? String(r.updatedAt).replace("T", " ").slice(0, 16) : "—",
@@ -929,6 +939,9 @@ export type WalletTransactionRow = {
   description: string;
   status: string;
   createdAt: string;
+  orderNumber?: string | null;
+  purchaseOrderId?: string | null;
+  orderId?: string | null;
 };
 
 /** GET /admin/wallets/:orgId/transactions → `{ wallet, transactions }` in the envelope data. */
@@ -951,6 +964,9 @@ export async function fetchOrgWalletTransactions(orgId: string, limit = 50) {
       description: str(t.description, "—"),
       status: str(t.status, "posted"),
       createdAt: t.createdAt ? String(t.createdAt).replace("T", " ").slice(0, 16) : "—",
+      orderNumber: t.orderNumber ? str(t.orderNumber) : null,
+      purchaseOrderId: t.purchaseOrderId ? str(t.purchaseOrderId) : null,
+      orderId: t.orderId ? str(t.orderId) : null,
     })),
   };
 }
@@ -1160,16 +1176,29 @@ export async function debitOrgWallet(
   return api.post(`/admin/wallets/${orgId}/debit`, body);
 }
 
+export async function refundWalletPayment(body: { paymentId: string; reason?: string }) {
+  return api.post("/admin/wallets/refund", body);
+}
+
 export async function importCloudKitchenDishes(file: File, cloudKitchenId?: string) {
   const form = new FormData();
   form.append("file", file);
   if (cloudKitchenId) form.append("cloudKitchenId", cloudKitchenId);
   return api.post<{
     imported?: number;
+    created?: number;
+    updated?: number;
     failed?: number;
     errors?: Array<{ row: number; error: string }>;
     dishes?: any[];
   }>("/admin/cloud-kitchen/dishes/import", form);
+}
+
+export async function updateCloudKitchen(
+  kitchenId: string,
+  body: Record<string, unknown>,
+) {
+  return api.patch(`/admin/cloud-kitchen/kitchens/${kitchenId}`, body);
 }
 
 export async function fetchCloudKitchenProduction(query?: {
@@ -1181,5 +1210,11 @@ export async function fetchCloudKitchenProduction(query?: {
     totals?: { produced?: number; sold?: number; remaining?: number };
     rows?: any[];
   }>("/admin/cloud-kitchen/production", { query });
+}
+
+/** PATCH /admin/banners/reorder — persist banner sort order. */
+export async function reorderBanners(items: { id: string; sortOrder: number }[]) {
+  if (!items.length) return [];
+  return api.patch("/admin/banners/reorder", { items });
 }
 

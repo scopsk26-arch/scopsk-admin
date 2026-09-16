@@ -92,14 +92,14 @@ function WalletsPage() {
 
   const totals = useMemo(() => {
     let available = 0;
-    let held = 0;
+    let pending = 0;
     let frozen = 0;
     for (const w of wallets as AdminWalletRow[]) {
       available += num(w.availableBalance);
-      held += num(w.heldBalance);
+      pending += num(w.pendingBalance ?? w.heldBalance);
       if (w.status !== "active") frozen += 1;
     }
-    return { available, held, frozen };
+    return { available, pending, frozen };
   }, [wallets]);
 
   const { data: wallet, isLoading, isError, refetch } = useQuery({
@@ -173,7 +173,7 @@ function WalletsPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label="Wallets" value={String(wallets.length)} />
         <Kpi label="Total available" value={AED(totals.available)} tone="success" />
-        <Kpi label="Total held" value={AED(totals.held)} tone="info" />
+        <Kpi label="Total pending" value={AED(totals.pending)} tone="info" />
         <Kpi label="Not active" value={String(totals.frozen)} tone="warning" />
       </div>
 
@@ -204,7 +204,7 @@ function WalletsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
-                {["Organization", "Type", "Code", "Available", "Held", "Currency", "Status", "Updated"].map((h) => (
+                {["Organization", "Type", "Code", "Available", "Pending", "Currency", "Status", "Updated"].map((h) => (
                   <th key={h} className="px-4 py-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap">
                     {h}
                   </th>
@@ -214,7 +214,7 @@ function WalletsPage() {
             <tbody>
               {filteredWallets.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-14 text-center">
+                  <td colSpan={9} className="px-4 py-14 text-center">
                     <div className="text-sm font-medium text-foreground">No wallets</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {walletsLoading
@@ -241,7 +241,7 @@ function WalletsPage() {
                     <td className="px-4 py-3 capitalize whitespace-nowrap">{w.orgType}</td>
                     <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">{w.publicCode}</td>
                     <td className="px-4 py-3 whitespace-nowrap tabular-nums">{AED(w.availableBalance)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap tabular-nums">{AED(w.heldBalance)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap tabular-nums">{AED(w.pendingBalance ?? w.heldBalance)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{w.currency}</td>
                     <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={w.status} /></td>
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{w.updated}</td>
@@ -285,8 +285,10 @@ function WalletsPage() {
                 <div className="text-lg font-semibold mt-0.5">{AED(num(wallet?.availableBalance))}</div>
               </div>
               <div className="rounded-xl border border-border bg-muted/30 p-3">
-                <div className="text-xs text-muted-foreground">Held</div>
-                <div className="text-lg font-semibold mt-0.5">{AED(num(wallet?.heldBalance))}</div>
+                <div className="text-xs text-muted-foreground">Pending</div>
+                <div className="text-lg font-semibold mt-0.5">
+                  {AED(num(wallet?.pendingBalance ?? wallet?.heldBalance))}
+                </div>
               </div>
               <div className="rounded-xl border border-border bg-muted/30 p-3">
                 <div className="text-xs text-muted-foreground">Credit limit</div>
@@ -377,7 +379,7 @@ function WalletsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
-                {["Date", "Type", "Amount", "Balance before", "Balance after", "Reference", "Description", "Status"].map((h) => (
+                {["Date", "Type", "Amount", "Balance before", "Balance after", "Order", "Reference", "Description", "Status"].map((h) => (
                   <th key={h} className="px-4 py-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap">
                     {h}
                   </th>
@@ -387,7 +389,7 @@ function WalletsPage() {
             <tbody>
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-14 text-center">
+                  <td colSpan={9} className="px-4 py-14 text-center">
                     <div className="text-sm font-medium text-foreground">No transactions</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {!orgId
@@ -412,6 +414,9 @@ function WalletsPage() {
                       {t.balanceBefore == null ? "—" : AED(t.balanceBefore)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap tabular-nums">{AED(t.balanceAfter)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">
+                      {t.orderNumber || "—"}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="font-mono text-xs inline-block max-w-[220px] truncate align-middle" title={t.reference}>
                         {t.reference}

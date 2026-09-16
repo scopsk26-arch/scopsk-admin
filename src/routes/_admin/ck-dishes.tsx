@@ -1,11 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
+import { SearchableSelect } from "@/components/admin/SearchableSelect";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Soup } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
+import { fetchList, updateCloudKitchen } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/ck-dishes")({
   head: () => ({ meta: [{ title: "CK Dishes — ResPy" }] }),
@@ -13,6 +18,16 @@ export const Route = createFileRoute("/_admin/ck-dishes")({
 });
 
 const DISH_STATUSES = ["active", "inactive", "draft", "archived"] as const;
+
+const CK_CATEGORIES = [
+  "Ready Meals",
+  "Chef Specials",
+  "Breakfast",
+  "Lunch",
+  "Dinner",
+  "Desserts",
+  "Bulk Catering",
+] as const;
 
 type DishRow = {
   id: string;
@@ -26,6 +41,8 @@ type DishRow = {
   status: string;
   description: string;
   imageUrl: string;
+  ingredients: string;
+  bulkPricing: string;
 };
 
 function mapDish(r: any, kitchenNameFallback = ""): DishRow {
@@ -41,7 +58,21 @@ function mapDish(r: any, kitchenNameFallback = ""): DishRow {
     status: str(r.status, "active"),
     description: str(r.description, ""),
     imageUrl: str(r.imageUrl, ""),
+    ingredients: str(r.ingredients, ""),
+    bulkPricing: r.bulkPricing ? JSON.stringify(r.bulkPricing) : "",
   };
+}
+
+function parseBulkPricingInput(raw: unknown) {
+  const text = String(raw ?? "").trim();
+  if (!text) return undefined;
+  try {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) throw new Error("bulkPricing must be a JSON array");
+    return parsed;
+  } catch {
+    throw new Error("bulkPricing must be valid JSON (array of tiers)");
+  }
 }
 
 /** Prefer admin list; fall back to kitchen/featured endpoints when admin routes are not deployed. */
@@ -100,6 +131,11 @@ async function loadCkDishes(): Promise<DishRow[]> {
 
 function CkDishesPage() {
   const qc = useQueryClient();
+  const [kitchenSettingsId, setKitchenSettingsId] = useState("");
+  const [kitchenRating, setKitchenRating] = useState("");
+  const [kitchenDeliveryMins, setKitchenDeliveryMins] = useState("");
+  const [kitchenMinOrder, setKitchenMinOrder] = useState("");
+  const [kitchenSlots, setKitchenSlots] = useState('["11:00–12:00","12:00–13:00","18:00–19:00"]');
 
   const { data: kitchens = [] } = useQuery({
     queryKey: ["cloud-kitchen", "kitchens"],
@@ -136,6 +172,33 @@ function CkDishesPage() {
     await qc.invalidateQueries({ queryKey: ["cloud-kitchen"] });
   };
 
+  const kitchenSaveMut = useMutation({
+    mutationFn: async () => {
+      if (!kitchenSettingsId) throw new Error("Select a kitchen");
+      let deliverySlots: unknown = undefined;
+      const slotsText = kitchenSlots.trim();
+      if (slotsText) {
+        try {
+          deliverySlots = JSON.parse(slotsText);
+        } catch {
+          throw new Error("Delivery slots must be valid JSON");
+        }
+      }
+      return updateCloudKitchen(kitchenSettingsId, {
+        rating: kitchenRating !== "" ? Number(kitchenRating) : null,
+        deliveryTimeMinutes:
+          kitchenDeliveryMins !== "" ? Number(kitchenDeliveryMins) : null,
+        minOrderAmount: kitchenMinOrder !== "" ? Number(kitchenMinOrder) : null,
+        deliverySlots,
+      });
+    },
+    onSuccess: async () => {
+      toast.success("Kitchen settings saved");
+      await qc.invalidateQueries({ queryKey: ["cloud-kitchen"] });
+    },
+    onError: (err: Error) => toast.error(err.message || "Failed to save kitchen"),
+  });
+
   const resolveKitchenId = (raw: unknown) => {
     const token = String(raw || "").trim();
     if (!token) return "";
@@ -148,6 +211,75 @@ function CkDishesPage() {
   };
 
   return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-soft mx-6 lg:mx-8 mt-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Kitchen display settings</h2>
+          <p className="text-sm text-muted-foreground">
+            Rating, delivery time, minimum order and delivery slots shown on the mobile CK browse/detail screens.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 max-w-3xl">
+          <div>
+            <Label className="text-xs text-muted-foreground">Kitchen</Label>
+            <SearchableSelect
+              options={kitchenLookup}
+              value={kitchenSettingsId}
+              onChange={setKitchenSettingsId}
+              placeholder="Select kitchen…"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Rating (0–5)</Label>
+            <Input
+              type="number"
+              min={0}
+              max={5}
+              step={0.1}
+              value={kitchenRating}
+              onChange={(e) => setKitchenRating(e.target.value)}
+              placeholder="e.g. 4.8"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Delivery time (minutes)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={kitchenDeliveryMins}
+              onChange={(e) => setKitchenDeliveryMins(e.target.value)}
+              placeholder="e.g. 90"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Min order (AED)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={kitchenMinOrder}
+              onChange={(e) => setKitchenMinOrder(e.target.value)}
+              placeholder="e.g. 250"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label className="text-xs text-muted-foreground">Delivery slots (JSON array)</Label>
+            <Input
+              value={kitchenSlots}
+              onChange={(e) => setKitchenSlots(e.target.value)}
+              placeholder='["11:00–12:00","18:00–19:00"]'
+            />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <Button
+            disabled={!kitchenSettingsId || kitchenSaveMut.isPending}
+            onClick={() => kitchenSaveMut.mutate()}
+          >
+            {kitchenSaveMut.isPending ? "Saving…" : "Save kitchen settings"}
+          </Button>
+        </div>
+      </div>
+
     <DataPage
       title="Cloud Kitchen Dishes"
       description="Add dishes one by one for a kitchen. Use CK Bulk Import for CSV uploads."
@@ -167,8 +299,21 @@ function CkDishesPage() {
         },
         { key: "name", label: "Dish name", type: "text", placeholder: "e.g. Butter Chicken" },
         { key: "basePrice", label: "Base price (AED)", type: "number", placeholder: "0" },
-        { key: "category", label: "Category", type: "text", placeholder: "e.g. Mains" },
+        {
+          key: "category",
+          label: "Category",
+          type: "select",
+          options: [...CK_CATEGORIES],
+          placeholder: "Select category…",
+        },
         { key: "description", label: "Description", type: "text" },
+        { key: "ingredients", label: "Ingredients", type: "text", placeholder: "Comma-separated or JSON array" },
+        {
+          key: "bulkPricing",
+          label: "Bulk pricing (JSON)",
+          type: "text",
+          placeholder: '[{"label":"10 portions","minQty":10,"price":40}]',
+        },
         { key: "prepMinutes", label: "Prep minutes", type: "number", placeholder: "optional" },
         { key: "currency", label: "Currency", type: "text", placeholder: "AED" },
         { key: "imageUrl", label: "Image URL", type: "text", placeholder: "https://…" },
@@ -188,6 +333,8 @@ function CkDishesPage() {
         { key: "prepMinutes", label: "Prep minutes" },
         { key: "status", label: "Status" },
         { key: "description", label: "Description" },
+        { key: "ingredients", label: "Ingredients" },
+        { key: "bulkPricing", label: "Bulk pricing" },
         { key: "imageUrl", label: "Image URL" },
         { key: "id", label: "ID" },
       ]}
@@ -265,6 +412,8 @@ function CkDishesPage() {
             data.prepMinutes !== "" && data.prepMinutes != null
               ? Number(data.prepMinutes)
               : undefined,
+          ingredients: data.ingredients ? String(data.ingredients).trim() : undefined,
+          bulkPricing: parseBulkPricingInput(data.bulkPricing),
         };
         let created: any;
         try {
@@ -308,6 +457,8 @@ function CkDishesPage() {
             data.prepMinutes !== "" && data.prepMinutes != null
               ? Number(data.prepMinutes)
               : undefined,
+          ingredients: data.ingredients != null ? String(data.ingredients).trim() : undefined,
+          bulkPricing: data.bulkPricing != null ? parseBulkPricingInput(data.bulkPricing) : undefined,
         };
         let updated: any;
         try {
@@ -335,5 +486,6 @@ function CkDishesPage() {
         await invalidate();
       }}
     />
+    </div>
   );
 }

@@ -23,6 +23,8 @@ type CategoryRow = {
   products: number;
   suppliers: number;
   status: string;
+  vatRate: string;
+  exciseRate: string;
 };
 
 function mapCategoryRow(r: any, byId?: Map<string, any>): CategoryRow {
@@ -60,6 +62,8 @@ function mapCategoryRow(r: any, byId?: Map<string, any>): CategoryRow {
     products: num(r.productsCount ?? r.metadata?.products),
     suppliers: num(r.metadata?.suppliers),
     status: str(r.status, "active"),
+    vatRate: r.vatRate != null && r.vatRate !== "" ? String(r.vatRate) : "",
+    exciseRate: r.exciseRate != null && r.exciseRate !== "" ? String(r.exciseRate) : "",
   };
 }
 
@@ -69,6 +73,8 @@ function toCategoryPayload(data: Record<string, any>) {
     name: String(data.name || "").trim(),
     parentId,
     status: data.status || "active",
+    vatRate: data.vatRate === "" || data.vatRate == null ? null : Number(data.vatRate),
+    exciseRate: data.exciseRate === "" || data.exciseRate == null ? null : Number(data.exciseRate),
   };
 }
 
@@ -131,6 +137,8 @@ function CategoriesPage() {
           type: "select",
           options: ["active", "inactive", "draft", "archived"],
         },
+        { key: "vatRate", label: "VAT % default", type: "number" },
+        { key: "exciseRate", label: "Excise % default", type: "number" },
       ]}
       lookups={{ parent: parentOptions, parentId: parentOptions }}
       viewFields={[
@@ -141,6 +149,8 @@ function CategoriesPage() {
         { key: "products", label: "Products" },
         { key: "suppliers", label: "Suppliers" },
         { key: "status", label: "Status" },
+        { key: "vatRate", label: "VAT % default" },
+        { key: "exciseRate", label: "Excise % default" },
       ]}
       loadDetail={async (row) => {
         try {
