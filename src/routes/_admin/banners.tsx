@@ -187,7 +187,7 @@ function BannersPage() {
           imageUrl: data.imageUrl,
           ctaLabel: data.ctaLabel || null,
           ctaTarget: data.ctaTarget || null,
-          status: data.status || "inactive",
+          status: data.status || "active",
           sortOrder: data.sortOrder != null && data.sortOrder !== "" ? Number(data.sortOrder) : 0,
           startsAt: data.startsAt || null,
           endsAt: data.endsAt || null,
