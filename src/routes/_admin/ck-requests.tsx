@@ -141,7 +141,7 @@ function CkRequestsPage() {
           label: "Est. total",
           className: "whitespace-nowrap w-[1%]",
           render: (r) =>
-            r.estimatedTotal != null ? <AED amount={r.estimatedTotal} /> : <span>—</span>,
+            r.estimatedTotal != null ? AED(r.estimatedTotal) : "—",
         },
         { key: "created", label: "Created", className: "whitespace-nowrap w-[1%]" },
         {
