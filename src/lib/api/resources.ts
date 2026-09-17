@@ -200,7 +200,7 @@ function mapOrgRow(r: any, type: "restaurant" | "supplier") {
     categories: Array.isArray(r.metadata?.categories) ? r.metadata.categories : [],
     revenue: num(r.metadata?.revenue ?? r.revenue),
     winRate: num(r.metadata?.winRate),
-    rating: num(r.metadata?.rating),
+    rating: num(r.rating ?? r.metadata?.rating),
     email: str(r.email),
     phone: str(r.phone, ""),
     legalName: str(r.legalName, ""),
@@ -355,9 +355,20 @@ export async function updateOrganization(
     if (Array.isArray(data.cuisineIds)) {
       payload.cuisineIds = data.cuisineIds.map((id: unknown) => String(id).trim()).filter(Boolean);
     }
+    const nextMeta: Record<string, unknown> = { ...currentMeta };
+    let metaChanged = false;
     if (data.industry != null) {
-      payload.metadata = { ...currentMeta, industry: String(data.industry) };
+      nextMeta.industry = String(data.industry);
+      metaChanged = true;
     }
+    if (data.rating != null && String(data.rating).trim() !== "") {
+      const n = Number(data.rating);
+      if (Number.isFinite(n)) {
+        nextMeta.rating = Math.min(5, Math.max(0, n));
+        metaChanged = true;
+      }
+    }
+    if (metaChanged) payload.metadata = nextMeta;
     if (data.region != null && String(data.region).trim()) {
       payload.city = String(data.region).trim();
     }

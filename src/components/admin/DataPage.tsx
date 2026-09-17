@@ -37,6 +37,10 @@ export type FormField = {
   selectOptions?: SelectOption[];
   placeholder?: string;
   allowClear?: boolean;
+  /** Minimum value for number inputs (HTML min + clamp on change). */
+  min?: number;
+  /** Maximum value for number inputs. */
+  max?: number;
 };
 
 /** Relation-like column keys that should prefer searchable dropdowns. */
@@ -929,11 +933,25 @@ function RecordDialog({
                       id={f.key}
                       type={f.type === "number" ? "number" : "text"}
                       placeholder={f.placeholder}
+                      min={f.type === "number" ? f.min : undefined}
+                      max={f.type === "number" ? f.max : undefined}
                       value={form[f.key] ?? ""}
-                      onChange={(e) => setForm((p) => ({
-                        ...p,
-                        [f.key]: f.type === "number" ? Number(e.target.value) : e.target.value,
-                      }))}
+                      onChange={(e) => {
+                        if (f.type !== "number") {
+                          setForm((p) => ({ ...p, [f.key]: e.target.value }));
+                          return;
+                        }
+                        const raw = e.target.value;
+                        if (raw === "") {
+                          setForm((p) => ({ ...p, [f.key]: "" }));
+                          return;
+                        }
+                        let n = Number(raw);
+                        if (!Number.isFinite(n)) n = f.min ?? 0;
+                        if (f.min != null && n < f.min) n = f.min;
+                        if (f.max != null && n > f.max) n = f.max;
+                        setForm((p) => ({ ...p, [f.key]: n }));
+                      }}
                       className="mt-1"
                     />
                   )}
@@ -995,8 +1013,16 @@ function formatViewValue(raw: unknown, field: FormField): ReactNode {
       return "[object]";
     }
   }
-  const opt = field.selectOptions?.find((o) => o.value === String(raw) || o.label === String(raw));
-  return opt?.label ?? String(raw);
+  const asStr = String(raw);
+  const looksDateKey = /date|at$|created|updated|deadline|delivery|expires/i.test(field.key);
+  const isoMatch = asStr.match(
+    /^(\d{4}-\d{2}-\d{2})(?:[T\s]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/,
+  );
+  if (isoMatch && (looksDateKey || asStr.includes("T") || asStr.endsWith("Z"))) {
+    return isoMatch[1];
+  }
+  const opt = field.selectOptions?.find((o) => o.value === asStr || o.label === asStr);
+  return opt?.label ?? asStr;
 }
 
 /** Section heading + body for nested View content (line items, timeline, etc.). */
