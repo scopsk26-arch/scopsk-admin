@@ -90,9 +90,9 @@ function CkRequestsPage() {
         restaurant: restaurants.map((r) => ({ value: r.label, label: r.label })),
       }}
       formFields={[
-        { key: "number", label: "Request #", type: "text", placeholder: "RFQ-…" },
-        { key: "restaurant", label: "Restaurant", type: "searchable", placeholder: "Search restaurants…" },
-        { key: "quantity", label: "Quantity", type: "text" },
+        { key: "number", label: "Request #", type: "readonly" },
+        { key: "restaurant", label: "Restaurant", type: "readonly" },
+        { key: "quantity", label: "Quantity", type: "readonly" },
         {
           key: "status",
           label: "Status",
@@ -112,8 +112,11 @@ function CkRequestsPage() {
         { key: "creator", label: "Creator" },
         { key: "status", label: "Status" },
       ]}
-      loadDetail={async (row) => fetchRfqDetail(row.id)}
-      renderView={(detail) => <RfqDetailView detail={detail} />}
+      loadDetail={async (row) => {
+        const detail = await fetchRfqDetail(row.id);
+        return { ...detail, ...mapRfqRow({ ...detail, organization: detail.organization }) };
+      }}
+      renderView={(detail) => <RfqDetailView detail={detail} cloudKitchen />}
       kpis={[
         { label: "Open to serve", value: String(open), tone: "info" },
         { label: "Served / closed", value: String(served), tone: "success" },

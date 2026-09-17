@@ -145,15 +145,51 @@ function productName(item: any) {
   return str(item?.product?.name ?? item?.productName ?? item?.name ?? item?.description, "—");
 }
 
-export function RfqDetailView({ detail }: { detail: any }) {
+function formatCkUnit(raw: unknown): string {
+  const u = str(raw, "—");
+  if (u === "—") return u;
+  const lower = u.toLowerCase();
+  if (lower === "portion" || lower === "portions") return "portion (1 serving)";
+  return u;
+}
+
+function formatCkTimelineEvent(raw: unknown): string {
+  const ev = str(raw, "—");
+  if (ev === "suppliers_matched" || ev === "cloud_kitchen_queued") {
+    return "Queued for admin fulfillment (no suppliers)";
+  }
+  if (ev === "cloud_kitchen_served") {
+    return "Served by admin";
+  }
+  return ev;
+}
+
+export function RfqDetailView({
+  detail,
+  cloudKitchen = false,
+}: {
+  detail: any;
+  /** Cloud Kitchen RFQs skip supplier quotes/POs — admin fulfills directly. */
+  cloudKitchen?: boolean;
+}) {
   const items = Array.isArray(detail?.items) ? detail.items : [];
   const invitations = Array.isArray(detail?.invitations) ? detail.invitations : [];
   const attachments = Array.isArray(detail?.attachments) ? detail.attachments : [];
   const timeline = Array.isArray(detail?.timeline) ? detail.timeline : [];
   const purchaseOrders = Array.isArray(detail?.purchaseOrders) ? detail.purchaseOrders : [];
   const requestedQty = num(detail?.requestedQty);
-  const awardedQty = num(detail?.fulfilledQty ?? detail?.awardedQty);
-  const remainingQty = num(detail?.remainingQty);
+  const awardedQtyRaw = num(detail?.fulfilledQty ?? detail?.awardedQty);
+  const remainingQtyRaw = num(detail?.remainingQty);
+  const isCk =
+    cloudKitchen ||
+    detail?.channel === "cloud_kitchen" ||
+    detail?.channel === "ck" ||
+    detail?.metadata?.channel === "cloud_kitchen";
+  const statusLower = String(detail?.status || "").toLowerCase();
+  const isCkServed = isCk && statusLower === "awarded";
+  const awardedQty =
+    isCkServed && awardedQtyRaw <= 0 && requestedQty > 0 ? requestedQty : awardedQtyRaw;
+  const remainingQty = isCkServed && awardedQtyRaw <= 0 ? 0 : remainingQtyRaw;
 
   return (
     <>
@@ -164,15 +200,23 @@ export function RfqDetailView({ detail }: { detail: any }) {
           <div className="sm:col-span-2"><span className="text-muted-foreground">Notes: </span>{str(detail.notes ?? detail.description, "—")}</div>
           <div><span className="text-muted-foreground">Creator: </span>{str(detail.creator?.email ?? [detail.creator?.firstName, detail.creator?.lastName].filter(Boolean).join(" "), "—")}</div>
           <div><span className="text-muted-foreground">Org: </span>{str(detail.organization?.name, "—")}</div>
-          <div><span className="text-muted-foreground">Quotes: </span>{str(detail.quotationCount, "—")}</div>
-          <div><span className="text-muted-foreground">Purchase orders: </span>{str(detail.purchaseOrderCount ?? purchaseOrders.length, "—")}</div>
+          {isCk ? (
+            <div className="sm:col-span-2 text-muted-foreground">
+              Fulfillment: Admin serves this request directly — suppliers are not invited, so quotes and purchase orders stay at 0.
+            </div>
+          ) : (
+            <>
+              <div><span className="text-muted-foreground">Quotes: </span>{str(detail.quotationCount, "—")}</div>
+              <div><span className="text-muted-foreground">Purchase orders: </span>{str(detail.purchaseOrderCount ?? purchaseOrders.length, "—")}</div>
+            </>
+          )}
         </div>
       </DetailSection>
       <DetailSection title="Fulfillment">
         <div className="grid gap-3 sm:grid-cols-3 text-sm">
           <div><span className="text-muted-foreground">Requested: </span>{requestedQty || "—"}</div>
-          <div><span className="text-muted-foreground">Awarded: </span>{awardedQty || "—"}</div>
-          <div><span className="text-muted-foreground">Remaining: </span>{remainingQty || "—"}</div>
+          <div><span className="text-muted-foreground">{isCk ? "Served: " : "Awarded: "}</span>{awardedQty || "—"}</div>
+          <div><span className="text-muted-foreground">Remaining: </span>{isCkServed ? 0 : remainingQty || "—"}</div>
         </div>
       </DetailSection>
       <DetailSection title="Line items">
@@ -183,13 +227,19 @@ export function RfqDetailView({ detail }: { detail: any }) {
             { key: "qty", label: "Requested", render: (r) => str(r.quantity ?? r.qty, "—") },
             {
               key: "awarded",
-              label: "Awarded",
-              render: (r) => str(r.awardedQty ?? r.awarded_qty, "0"),
+              label: isCk ? "Served" : "Awarded",
+              render: (r) => {
+                const qty = num(r.quantity ?? r.qty);
+                const awarded = num(r.awardedQty ?? r.awarded_qty);
+                if (isCkServed && awarded <= 0 && qty > 0) return str(qty, "0");
+                return str(awarded, "0");
+              },
             },
             {
               key: "remaining",
               label: "Remaining",
               render: (r) => {
+                if (isCkServed) return "0";
                 const qty = num(r.quantity ?? r.qty);
                 const awarded = num(r.awardedQty ?? r.awarded_qty);
                 const rem =
@@ -199,12 +249,19 @@ export function RfqDetailView({ detail }: { detail: any }) {
                 return str(rem, "—");
               },
             },
-            { key: "unit", label: "Unit", render: (r) => str(r.unit?.symbol ?? r.unit?.name ?? r.unit, "—") },
+            {
+              key: "unit",
+              label: "Unit",
+              render: (r) =>
+                isCk
+                  ? formatCkUnit(r.unit?.symbol ?? r.unit?.name ?? r.unit)
+                  : str(r.unit?.symbol ?? r.unit?.name ?? r.unit, "—"),
+            },
             { key: "notes", label: "Notes", render: (r) => str(r.notes, "—") },
           ]}
         />
       </DetailSection>
-      {purchaseOrders.length > 0 && (
+      {!isCk && purchaseOrders.length > 0 && (
         <DetailSection title="Purchase orders">
           <DetailTable
             rows={purchaseOrders}
@@ -218,7 +275,7 @@ export function RfqDetailView({ detail }: { detail: any }) {
           />
         </DetailSection>
       )}
-      {invitations.length > 0 && (
+      {!isCk && invitations.length > 0 && (
         <DetailSection title="Invited suppliers">
           <DetailTable
             rows={invitations}
@@ -255,11 +312,25 @@ export function RfqDetailView({ detail }: { detail: any }) {
             rows={timeline}
             columns={[
               { key: "at", label: "When", render: (r) => iso(r.createdAt) },
-              { key: "event", label: "Event", render: (r) => str(r.event ?? r.action ?? r.type, "—") },
+              {
+                key: "event",
+                label: "Event",
+                render: (r) =>
+                  isCk
+                    ? formatCkTimelineEvent(r.event ?? r.action ?? r.type)
+                    : str(r.event ?? r.action ?? r.type, "—"),
+              },
               {
                 key: "meta",
-                label: "Award / PO",
+                label: isCk ? "Note" : "Award / PO",
                 render: (r) => {
+                  if (isCk) {
+                    const ev = String(r.event ?? r.action ?? r.type ?? "");
+                    if (ev === "suppliers_matched" || ev === "cloud_kitchen_queued") {
+                      return "Shown on admin CK queue only";
+                    }
+                    return "—";
+                  }
                   const m = r.meta || r.metadata || {};
                   const bits = [
                     m.poNumber ? `PO ${m.poNumber}` : null,
@@ -730,6 +801,13 @@ export function OrganizationDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">Trade license: </span>{str(profile.tradeLicenseNumber ?? detail.tradeLicenseNumber, "—")}</div>
           <div><span className="text-muted-foreground">VAT: </span>{str(profile.vatRegistrationNumber ?? detail.vatRegistrationNumber, "—")}</div>
           <div><span className="text-muted-foreground">Food license: </span>{str(profile.foodLicenseNumber ?? detail.foodLicenseNumber, "—")}</div>
+          <div>
+            <span className="text-muted-foreground">Rating: </span>
+            {(() => {
+              const r = num(detail.rating ?? detail.metadata?.rating);
+              return r > 0 ? `${r} / 5` : "—";
+            })()}
+          </div>
           <div><span className="text-muted-foreground">PO approval levels: </span>{str(settings.poApprovalLevels, "—")}</div>
           <div><span className="text-muted-foreground">Min RFQ (AED): </span>{str(settings.minRfqValueAed, "—")}</div>
           <div><span className="text-muted-foreground">Delivery fee: </span>{str(settings.deliveryFeeMode, "none")} · {money(settings.deliveryFeeValue)}</div>

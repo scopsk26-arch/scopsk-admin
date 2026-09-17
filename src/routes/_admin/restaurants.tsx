@@ -60,24 +60,25 @@ function RestaurantsPage() {
         { key: "tradeLicenseNumber", label: "Trade license #", type: "text" },
         { key: "vatRegistrationNumber", label: "VAT registration #", type: "text" },
         { key: "foodLicenseNumber", label: "Food license #", type: "text" },
-        { key: "poApprovalLevels", label: "PO approval levels", type: "number" },
-        { key: "minRfqValueAed", label: "Min RFQ value (AED)", type: "number" },
+        { key: "rating", label: "Rating (0–5)", type: "number", min: 0, max: 5 },
+        { key: "poApprovalLevels", label: "PO approval levels", type: "number", min: 0 },
+        { key: "minRfqValueAed", label: "Min RFQ value (AED)", type: "number", min: 0 },
         {
           key: "deliveryFeeMode",
           label: "Delivery fee mode",
           type: "select",
           options: ["none", "fixed", "percent"],
         },
-        { key: "deliveryFeeValue", label: "Delivery fee value", type: "number" },
-        { key: "creditLimit", label: "Credit limit (AED)", type: "number" },
-        { key: "paymentTermsDays", label: "Payment terms (days)", type: "number" },
+        { key: "deliveryFeeValue", label: "Delivery fee value", type: "number", min: 0 },
+        { key: "creditLimit", label: "Credit limit (AED)", type: "number", min: 0 },
+        { key: "paymentTermsDays", label: "Payment terms (days)", type: "number", min: 0 },
         {
           key: "discountMode",
           label: "Discount mode",
           type: "select",
           options: ["none", "fixed", "percent"],
         },
-        { key: "discountValue", label: "Discount value", type: "number" },
+        { key: "discountValue", label: "Discount value", type: "number", min: 0 },
         {
           key: "status",
           label: "Status",
@@ -96,6 +97,7 @@ function RestaurantsPage() {
         { key: "tradeLicenseNumber", label: "Trade license" },
         { key: "vatRegistrationNumber", label: "VAT #" },
         { key: "foodLicenseNumber", label: "Food license" },
+        { key: "rating", label: "Rating (0–5)" },
         { key: "poApprovalLevels", label: "PO approval levels" },
         { key: "minRfqValueAed", label: "Min RFQ (AED)" },
         { key: "deliveryFeeMode", label: "Delivery fee mode" },
@@ -135,6 +137,7 @@ function RestaurantsPage() {
         return {
           cuisineIds,
           cuisines: mapped.cuisines,
+          rating: mapped.rating,
           deliveryFeeMode: mapped.deliveryFeeMode,
           deliveryFeeValue: mapped.deliveryFeeValue,
           creditLimit: mapped.creditLimit,
@@ -163,6 +166,12 @@ function RestaurantsPage() {
           render: (r) => <TagListDropdown value={r.cuisines || r.categories || r.industry} />,
         },
         { key: "region", label: "Region" },
+        {
+          key: "rating",
+          label: "Rating",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => (r.rating > 0 ? String(r.rating) : "—"),
+        },
         { key: "tradeLicenseNumber", label: "Trade license", className: "font-mono text-xs" },
         {
           key: "documents",
@@ -217,6 +226,11 @@ function RestaurantsPage() {
       ]}
       onUpdate={async (id, data) => {
         if (!data.name?.trim()) throw new Error("Restaurant name is required");
+        const nonNeg = (v: unknown, fallback = 0) => {
+          const n = Number(v);
+          if (!Number.isFinite(n) || n < 0) return fallback;
+          return n;
+        };
         const cuisineIds = Array.isArray(data.cuisineIds)
           ? data.cuisineIds.map(String).filter(Boolean)
           : [];
@@ -224,33 +238,43 @@ function RestaurantsPage() {
           .filter((o) => cuisineIds.includes(o.value))
           .map((o) => o.label)
           .join(", ");
+        const poApprovalLevels = nonNeg(data.poApprovalLevels);
+        const minRfqValueAed = nonNeg(data.minRfqValueAed);
+        const deliveryFeeValue = nonNeg(data.deliveryFeeValue);
+        const creditLimit = nonNeg(data.creditLimit);
+        const paymentTermsDays = nonNeg(data.paymentTermsDays);
+        const discountValue = nonNeg(data.discountValue);
+        const ratingRaw = Number(data.rating);
+        const rating =
+          Number.isFinite(ratingRaw) ? Math.min(5, Math.max(0, ratingRaw)) : 0;
         const updated = await updateOrganization(
           id,
-          { ...data, cuisineIds, industry: cuisineLabel || data.industry },
+          { ...data, cuisineIds, industry: cuisineLabel || data.industry, rating },
           "restaurant",
         );
         await updateOrgSettings(id, {
-          poApprovalLevels: data.poApprovalLevels,
-          minRfqValueAed: data.minRfqValueAed,
+          poApprovalLevels,
+          minRfqValueAed,
           deliveryFeeMode: data.deliveryFeeMode,
-          deliveryFeeValue: data.deliveryFeeValue,
-          creditLimit: data.creditLimit,
-          paymentTermsDays: data.paymentTermsDays,
+          deliveryFeeValue,
+          creditLimit,
+          paymentTermsDays,
           discountMode: data.discountMode,
-          discountValue: data.discountValue,
+          discountValue,
         });
         await updateOrgProfile(id, data);
         await queryClient.invalidateQueries({ queryKey: ["organizations", "restaurant"] });
         return {
           ...updated,
-          poApprovalLevels: Number(data.poApprovalLevels ?? updated.poApprovalLevels),
-          minRfqValueAed: Number(data.minRfqValueAed ?? updated.minRfqValueAed),
+          rating: Number(updated.rating ?? rating),
+          poApprovalLevels,
+          minRfqValueAed,
           deliveryFeeMode: String(data.deliveryFeeMode ?? updated.deliveryFeeMode ?? "none"),
-          deliveryFeeValue: Number(data.deliveryFeeValue ?? updated.deliveryFeeValue),
-          creditLimit: Number(data.creditLimit ?? updated.creditLimit),
-          paymentTermsDays: Number(data.paymentTermsDays ?? updated.paymentTermsDays),
+          deliveryFeeValue,
+          creditLimit,
+          paymentTermsDays,
           discountMode: String(data.discountMode ?? updated.discountMode ?? "none"),
-          discountValue: Number(data.discountValue ?? updated.discountValue),
+          discountValue,
           ownerName: String(data.ownerName ?? updated.ownerName ?? ""),
           tradeLicenseNumber: String(data.tradeLicenseNumber ?? updated.tradeLicenseNumber ?? ""),
           vatRegistrationNumber: String(

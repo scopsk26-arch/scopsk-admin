@@ -22,8 +22,6 @@ export const navItems: NavItem[] = [
 
   { group: "Marketplace", title: "Restaurants", to: "/restaurants", icon: Store },
   { group: "Marketplace", title: "Suppliers", to: "/suppliers", icon: Truck },
-  { group: "Marketplace", title: "Restaurant Approvals", to: "/restaurant-approvals", icon: BadgeCheck },
-  { group: "Marketplace", title: "Supplier Approvals", to: "/supplier-approvals", icon: BadgeCheck },
   { group: "Marketplace", title: "KYC Queue", to: "/kyc", icon: ShieldCheck },
 
   { group: "Trade", title: "RFQs", to: "/rfqs", icon: FileText },
