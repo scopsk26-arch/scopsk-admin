@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_admin/category-commissions")({
   component: CategoryCommissionsPage,
 });
 
-function CategoryCommissionsPage() {
+export function CategoryCommissionsPanel() {
   const qc = useQueryClient();
   const { categories } = useAdminLookups(["categories"]);
 
@@ -144,4 +144,8 @@ function CategoryCommissionsPage() {
       }}
     />
   );
+}
+
+function CategoryCommissionsPage() {
+  return <CategoryCommissionsPanel />;
 }

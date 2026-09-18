@@ -25,7 +25,6 @@ type InventoryRow = {
   itemCode: string;
   unit: string;
   quantity: number;
-  reorderPoint: number;
   product: string;
   productId: string;
   status: string;
@@ -41,7 +40,6 @@ function mapInventory(r: any, restaurantLabel: string, organizationId: string): 
     itemCode: str(r.itemCode, "—"),
     unit: str(r.unit ?? r.product?.unit?.symbol ?? r.product?.unit?.name, "—"),
     quantity: num(r.quantity ?? r.stock),
-    reorderPoint: num(r.reorderPoint),
     product: str(r.product?.name, "—"),
     productId: str(r.productId ?? r.product?.id, ""),
     status: str(r.status, "active"),
@@ -66,7 +64,7 @@ function InventoryPage() {
     },
   });
 
-  const lowStock = rows.filter((r) => r.reorderPoint > 0 && r.quantity <= r.reorderPoint).length;
+  const lowStock = rows.filter((r) => r.quantity <= 0).length;
   const totalQty = rows.reduce((s, r) => s + r.quantity, 0);
 
   return (
@@ -99,7 +97,6 @@ function InventoryPage() {
         { key: "restaurant", label: "Restaurant" },
         { key: "unit", label: "Unit" },
         { key: "quantity", label: "Quantity" },
-        { key: "reorderPoint", label: "Reorder point" },
         { key: "status", label: "Status" },
       ]}
       loadDetail={async (row) => {
@@ -143,14 +140,13 @@ function InventoryPage() {
         { key: "product", label: "Product" },
         { key: "unit", label: "Unit" },
         { key: "quantity", label: "Qty" },
-        { key: "reorderPoint", label: "Reorder" },
         {
           key: "status",
           label: "Status",
           render: (r) => (
             <StatusBadge
-              status={r.reorderPoint > 0 && r.quantity <= r.reorderPoint ? "low stock" : r.status}
-              tone={r.reorderPoint > 0 && r.quantity <= r.reorderPoint ? "warning" : undefined}
+              status={r.quantity <= 0 ? "low stock" : r.status}
+              tone={r.quantity <= 0 ? "warning" : undefined}
             />
           ),
         },

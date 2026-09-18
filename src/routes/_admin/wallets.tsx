@@ -52,7 +52,7 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone?: "suc
   );
 }
 
-function WalletsPage() {
+export function WalletsManagement({ embedded = false }: { embedded?: boolean }) {
   const qc = useQueryClient();
   const { restaurants, suppliers } = useAdminLookups(["restaurants", "suppliers"]);
   const [orgId, setOrgId] = useState("");
@@ -156,19 +156,26 @@ function WalletsPage() {
   });
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="h-11 w-11 rounded-xl border border-border bg-card shadow-soft grid place-items-center shrink-0">
-          <Wallet className="h-5 w-5 text-primary" />
+    <div className={cn(embedded ? "space-y-6" : "p-6 lg:p-8 space-y-6")}>
+      {!embedded && (
+        <div className="flex items-start gap-3">
+          <div className="h-11 w-11 rounded-xl border border-border bg-card shadow-soft grid place-items-center shrink-0">
+            <Wallet className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-display font-semibold tracking-tight">Wallet Management</h1>
+            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+              Browse every organization wallet, review its ledger, and credit or debit balances
+              (idempotent when a key is provided).
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-display font-semibold tracking-tight">Wallet Management</h1>
-          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Browse every organization wallet, review its ledger, and credit or debit balances
-            (idempotent when a key is provided).
-          </p>
-        </div>
-      </div>
+      )}
+      {embedded && (
+        <p className="text-sm text-muted-foreground">
+          Restaurant and supplier wallets — credit or debit balances from admin.
+        </p>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label="Wallets" value={String(wallets.length)} />
@@ -438,4 +445,8 @@ function WalletsPage() {
       </div>
     </div>
   );
+}
+
+function WalletsPage() {
+  return <WalletsManagement />;
 }

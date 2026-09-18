@@ -1,15 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Share2 } from "lucide-react";
+import { Share2, SlidersHorizontal } from "lucide-react";
 import {
   DataPage, DetailKv, DetailSection, DetailTable, StatusBadge, AED,
 } from "@/components/admin/DataPage";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { EMPTY_LIST, fetchAdminReferral, fetchAdminReferrals } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
+import { ReferralSettingsPanel } from "./referral-settings";
 
 export const Route = createFileRoute("/_admin/referrals")({
   head: () => ({ meta: [{ title: "Referrals — ResPy" }] }),
@@ -53,7 +55,7 @@ function RewardCard({ title, reward }: { title: string; reward: any }) {
   );
 }
 
-function ReferralsPage() {
+function ReferralsList({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [status, setStatus] = useState("all");
 
   const { data: rows = EMPTY_LIST, isLoading, isError } = useQuery({
@@ -89,17 +91,23 @@ function ReferralsPage() {
               : `No referrals with status "${status}".`
       }
       filters={
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-[180px] h-9">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" className="h-9" onClick={onOpenSettings}>
+            <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
+            Settings
+          </Button>
+        </>
       }
       columns={[
         { key: "referralCode", label: "Code", className: "whitespace-nowrap", render: (r) => <Code value={r.referralCode} /> },
@@ -166,4 +174,14 @@ function ReferralsPage() {
       exportExcludeKeys={["referrerReward", "referredReward", "metadata"]}
     />
   );
+}
+
+function ReferralsPage() {
+  const [view, setView] = useState<"list" | "settings">("list");
+
+  if (view === "settings") {
+    return <ReferralSettingsPanel onBack={() => setView("list")} />;
+  }
+
+  return <ReferralsList onOpenSettings={() => setView("settings")} />;
 }

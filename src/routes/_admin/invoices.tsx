@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { InvoiceDetailView } from "@/components/admin/DetailViews";
-import { Receipt } from "lucide-react";
+import { Receipt, Wallet } from "lucide-react";
 import { fetchInvoiceDetail, fetchList, markInvoicePaid } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WalletsManagement } from "./wallets";
 
 export const Route = createFileRoute("/_admin/invoices")({
   head: () => ({ meta: [{ title: "Invoices — ResPy" }] }),
@@ -48,7 +51,7 @@ function mapInvoice(r: any) {
   };
 }
 
-function InvoicesPage() {
+function InvoicesList() {
   const { suppliers, restaurants, purchaseOrders } = useAdminLookups([
     "suppliers",
     "restaurants",
@@ -136,5 +139,35 @@ function InvoicesPage() {
         return { ...row, status: "paid" };
       }}
     />
+  );
+}
+
+function InvoicesPage() {
+  const [tab, setTab] = useState("invoices");
+
+  return (
+    <div className="space-y-0">
+      <div className="px-6 lg:px-8 pt-6 lg:pt-8">
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList>
+            <TabsTrigger value="invoices" className="gap-1.5">
+              <Receipt className="h-3.5 w-3.5" />
+              Invoices
+            </TabsTrigger>
+            <TabsTrigger value="wallets" className="gap-1.5">
+              <Wallet className="h-3.5 w-3.5" />
+              Wallets
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+      {tab === "invoices" ? (
+        <InvoicesList />
+      ) : (
+        <div className="p-6 lg:p-8 pt-4">
+          <WalletsManagement embedded />
+        </div>
+      )}
+    </div>
   );
 }

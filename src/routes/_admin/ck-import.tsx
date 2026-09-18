@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Upload } from "lucide-react";
+import { Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,106 @@ type ImportResult = {
   failed?: number;
   errors?: Array<{ row: number; error: string }>;
 };
+
+/** Same column order as the importer — edit in Excel, save, then upload. */
+const SAMPLE_HEADERS = [
+  "name",
+  "basePrice",
+  "id",
+  "cloudKitchenId",
+  "description",
+  "category",
+  "currency",
+  "status",
+  "prepMinutes",
+  "produced",
+  "ingredients",
+  "bulkPricing",
+  "imageUrl",
+] as const;
+
+const SAMPLE_ROWS: string[][] = [
+  [
+    "Chicken Biryani",
+    "28.50",
+    "",
+    "",
+    "Classic cloud-kitchen biryani",
+    "Rice",
+    "AED",
+    "available",
+    "35",
+    "50",
+    "chicken, rice, spices",
+    "",
+    "",
+  ],
+  [
+    "Veg Pasta",
+    "22.00",
+    "",
+    "",
+    "Creamy vegetable pasta",
+    "Pasta",
+    "AED",
+    "available",
+    "20",
+    "30",
+    "pasta, cream, vegetables",
+    "",
+    "",
+  ],
+];
+
+function csvEscape(value: string) {
+  const v = String(value ?? "");
+  if (/[",\r\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  return v;
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Downloads an unlocked .xlsx sample (editable in Excel).
+ * Falls back to a client-generated CSV if the static file is unavailable.
+ */
+async function downloadSampleExcel() {
+  try {
+    const res = await fetch(`/samples/ck-dishes-sample.xlsx?v=${Date.now()}`);
+    if (!res.ok) throw new Error("Sample file not found");
+    const blob = await res.blob();
+    triggerDownload(blob, "ck-dishes-sample.xlsx");
+    toast.success("Sample Excel downloaded", {
+      description: "If Excel shows Protected View, click Enable Editing — then edit cells freely.",
+    });
+    return;
+  } catch {
+    /* fall through to CSV */
+  }
+
+  const blankRows = Array.from({ length: 8 }, () => SAMPLE_HEADERS.map(() => ""));
+  const lines = [
+    SAMPLE_HEADERS.map(csvEscape).join(","),
+    ...SAMPLE_ROWS.map((row) => row.map(csvEscape).join(",")),
+    ...blankRows.map((row) => row.map(csvEscape).join(",")),
+  ];
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], {
+    type: "text/csv;charset=utf-8",
+  });
+  triggerDownload(blob, "ck-dishes-sample.csv");
+  toast.success("Sample CSV downloaded", {
+    description: "Open in Excel, edit cells, save, then upload.",
+  });
+}
 
 function CkImportPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -50,7 +150,7 @@ function CkImportPage() {
 
   const importMut = useMutation({
     mutationFn: async () => {
-      if (!file) throw new Error("Choose a CSV file to upload");
+      if (!file) throw new Error("Choose a CSV/Excel file to upload");
       return importCloudKitchenDishes(file, cloudKitchenId || undefined);
     },
     onSuccess: (data) => {
@@ -70,24 +170,29 @@ function CkImportPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="h-11 w-11 rounded-xl glass grid place-items-center">
-          <Upload className="h-5 w-5 text-primary" />
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-start gap-3">
+          <div className="h-11 w-11 rounded-xl glass grid place-items-center">
+            <Upload className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-display font-semibold tracking-tight">CK Bulk Import</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Download the sample, open it in Excel (fully editable), fill rows in the same column
+              order, save locally, then upload. Required: <code>name</code>, <code>basePrice</code>.
+              Include <code>id</code> to update an existing dish.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Optional: <code>cloudKitchenId</code>, <code>description</code>, <code>category</code>,{" "}
+              <code>currency</code>, <code>status</code>, <code>prepMinutes</code>, <code>produced</code>,{" "}
+              <code>ingredients</code>, <code>bulkPricing</code>, <code>imageUrl</code>.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-display font-semibold tracking-tight">CK Bulk Import</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Upload a CSV of cloud-kitchen dishes. Required columns: <code>name</code>,{" "}
-            <code>basePrice</code>. Include an <code>id</code> column (dish UUID) to update an
-            existing row instead of creating a new one.
-          </p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Optional columns: <code>cloudKitchenId</code>, <code>description</code>,{" "}
-            <code>category</code>, <code>currency</code>, <code>status</code> (or{" "}
-            <code>availability</code>), <code>prepMinutes</code>, <code>produced</code>,{" "}
-            <code>ingredients</code>, <code>bulkPricing</code> (JSON), <code>imageUrl</code>.
-          </p>
-        </div>
+        <Button variant="outline" onClick={() => void downloadSampleExcel()}>
+          <Download className="h-4 w-4 mr-1.5" />
+          Download sample Excel
+        </Button>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-4 max-w-2xl">
@@ -104,10 +209,10 @@ function CkImportPage() {
           </div>
         </div>
         <div>
-          <Label className="text-xs text-muted-foreground">CSV file</Label>
+          <Label className="text-xs text-muted-foreground">File (CSV or Excel export)</Label>
           <Input
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="mt-1"
             onChange={(e) => {
               setFile(e.target.files?.[0] ?? null);

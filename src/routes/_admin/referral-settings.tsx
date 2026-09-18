@@ -52,7 +52,13 @@ function toForm(s: ReferralProgramSettings): FormState {
   };
 }
 
-function ReferralSettingsPage() {
+export function ReferralSettingsPanel({
+  embedded = false,
+  onBack,
+}: {
+  embedded?: boolean;
+  onBack?: () => void;
+}) {
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["admin", "referral-settings"],
@@ -86,18 +92,24 @@ function ReferralSettingsPage() {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="h-11 w-11 rounded-xl border border-border bg-card shadow-soft grid place-items-center shrink-0">
-          <SlidersHorizontal className="h-5 w-5 text-primary" />
+    <div className={embedded ? "space-y-6" : "p-6 lg:p-8 space-y-6"}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="h-11 w-11 rounded-xl border border-border bg-card shadow-soft grid place-items-center shrink-0">
+            <SlidersHorizontal className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-display font-semibold tracking-tight">Referral Settings</h1>
+            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+              Platform-wide referral program — reward amounts, qualification rules and share link base URL.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-display font-semibold tracking-tight">Referral Settings</h1>
-          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Platform-wide referral program for ResPy restaurants — reward amounts, qualification rules
-            and the base URL used in shared referral links.
-          </p>
-        </div>
+        {onBack && (
+          <Button variant="outline" onClick={onBack}>
+            Back to referrals
+          </Button>
+        )}
       </div>
 
       {isLoading || !form ? (
@@ -279,4 +291,8 @@ function ReferralSettingsPage() {
       )}
     </div>
   );
+}
+
+function ReferralSettingsPage() {
+  return <ReferralSettingsPanel />;
 }

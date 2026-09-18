@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
-import { Percent } from "lucide-react";
+import { FolderTree, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { EMPTY_LIST, fetchCommissionDetail, fetchCommissions, settleCommission } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CategoryCommissionsPanel } from "./category-commissions";
 
 export const Route = createFileRoute("/_admin/commissions")({
   head: () => ({ meta: [{ title: "Commissions — ResPy" }] }),
@@ -21,7 +24,7 @@ function DocCode({ value }: { value: string }) {
   );
 }
 
-function CommissionsPage() {
+function CommissionsLedger() {
   const qc = useQueryClient();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin", "commissions"],
@@ -52,7 +55,7 @@ function CommissionsPage() {
   return (
     <DataPage
       title="Commissions"
-      description="Admin-only ledger: commission cut per order (restaurant + supplier). Not shown on invoices or mobile."
+      description="Admin-only ledger: commission cut per order (restaurant + supplier). Category rates are under the Category rates tab."
       icon={<Percent className="h-5 w-5 text-primary" />}
       disableCrud
       entityName="Commission"
@@ -88,7 +91,6 @@ function CommissionsPage() {
             party: str((d as any).partyLabel ?? (d as any).party ?? row.party, "—"),
             organization: str((d as any).organizationName ?? org.name ?? row.organization, "—"),
             organizationCode: str((d as any).organizationCode ?? org.publicCode, "—"),
-            // Numeric for fields that reuse column AED() renders; preformat the rest once.
             gross: subtotal,
             orderTotal: AED(total),
             vat: AED(vat),
@@ -158,5 +160,29 @@ function CommissionsPage() {
         },
       ]}
     />
+  );
+}
+
+function CommissionsPage() {
+  const [tab, setTab] = useState("ledger");
+
+  return (
+    <div className="space-y-0">
+      <div className="px-6 lg:px-8 pt-6 lg:pt-8">
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList>
+            <TabsTrigger value="ledger" className="gap-1.5">
+              <Percent className="h-3.5 w-3.5" />
+              Ledger
+            </TabsTrigger>
+            <TabsTrigger value="rates" className="gap-1.5">
+              <FolderTree className="h-3.5 w-3.5" />
+              Category rates
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+      {tab === "ledger" ? <CommissionsLedger /> : <CategoryCommissionsPanel />}
+    </div>
   );
 }

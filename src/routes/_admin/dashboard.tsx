@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { KpiCard } from "@/components/admin/KpiCard";
 import {
   Store, Truck, FileText, Quote, ClipboardList, DollarSign, TrendingUp,
-  Brain, Percent, Award, ArrowRight, AlertTriangle, Clock, Star,
+  Percent, Award, ArrowRight, AlertTriangle, Clock, Star,
 } from "lucide-react";
 import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -78,7 +78,6 @@ function Dashboard() {
     approvedPOs: num(d.purchaseOrders),
     marketplaceRevenue: num(d.revenue ?? invoices.paidTotal),
     transactionVolume: num(d.transactionVolume) || (num(invoices.outstandingTotal) + num(invoices.paidTotal)),
-    aiRecommendations: num(d.aiRecommendations),
     avgSavings: num(d.avgSavings),
     supplierSuccessRate: num(d.supplierSuccessRate),
     deliveries: num(d.deliveries),
@@ -142,12 +141,6 @@ function Dashboard() {
       : [];
 
   const approvalsList = pendingApprovals.length ? pendingApprovals : pendingFromKyc;
-
-  const aiInsights = asArray(d.aiInsights ?? d.insights).map((ai: any, i: number) => ({
-    id: str(ai.id, String(i)),
-    title: str(ai.title, "Insight"),
-    detail: str(ai.detail ?? ai.message, "—"),
-  }));
 
   const suppliersData = topSuppliersRaw.map((s: any) => ({
     id: str(s.id),
@@ -215,9 +208,6 @@ function Dashboard() {
             <Link to="/reports" className="px-3 h-9 rounded-lg border border-border bg-card text-sm font-medium grid place-items-center hover:bg-muted">
               Generate Report
             </Link>
-            <Link to="/ai-center" className="px-3 h-9 rounded-lg glass text-sm font-medium grid place-items-center hover:bg-muted/40 inline-flex">
-              <Brain className="h-4 w-4 mr-1.5 text-primary" /> AI Center
-            </Link>
           </div>
         </div>
       </div>
@@ -230,7 +220,6 @@ function Dashboard() {
         <KpiCard label="Approved POs" value={kpis.approvedPOs.toString()} delta={0} icon={<ClipboardList className="h-5 w-5" />} to="/purchase-orders" accent="success" />
         <KpiCard label="Marketplace Revenue" value={fmtMoney(kpis.marketplaceRevenue)} delta={0} icon={<DollarSign className="h-5 w-5" />} to="/payments" accent="success" />
         <KpiCard label="Transaction Volume" value={fmtMoney(kpis.transactionVolume)} delta={0} icon={<TrendingUp className="h-5 w-5" />} to="/reports" accent="primary" />
-        <KpiCard label="AI Recommendations" value={kpis.aiRecommendations.toLocaleString()} delta={0} icon={<Brain className="h-5 w-5" />} to="/ai-center" accent="accent" />
         <KpiCard label="Avg. Savings Generated" value={kpis.avgSavings ? `${kpis.avgSavings}%` : "—"} delta={0} icon={<Percent className="h-5 w-5" />} to="/reports" accent="info" />
         <KpiCard label="Supplier Success Rate" value={kpis.supplierSuccessRate ? `${kpis.supplierSuccessRate}%` : "—"} delta={0} icon={<Award className="h-5 w-5" />} to="/suppliers" accent="warning" />
       </div>
@@ -462,21 +451,6 @@ function Dashboard() {
                 </div>
                 <div className="text-sm font-medium">{r.spend ? fmtMoney(r.spend) : "—"}</div>
               </Link>
-            ))}
-          </div>
-        </WidgetCard>
-
-        <WidgetCard title="AI Marketplace Insights" to="/ai-center" badgeTone="accent" badge="AI">
-          <div className="space-y-2.5">
-            {aiInsights.length === 0 && <p className="text-sm text-muted-foreground py-4">No insights yet.</p>}
-            {aiInsights.map((ai) => (
-              <div key={ai.id} className="p-3 rounded-lg glass relative overflow-hidden">
-                <div className="absolute -top-8 -right-8 h-20 w-20 rounded-full bg-accent/20 blur-2xl" />
-                <div className="relative">
-                  <div className="text-sm font-medium">{ai.title}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{ai.detail}</div>
-                </div>
-              </div>
             ))}
           </div>
         </WidgetCard>
