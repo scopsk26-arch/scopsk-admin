@@ -129,7 +129,8 @@ function MediaLibraryPage() {
           <div>
             <h1 className="text-2xl font-display font-semibold tracking-tight">Media Library</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Upload images to DigitalOcean Spaces. Copy the CDN URL into dishes, banners, or catalog.
+              Files go to DigitalOcean Spaces under <code className="text-xs">respy/</code>. Copy the
+              CDN URL into dishes, banners, or catalog.
             </p>
           </div>
         </div>
