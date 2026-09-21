@@ -54,9 +54,8 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone?: "suc
 
 export function WalletsManagement({ embedded = false }: { embedded?: boolean }) {
   const qc = useQueryClient();
-  const { restaurants, suppliers } = useAdminLookups(["restaurants", "suppliers"]);
+  const { restaurants } = useAdminLookups(["restaurants"]);
   const [orgId, setOrgId] = useState("");
-  const [orgTypeFilter, setOrgTypeFilter] = useState("all");
   const [walletQuery, setWalletQuery] = useState("");
   const [action, setAction] = useState<"credit" | "debit">("credit");
   const [amount, setAmount] = useState("");
@@ -64,11 +63,8 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
   const [idempotencyKey, setIdempotencyKey] = useState("");
 
   const orgOptions = useMemo(
-    () => [
-      ...restaurants.map((o) => ({ ...o, label: `${o.label} (restaurant)` })),
-      ...suppliers.map((o) => ({ ...o, label: `${o.label} (supplier)` })),
-    ],
-    [restaurants, suppliers],
+    () => restaurants.map((o) => ({ ...o, label: o.label })),
+    [restaurants],
   );
 
   const {
@@ -76,8 +72,8 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
     isLoading: walletsLoading,
     isError: walletsError,
   } = useQuery({
-    queryKey: ["admin", "wallets", orgTypeFilter],
-    queryFn: () => fetchAdminWallets(orgTypeFilter === "all" ? undefined : { type: orgTypeFilter }),
+    queryKey: ["admin", "wallets", "restaurant"],
+    queryFn: () => fetchAdminWallets({ type: "restaurant" }),
   });
 
   const filteredWallets = useMemo(() => {
@@ -165,7 +161,7 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
           <div>
             <h1 className="text-2xl font-display font-semibold tracking-tight">Wallet Management</h1>
             <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              Browse every organization wallet, review its ledger, and credit or debit balances
+              Restaurant wallets only — review ledgers and credit or debit balances
               (idempotent when a key is provided).
             </p>
           </div>
@@ -173,7 +169,7 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
       )}
       {embedded && (
         <p className="text-sm text-muted-foreground">
-          Restaurant and supplier wallets — credit or debit balances from admin.
+          Restaurant wallets only — credit or debit balances from admin.
         </p>
       )}
 
@@ -191,20 +187,10 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
             <Input
               value={walletQuery}
               onChange={(e) => setWalletQuery(e.target.value)}
-              placeholder="Search organization, code…"
+              placeholder="Search restaurant, code…"
               className="pl-9 h-9 bg-card"
             />
           </div>
-          <Select value={orgTypeFilter} onValueChange={setOrgTypeFilter}>
-            <SelectTrigger className="w-[190px] h-9">
-              <SelectValue placeholder="All organizations" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All organizations</SelectItem>
-              <SelectItem value="restaurant">Restaurants</SelectItem>
-              <SelectItem value="supplier">Suppliers</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         <div className="overflow-x-auto">
@@ -273,7 +259,7 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
                 options={orgOptions}
                 value={orgId}
                 onChange={setOrgId}
-                placeholder="Search restaurants or suppliers…"
+                placeholder="Search restaurants…"
                 allowClear
               />
             </div>
