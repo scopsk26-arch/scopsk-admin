@@ -20,7 +20,11 @@ function mapSub(r: any) {
     plan: str(r.plan?.name ?? r.planName ?? r.planCode ?? r.plan, "—"),
     planCode: str(r.planCode ?? r.plan?.code ?? "basic"),
     mrr: num(r.mrr ?? r.amount ?? r.price),
-    renews: r.renewsAt ? String(r.renewsAt).slice(0, 10) : r.currentPeriodEnd ? String(r.currentPeriodEnd).slice(0, 10) : "—",
+    renews: r.renewsAt
+      ? String(r.renewsAt).slice(0, 10)
+      : r.currentPeriodEnd
+        ? String(r.currentPeriodEnd).slice(0, 10)
+        : "—",
     status: str(r.status, "active"),
   };
 }
@@ -30,7 +34,11 @@ function SubscriptionsPage() {
   const { restaurants, suppliers } = useAdminLookups(["restaurants", "suppliers"]);
   const orgs = [...restaurants, ...suppliers];
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["subscriptions"],
     queryFn: async () => {
       const list = await fetchList("/subscriptions");
@@ -50,14 +58,16 @@ function SubscriptionsPage() {
         {
           key: "organizationId",
           label: "Organization",
+          required: true,
           type: "searchable",
           selectOptions: orgs.map((o) => ({ value: o.value, label: o.label })),
         },
-        { key: "planCode", label: "Plan code", type: "text", placeholder: "basic" },
-        { key: "mrr", label: "MRR", type: "number" },
+        { key: "planCode", label: "Plan code", required: true, type: "text", placeholder: "basic" },
+        { key: "mrr", label: "MRR", required: true, type: "number" },
         {
           key: "status",
           label: "Status",
+          required: true,
           type: "select",
           options: ["trialing", "active", "past_due", "cancelled", "expired"],
         },
@@ -82,22 +92,43 @@ function SubscriptionsPage() {
       kpis={[
         { label: "Active subs", value: String(active), tone: "success" },
         { label: "MRR", value: AED(mrr), tone: "info" },
-        { label: "Trials", value: String(rows.filter((r) => /trial/i.test(r.plan) || r.status === "trialing").length) },
+        {
+          label: "Trials",
+          value: String(
+            rows.filter((r) => /trial/i.test(r.plan) || r.status === "trialing").length,
+          ),
+        },
         { label: "Total", value: String(rows.length), tone: "warning" },
       ]}
       rows={rows}
       searchKeys={["id", "customer", "plan"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load subscriptions." : "No subscriptions found."}
+      emptyHint={
+        isLoading
+          ? "Loading…"
+          : isError
+            ? "Failed to load subscriptions."
+            : "No subscriptions found."
+      }
       columns={[
-        { key: "id", label: "Sub", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
-        { key: "customer", label: "Customer", render: (r) => <span className="font-medium">{r.customer}</span> },
+        {
+          key: "id",
+          label: "Sub",
+          className: "font-mono text-xs",
+          render: (r) => String(r.id).slice(0, 8),
+        },
+        {
+          key: "customer",
+          label: "Customer",
+          render: (r) => <span className="font-medium">{r.customer}</span>,
+        },
         { key: "plan", label: "Plan" },
         { key: "mrr", label: "MRR", render: (r) => AED(r.mrr) },
         { key: "renews", label: "Renews" },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onCreate={async (data) => {
-        if (!data.organizationId || !data.planCode) throw new Error("Organization and plan code required");
+        if (!data.organizationId || !data.planCode)
+          throw new Error("Organization and plan code required");
         const created = await api.post("/subscriptions", {
           organizationId: data.organizationId,
           planCode: data.planCode,

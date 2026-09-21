@@ -45,9 +45,7 @@ function mapBanner(r: any): BannerRow {
 }
 
 function sortBanners(list: BannerRow[]): BannerRow[] {
-  return [...list].sort(
-    (a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title),
-  );
+  return [...list].sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
 }
 
 function buildBannerReorderItems(bannerRows: BannerRow[]): { id: string; sortOrder: number }[] {
@@ -60,7 +58,11 @@ function buildBannerReorderItems(bannerRows: BannerRow[]): { id: string; sortOrd
 function BannersPage() {
   const queryClient = useQueryClient();
   const [reorderBusy, setReorderBusy] = useState<string | null>(null);
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["admin", "banners"],
     queryFn: async () => {
       const list = await fetchList("/admin/banners", { limit: 100 });
@@ -103,12 +105,18 @@ function BannersPage() {
       entityName="Banner"
       idKey="id"
       formFields={[
-        { key: "title", label: "Title", type: "text" },
+        { key: "title", label: "Title", required: true, type: "text" },
         { key: "subtitle", label: "Subtitle", type: "text" },
-        { key: "imageUrl", label: "Image URL", type: "image" },
+        { key: "imageUrl", label: "Image URL", required: true, type: "image" },
         { key: "ctaLabel", label: "CTA Label", type: "text" },
         { key: "ctaTarget", label: "CTA Target (route/deep link)", type: "text" },
-        { key: "status", label: "Status", type: "select", options: ["active", "inactive"] },
+        {
+          key: "status",
+          label: "Status",
+          required: true,
+          type: "select",
+          options: ["active", "inactive"],
+        },
         { key: "sortOrder", label: "Sort order", type: "number" },
         { key: "startsAt", label: "Starts at (YYYY-MM-DD)", type: "text" },
         { key: "endsAt", label: "Ends at (YYYY-MM-DD)", type: "text" },
@@ -129,16 +137,33 @@ function BannersPage() {
       renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Active", value: String(active), tone: "success" },
-        { label: "Inactive", value: String(rows.filter((r) => r.status === "inactive").length), tone: "info" },
+        {
+          label: "Inactive",
+          value: String(rows.filter((r) => r.status === "inactive").length),
+          tone: "info",
+        },
         { label: "Total", value: String(rows.length) },
-        { label: "Scheduled", value: String(rows.filter((r) => r.startsAt || r.endsAt).length), tone: "info" },
+        {
+          label: "Scheduled",
+          value: String(rows.filter((r) => r.startsAt || r.endsAt).length),
+          tone: "info",
+        },
       ]}
       rows={rows}
       searchKeys={["id", "title", "subtitle", "ctaLabel", "ctaTarget"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load banners." : "No banners found."}
       columns={[
-        { key: "id", label: "ID", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
-        { key: "title", label: "Title", render: (r) => <span className="font-medium">{r.title}</span> },
+        {
+          key: "id",
+          label: "ID",
+          className: "font-mono text-xs",
+          render: (r) => String(r.id).slice(0, 8),
+        },
+        {
+          key: "title",
+          label: "Title",
+          render: (r) => <span className="font-medium">{r.title}</span>,
+        },
         { key: "subtitle", label: "Subtitle", className: "max-w-[200px] truncate" },
         { key: "sortOrder", label: "Order" },
         {
@@ -203,7 +228,8 @@ function BannersPage() {
           ctaLabel: data.ctaLabel || null,
           ctaTarget: data.ctaTarget || null,
           status: data.status,
-          sortOrder: data.sortOrder != null && data.sortOrder !== "" ? Number(data.sortOrder) : undefined,
+          sortOrder:
+            data.sortOrder != null && data.sortOrder !== "" ? Number(data.sortOrder) : undefined,
           startsAt: data.startsAt || null,
           endsAt: data.endsAt || null,
         });

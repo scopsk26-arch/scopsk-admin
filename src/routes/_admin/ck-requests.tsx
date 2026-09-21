@@ -12,14 +12,7 @@ export const Route = createFileRoute("/_admin/ck-requests")({
   component: CkRequestsPage,
 });
 
-const RFQ_STATUSES = [
-  "draft",
-  "published",
-  "closed",
-  "awarded",
-  "cancelled",
-  "expired",
-] as const;
+const RFQ_STATUSES = ["draft", "published", "closed", "awarded", "cancelled", "expired"] as const;
 
 function mapRfqRow(r: any) {
   const qty =
@@ -66,7 +59,11 @@ function CkRequestsPage() {
   const { restaurants } = useAdminLookups(["restaurants"]);
   const queryClient = useQueryClient();
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["rfqs", "cloud_kitchen"],
     staleTime: 30_000,
     queryFn: async () => {
@@ -96,6 +93,7 @@ function CkRequestsPage() {
         {
           key: "status",
           label: "Status",
+          required: true,
           type: "select",
           options: [...RFQ_STATUSES],
         },
@@ -132,7 +130,11 @@ function CkRequestsPage() {
             : "No Cloud Kitchen requests yet."
       }
       columns={[
-        { key: "number", label: "Request", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
+        {
+          key: "number",
+          label: "Request",
+          className: "font-mono text-xs whitespace-nowrap w-[1%]",
+        },
         {
           key: "restaurant",
           label: "Restaurant",
@@ -143,8 +145,7 @@ function CkRequestsPage() {
           key: "estimatedTotal",
           label: "Est. total",
           className: "whitespace-nowrap w-[1%]",
-          render: (r) =>
-            r.estimatedTotal != null ? AED(r.estimatedTotal) : "—",
+          render: (r) => (r.estimatedTotal != null ? AED(r.estimatedTotal) : "—"),
         },
         { key: "created", label: "Created", className: "whitespace-nowrap w-[1%]" },
         {

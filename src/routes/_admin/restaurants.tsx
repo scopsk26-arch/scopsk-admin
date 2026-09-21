@@ -28,7 +28,11 @@ function RestaurantsPage() {
   const cuisineLookups = useMemo(() => ({ cuisineIds: cuisineOptions }), [cuisineOptions]);
   const queryClient = useQueryClient();
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["organizations", "restaurant"],
     staleTime: 60_000,
     queryFn: async () => {
@@ -48,7 +52,7 @@ function RestaurantsPage() {
       icon={<Store className="h-5 w-5 text-primary" />}
       lookups={cuisineLookups}
       formFields={[
-        { key: "name", label: "Restaurant", type: "text" },
+        { key: "name", label: "Restaurant", required: true, type: "text" },
         {
           key: "cuisineIds",
           label: "Cuisines",
@@ -82,6 +86,7 @@ function RestaurantsPage() {
         {
           key: "status",
           label: "Status",
+          required: true,
           type: "select",
           options: ["active", "pending", "suspended", "rejected"],
         },
@@ -155,10 +160,21 @@ function RestaurantsPage() {
       ]}
       rows={rows}
       searchKeys={["name", "region", "cuisines", "industry", "tradeLicenseNumber", "id"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load restaurants." : "No restaurants found."}
+      emptyHint={
+        isLoading ? "Loading…" : isError ? "Failed to load restaurants." : "No restaurants found."
+      }
       columns={[
-        { key: "id", label: "ID", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
-        { key: "name", label: "Restaurant", render: (r) => <span className="font-medium">{r.name}</span> },
+        {
+          key: "id",
+          label: "ID",
+          className: "font-mono text-xs",
+          render: (r) => String(r.id).slice(0, 8),
+        },
+        {
+          key: "name",
+          label: "Restaurant",
+          render: (r) => <span className="font-medium">{r.name}</span>,
+        },
         {
           key: "cuisines",
           label: "Cuisines",
@@ -198,10 +214,15 @@ function RestaurantsPage() {
                       className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                     >
                       <ExternalLink className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{(d.type || d.fileName || "file").replace(/_/g, " ")}</span>
+                      <span className="truncate">
+                        {(d.type || d.fileName || "file").replace(/_/g, " ")}
+                      </span>
                     </a>
                   ) : (
-                    <span key={d.id || `${d.type}-${i}`} className="text-xs text-muted-foreground truncate">
+                    <span
+                      key={d.id || `${d.type}-${i}`}
+                      className="text-xs text-muted-foreground truncate"
+                    >
                       {(d.type || "document").replace(/_/g, " ")}
                     </span>
                   ),
@@ -220,7 +241,9 @@ function RestaurantsPage() {
         {
           key: "verificationStatus",
           label: "KYC",
-          render: (r) => <StatusBadge status={r.verificationStatus !== "—" ? r.verificationStatus : r.status} />,
+          render: (r) => (
+            <StatusBadge status={r.verificationStatus !== "—" ? r.verificationStatus : r.status} />
+          ),
         },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}
@@ -245,8 +268,7 @@ function RestaurantsPage() {
         const paymentTermsDays = nonNeg(data.paymentTermsDays);
         const discountValue = nonNeg(data.discountValue);
         const ratingRaw = Number(data.rating);
-        const rating =
-          Number.isFinite(ratingRaw) ? Math.min(5, Math.max(0, ratingRaw)) : 0;
+        const rating = Number.isFinite(ratingRaw) ? Math.min(5, Math.max(0, ratingRaw)) : 0;
         const updated = await updateOrganization(
           id,
           { ...data, cuisineIds, industry: cuisineLabel || data.industry, rating },

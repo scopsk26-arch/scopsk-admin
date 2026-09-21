@@ -124,7 +124,11 @@ async function loadCkDishes(): Promise<DishRow[]> {
     const nested = Array.isArray(k.dishes) ? k.dishes : [];
     for (const d of nested) {
       const row = mapDish(
-        { ...d, cloudKitchenId: d.cloudKitchenId || kitchenId, cloudKitchen: d.cloudKitchen || { id: kitchenId, name: kitchenName } },
+        {
+          ...d,
+          cloudKitchenId: d.cloudKitchenId || kitchenId,
+          cloudKitchen: d.cloudKitchen || { id: kitchenId, name: kitchenName },
+        },
         kitchenName,
       );
       if (row.id && row.id !== "—") byId.set(row.id, row);
@@ -211,9 +215,7 @@ function CkDishesPage() {
         : "",
     );
     setKitchenMinOrder(
-      row.minOrderAmount != null && row.minOrderAmount !== ""
-        ? String(row.minOrderAmount)
-        : "",
+      row.minOrderAmount != null && row.minOrderAmount !== "" ? String(row.minOrderAmount) : "",
     );
     const slots = Array.isArray(row.deliverySlots)
       ? row.deliverySlots.map((s: unknown) => normalizeSlotLabel(String(s))).filter(Boolean)
@@ -221,7 +223,11 @@ function CkDishesPage() {
     setKitchenSlots(slots.length ? slots : ["11:00–12:00", "12:00–13:00", "18:00–19:00"]);
   }, [kitchenSettingsId, kitchens]);
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["admin", "ck-dishes"],
     queryFn: loadCkDishes,
   });
@@ -256,8 +262,7 @@ function CkDishesPage() {
       if (!kitchenSettingsId) throw new Error("Select a kitchen");
       return updateCloudKitchen(kitchenSettingsId, {
         rating: kitchenRating !== "" ? Number(kitchenRating) : null,
-        deliveryTimeMinutes:
-          kitchenDeliveryMins !== "" ? Number(kitchenDeliveryMins) : null,
+        deliveryTimeMinutes: kitchenDeliveryMins !== "" ? Number(kitchenDeliveryMins) : null,
         minOrderAmount: kitchenMinOrder !== "" ? Number(kitchenMinOrder) : null,
         deliverySlots: kitchenSlots,
       });
@@ -274,9 +279,7 @@ function CkDishesPage() {
     if (!token) return "";
     const byId = kitchenLookup.find((o) => o.value === token);
     if (byId) return byId.value;
-    const byLabel = kitchenLookup.find(
-      (o) => o.label.toLowerCase() === token.toLowerCase(),
-    );
+    const byLabel = kitchenLookup.find((o) => o.label.toLowerCase() === token.toLowerCase());
     return byLabel?.value ?? token;
   };
 
@@ -413,212 +416,261 @@ function CkDishesPage() {
         ) : null}
       </div>
 
-    <DataPage
-      title="Cloud Kitchen Dishes"
-      description="Add dishes one by one for a kitchen. Use CK Bulk Import for CSV uploads."
-      icon={<Soup className="h-5 w-5 text-primary" />}
-      entityName="Dish"
-      idKey="id"
-      lookups={{
-        cloudKitchenId: kitchenLookup,
-        kitchen: kitchenLookup,
-      }}
-      formFields={[
-        {
-          key: "cloudKitchenId",
-          label: "Cloud kitchen",
-          type: "searchable",
-          placeholder: "Select kitchen…",
-        },
-        { key: "name", label: "Dish name", type: "text", placeholder: "e.g. Butter Chicken" },
-        { key: "basePrice", label: "Base price (AED)", type: "number", placeholder: "0" },
-        {
-          key: "category",
-          label: "Category",
-          type: "select",
-          options: [...CK_CATEGORIES],
-          placeholder: "Select category…",
-        },
-        { key: "description", label: "Description", type: "text" },
-        { key: "ingredients", label: "Ingredients", type: "text", placeholder: "Comma-separated or JSON array" },
-        {
-          key: "bulkPricing",
-          label: "Bulk pricing (JSON)",
-          type: "text",
-          placeholder: '[{"label":"10 portions","minQty":10,"price":40}]',
-        },
-        { key: "prepMinutes", label: "Prep minutes", type: "number", placeholder: "optional" },
-        { key: "currency", label: "Currency", type: "text", placeholder: "AED" },
-        { key: "imageUrl", label: "Image URL", type: "text", placeholder: "https://…" },
-        {
-          key: "status",
-          label: "Status",
-          type: "select",
-          options: [...DISH_STATUSES],
-        },
-      ]}
-      viewFields={[
-        { key: "name", label: "Dish" },
-        { key: "kitchen", label: "Kitchen" },
-        { key: "category", label: "Category" },
-        { key: "basePrice", label: "Base price" },
-        { key: "currency", label: "Currency" },
-        { key: "prepMinutes", label: "Prep minutes" },
-        { key: "status", label: "Status" },
-        { key: "description", label: "Description" },
-        { key: "ingredients", label: "Ingredients" },
-        { key: "bulkPricing", label: "Bulk pricing" },
-        { key: "imageUrl", label: "Image URL" },
-        { key: "id", label: "ID" },
-      ]}
-      loadDetail={async (row) => row}
-      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
-      kpis={[
-        { label: "Total dishes", value: String(rows.length) },
-        { label: "Active", value: String(active), tone: "success" },
-        { label: "Kitchens", value: String(kitchenLookup.length), tone: "info" },
-        {
-          label: "Draft / inactive",
-          value: String(rows.length - active),
-        },
-      ]}
-      rows={rows}
-      searchKeys={["name", "kitchen", "category", "status", "id"]}
-      emptyHint={
-        isLoading
-          ? "Loading…"
-          : isError
-            ? "Failed to load dishes."
-            : kitchenLookup.length === 0
-              ? "Create a cloud kitchen first, then add dishes here."
-              : "No dishes yet. Click Add Dish to create one."
-      }
-      columns={[
-        {
-          key: "name",
-          label: "Dish",
-          render: (r) => <span className="font-medium">{r.name}</span>,
-        },
-        { key: "kitchen", label: "Kitchen" },
-        { key: "category", label: "Category", className: "whitespace-nowrap w-[1%]" },
-        {
-          key: "basePrice",
-          label: "Price",
-          className: "whitespace-nowrap w-[1%]",
-          render: (r) =>
-            r.currency === "AED" || !r.currency
-              ? AED(r.basePrice)
-              : `${r.currency} ${r.basePrice.toLocaleString()}`,
-        },
-        {
-          key: "prepMinutes",
-          label: "Prep",
-          className: "whitespace-nowrap w-[1%]",
-          render: (r) => (r.prepMinutes != null ? `${r.prepMinutes}m` : "—"),
-        },
-        {
-          key: "status",
-          label: "Status",
-          className: "whitespace-nowrap w-[1%]",
-          render: (r) => <StatusBadge status={r.status} />,
-        },
-      ]}
-      onCreate={async (data) => {
-        const cloudKitchenId = resolveKitchenId(data.cloudKitchenId ?? data.kitchen);
-        if (!cloudKitchenId) throw new Error("Select a cloud kitchen");
-        const name = String(data.name || "").trim();
-        if (!name) throw new Error("Dish name is required");
-        const basePrice = Number(data.basePrice);
-        if (!Number.isFinite(basePrice) || basePrice < 0) {
-          throw new Error("Base price must be 0 or more");
+      <DataPage
+        title="Cloud Kitchen Dishes"
+        description="Add dishes one by one. Kitchen is assigned automatically. Upload images in Media Library, then paste the CDN URL here (or upload in the Image field)."
+        icon={<Soup className="h-5 w-5 text-primary" />}
+        entityName="Dish"
+        idKey="id"
+        lookups={{}}
+        formFields={[
+          {
+            key: "name",
+            label: "Dish name",
+            required: true,
+            type: "text",
+            placeholder: "e.g. Butter Chicken",
+          },
+          {
+            key: "basePrice",
+            label: "Base price (AED)",
+            required: true,
+            type: "number",
+            placeholder: "0",
+          },
+          {
+            key: "category",
+            label: "Category",
+            type: "select",
+            options: [...CK_CATEGORIES],
+            placeholder: "Select category…",
+          },
+          { key: "description", label: "Description", type: "text" },
+          {
+            key: "ingredients",
+            label: "Ingredients",
+            type: "text",
+            placeholder: "Comma-separated or JSON array",
+          },
+          {
+            key: "bulkPricing",
+            label: "Bulk pricing (JSON)",
+            type: "text",
+            placeholder: '[{"label":"10 portions","minQty":10,"price":40}]',
+          },
+          { key: "prepMinutes", label: "Prep minutes", type: "number", placeholder: "optional" },
+          { key: "currency", label: "Currency", type: "text", placeholder: "AED" },
+          {
+            key: "imageUrl",
+            label: "Image URL",
+            type: "image",
+            placeholder: "Upload or paste CDN URL from Media Library",
+          },
+          {
+            key: "status",
+            label: "Status",
+            required: true,
+            type: "select",
+            options: [...DISH_STATUSES],
+          },
+        ]}
+        viewFields={[
+          { key: "id", label: "ID" },
+          { key: "cloudKitchenId", label: "Cloud kitchen ID" },
+          { key: "name", label: "Dish" },
+          { key: "category", label: "Category" },
+          { key: "basePrice", label: "Base price" },
+          { key: "currency", label: "Currency" },
+          { key: "prepMinutes", label: "Prep minutes" },
+          { key: "status", label: "Status" },
+          { key: "description", label: "Description" },
+          { key: "ingredients", label: "Ingredients" },
+          { key: "bulkPricing", label: "Bulk pricing" },
+          { key: "imageUrl", label: "Image URL" },
+        ]}
+        loadDetail={async (row) => row}
+        renderView={(detail) => <GenericJsonDetailView detail={detail} />}
+        kpis={[
+          { label: "Total dishes", value: String(rows.length) },
+          { label: "Active", value: String(active), tone: "success" },
+          { label: "Kitchens", value: String(kitchenLookup.length), tone: "info" },
+          {
+            label: "Draft / inactive",
+            value: String(rows.length - active),
+          },
+        ]}
+        rows={rows}
+        searchKeys={["name", "category", "status", "id", "cloudKitchenId"]}
+        emptyHint={
+          isLoading
+            ? "Loading…"
+            : isError
+              ? "Failed to load dishes."
+              : kitchenLookup.length === 0
+                ? "Create a cloud kitchen first, then add dishes here."
+                : "No dishes yet. Click Add Dish to create one."
         }
-        const payload = {
-          cloudKitchenId,
-          name,
-          basePrice,
-          description: data.description ? String(data.description) : undefined,
-          category: data.category ? String(data.category).trim() : undefined,
-          currency: data.currency ? String(data.currency).trim().toUpperCase() : "AED",
-          imageUrl: data.imageUrl ? String(data.imageUrl).trim() : undefined,
-          status: data.status || "active",
-          prepMinutes:
-            data.prepMinutes !== "" && data.prepMinutes != null
-              ? Number(data.prepMinutes)
-              : undefined,
-          ingredients: data.ingredients ? String(data.ingredients).trim() : undefined,
-          bulkPricing: parseBulkPricingInput(data.bulkPricing),
-        };
-        let created: any;
-        try {
-          created = await api.post<any>("/admin/cloud-kitchen/dishes", payload);
-        } catch {
-          const { cloudKitchenId: _ck, ...kitchenPayload } = payload;
-          created = await api.post<any>(
-            `/cloud-kitchen/kitchens/${cloudKitchenId}/dishes`,
-            kitchenPayload,
+        columns={[
+          {
+            key: "id",
+            label: "ID",
+            className: "font-mono text-[11px] max-w-[140px]",
+            render: (r) => (
+              <span className="block truncate" title={r.id}>
+                {r.id || "—"}
+              </span>
+            ),
+          },
+          {
+            key: "cloudKitchenId",
+            label: "Cloud kitchen ID",
+            className: "font-mono text-[11px] max-w-[140px]",
+            render: (r) => (
+              <span className="block truncate" title={r.cloudKitchenId}>
+                {r.cloudKitchenId || "—"}
+              </span>
+            ),
+          },
+          {
+            key: "name",
+            label: "Dish",
+            render: (r) => <span className="font-medium">{r.name}</span>,
+          },
+          { key: "category", label: "Category", className: "whitespace-nowrap w-[1%]" },
+          {
+            key: "basePrice",
+            label: "Price",
+            className: "whitespace-nowrap w-[1%]",
+            render: (r) =>
+              r.currency === "AED" || !r.currency
+                ? AED(r.basePrice)
+                : `${r.currency} ${r.basePrice.toLocaleString()}`,
+          },
+          {
+            key: "prepMinutes",
+            label: "Prep",
+            className: "whitespace-nowrap w-[1%]",
+            render: (r) => (r.prepMinutes != null ? `${r.prepMinutes}m` : "—"),
+          },
+          {
+            key: "status",
+            label: "Status",
+            className: "whitespace-nowrap w-[1%]",
+            render: (r) => <StatusBadge status={r.status} />,
+          },
+        ]}
+        onCreate={async (data) => {
+          const cloudKitchenId =
+            resolveKitchenId(kitchenSettingsId) || kitchenLookup[0]?.value || "";
+          if (!cloudKitchenId) {
+            throw new Error("Create a cloud kitchen first (no kitchen available)");
+          }
+          const name = String(data.name || "").trim();
+          if (!name) throw new Error("Dish name is required");
+          const basePrice = Number(data.basePrice);
+          if (!Number.isFinite(basePrice) || basePrice < 0) {
+            throw new Error("Base price must be 0 or more");
+          }
+          const duplicate = rows.find(
+            (r) =>
+              r.cloudKitchenId === cloudKitchenId &&
+              String(r.name || "").trim().toLowerCase() === name.toLowerCase(),
           );
-        }
-        await invalidate();
-        return mapDish({
-          ...created,
-          cloudKitchen: {
-            id: cloudKitchenId,
-            name: kitchenLookup.find((k) => k.value === cloudKitchenId)?.label,
-          },
-        });
-      }}
-      onUpdate={async (id, data) => {
-        const cloudKitchenId = resolveKitchenId(data.cloudKitchenId ?? data.kitchen);
-        const name = String(data.name || "").trim();
-        if (!name) throw new Error("Dish name is required");
-        const basePrice = Number(data.basePrice);
-        if (!Number.isFinite(basePrice) || basePrice < 0) {
-          throw new Error("Base price must be 0 or more");
-        }
-        const payload = {
-          ...(cloudKitchenId ? { cloudKitchenId } : {}),
-          name,
-          basePrice,
-          description: data.description != null ? String(data.description) : undefined,
-          category: data.category != null ? String(data.category).trim() : undefined,
-          currency: data.currency
-            ? String(data.currency).trim().toUpperCase()
-            : undefined,
-          imageUrl: data.imageUrl != null ? String(data.imageUrl).trim() || null : undefined,
-          status: data.status || undefined,
-          prepMinutes:
-            data.prepMinutes !== "" && data.prepMinutes != null
-              ? Number(data.prepMinutes)
-              : undefined,
-          ingredients: data.ingredients != null ? String(data.ingredients).trim() : undefined,
-          bulkPricing: data.bulkPricing != null ? parseBulkPricingInput(data.bulkPricing) : undefined,
-        };
-        let updated: any;
-        try {
-          updated = await api.patch<any>(`/admin/cloud-kitchen/dishes/${id}`, payload);
-        } catch {
-          const { cloudKitchenId: _ck, ...dishPayload } = payload;
-          updated = await api.patch<any>(`/cloud-kitchen/dishes/${id}`, dishPayload);
-        }
-        await invalidate();
-        const kid = str(updated.cloudKitchenId ?? cloudKitchenId);
-        return mapDish({
-          ...updated,
-          cloudKitchen: {
-            id: kid,
-            name: kitchenLookup.find((k) => k.value === kid)?.label,
-          },
-        });
-      }}
-      onDelete={async (id) => {
-        try {
-          await api.delete(`/admin/cloud-kitchen/dishes/${id}`);
-        } catch {
-          await api.delete(`/cloud-kitchen/dishes/${id}`);
-        }
-        await invalidate();
-      }}
-    />
+          if (duplicate) {
+            throw new Error(`Dish "${name}" already exists for this kitchen`);
+          }
+          const payload = {
+            cloudKitchenId,
+            name,
+            basePrice,
+            description: data.description ? String(data.description) : undefined,
+            category: data.category ? String(data.category).trim() : undefined,
+            currency: data.currency ? String(data.currency).trim().toUpperCase() : "AED",
+            imageUrl: data.imageUrl ? String(data.imageUrl).trim() : undefined,
+            status: data.status || "active",
+            prepMinutes:
+              data.prepMinutes !== "" && data.prepMinutes != null
+                ? Number(data.prepMinutes)
+                : undefined,
+            ingredients: data.ingredients ? String(data.ingredients).trim() : undefined,
+            bulkPricing: parseBulkPricingInput(data.bulkPricing),
+          };
+          let created: any;
+          try {
+            created = await api.post<any>("/admin/cloud-kitchen/dishes", payload);
+          } catch {
+            const { cloudKitchenId: _ck, ...kitchenPayload } = payload;
+            created = await api.post<any>(
+              `/cloud-kitchen/kitchens/${cloudKitchenId}/dishes`,
+              kitchenPayload,
+            );
+          }
+          await invalidate();
+          return mapDish({
+            ...created,
+            cloudKitchenId,
+            cloudKitchen: {
+              id: cloudKitchenId,
+              name: kitchenLookup.find((k) => k.value === cloudKitchenId)?.label,
+            },
+          });
+        }}
+        onUpdate={async (id, data) => {
+          const existing = rows.find((r) => r.id === id);
+          const cloudKitchenId =
+            resolveKitchenId(existing?.cloudKitchenId) ||
+            resolveKitchenId(kitchenSettingsId) ||
+            kitchenLookup[0]?.value ||
+            "";
+          const name = String(data.name || "").trim();
+          if (!name) throw new Error("Dish name is required");
+          const basePrice = Number(data.basePrice);
+          if (!Number.isFinite(basePrice) || basePrice < 0) {
+            throw new Error("Base price must be 0 or more");
+          }
+          const payload = {
+            ...(cloudKitchenId ? { cloudKitchenId } : {}),
+            name,
+            basePrice,
+            description: data.description != null ? String(data.description) : undefined,
+            category: data.category != null ? String(data.category).trim() : undefined,
+            currency: data.currency ? String(data.currency).trim().toUpperCase() : undefined,
+            imageUrl: data.imageUrl != null ? String(data.imageUrl).trim() || null : undefined,
+            status: data.status || undefined,
+            prepMinutes:
+              data.prepMinutes !== "" && data.prepMinutes != null
+                ? Number(data.prepMinutes)
+                : undefined,
+            ingredients: data.ingredients != null ? String(data.ingredients).trim() : undefined,
+            bulkPricing:
+              data.bulkPricing != null ? parseBulkPricingInput(data.bulkPricing) : undefined,
+          };
+          let updated: any;
+          try {
+            updated = await api.patch<any>(`/admin/cloud-kitchen/dishes/${id}`, payload);
+          } catch {
+            const { cloudKitchenId: _ck, ...dishPayload } = payload;
+            updated = await api.patch<any>(`/cloud-kitchen/dishes/${id}`, dishPayload);
+          }
+          await invalidate();
+          const kid = str(updated.cloudKitchenId ?? cloudKitchenId);
+          return mapDish({
+            ...updated,
+            cloudKitchen: {
+              id: kid,
+              name: kitchenLookup.find((k) => k.value === kid)?.label,
+            },
+          });
+        }}
+        onDelete={async (id) => {
+          try {
+            await api.delete(`/admin/cloud-kitchen/dishes/${id}`);
+          } catch {
+            await api.delete(`/cloud-kitchen/dishes/${id}`);
+          }
+          await invalidate();
+        }}
+      />
     </div>
   );
 }

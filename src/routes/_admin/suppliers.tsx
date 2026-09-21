@@ -22,7 +22,11 @@ function SuppliersPage() {
   const { categories } = useAdminLookups(["categories"]);
   const queryClient = useQueryClient();
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["organizations", "supplier"],
     staleTime: 60_000,
     queryFn: async () => {
@@ -33,7 +37,9 @@ function SuppliersPage() {
 
   const verified = rows.filter((r) => ["verified", "active"].includes(r.status)).length;
   const pending = rows.filter((r) => r.status === "pending").length;
-  const avgWin = rows.length ? Math.round(rows.reduce((s, r) => s + (r.winRate || 0), 0) / rows.length) : 0;
+  const avgWin = rows.length
+    ? Math.round(rows.reduce((s, r) => s + (r.winRate || 0), 0) / rows.length)
+    : 0;
 
   const categoryOptions = categories.map((c) => ({ value: c.label, label: c.label }));
 
@@ -48,8 +54,14 @@ function SuppliersPage() {
         category: categoryOptions,
       }}
       formFields={[
-        { key: "name", label: "Supplier", type: "text" },
-        { key: "email", label: "Email", type: "text", placeholder: "ops@supplier.com" },
+        { key: "name", label: "Supplier", required: true, type: "text" },
+        {
+          key: "email",
+          label: "Email",
+          required: true,
+          type: "text",
+          placeholder: "ops@supplier.com",
+        },
         { key: "phone", label: "Phone", type: "text" },
         {
           key: "categories",
@@ -72,6 +84,7 @@ function SuppliersPage() {
         {
           key: "status",
           label: "Status",
+          required: true,
           type: "select",
           options: ["active", "pending", "verified", "suspended", "rejected"],
         },
@@ -103,11 +116,27 @@ function SuppliersPage() {
       ]}
       rows={rows}
       searchKeys={["name", "id", "email", "status"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load suppliers." : "No suppliers found."}
+      emptyHint={
+        isLoading ? "Loading…" : isError ? "Failed to load suppliers." : "No suppliers found."
+      }
       columns={[
-        { key: "id", label: "ID", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
-        { key: "name", label: "Supplier", render: (r) => <span className="font-medium">{r.name}</span> },
-        { key: "categories", label: "Categories", className: "whitespace-nowrap max-w-[220px]", render: (r) => <TagListDropdown value={r.categories} /> },
+        {
+          key: "id",
+          label: "ID",
+          className: "font-mono text-xs",
+          render: (r) => String(r.id).slice(0, 8),
+        },
+        {
+          key: "name",
+          label: "Supplier",
+          render: (r) => <span className="font-medium">{r.name}</span>,
+        },
+        {
+          key: "categories",
+          label: "Categories",
+          className: "whitespace-nowrap max-w-[220px]",
+          render: (r) => <TagListDropdown value={r.categories} />,
+        },
         { key: "poApprovalLevels", label: "PO levels" },
         { key: "minRfqValueAed", label: "Min RFQ", render: (r) => AED(r.minRfqValueAed) },
         {

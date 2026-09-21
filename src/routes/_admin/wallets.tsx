@@ -9,7 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AED, StatusBadge } from "@/components/admin/DataPage";
+import { AED, StatusBadge, FieldLabel } from "@/components/admin/DataPage";
 import { SearchableSelect } from "@/components/admin/SearchableSelect";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import {
@@ -253,7 +253,7 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-4">
           <div>
-            <Label className="text-xs text-muted-foreground">Organization</Label>
+            <FieldLabel required className="text-muted-foreground">Organization</FieldLabel>
             <div className="mt-1">
               <SearchableSelect
                 options={orgOptions}
@@ -302,7 +302,7 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
         <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-4">
           <h2 className="font-display font-semibold">Adjust balance</h2>
           <div>
-            <Label className="text-xs text-muted-foreground">Action</Label>
+            <FieldLabel required className="text-muted-foreground">Action</FieldLabel>
             <Select value={action} onValueChange={(v) => setAction(v as "credit" | "debit")}>
               <SelectTrigger className="mt-1">
                 <SelectValue />
@@ -314,7 +314,7 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
             </Select>
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Amount (AED)</Label>
+            <FieldLabel required className="text-muted-foreground">Amount (AED)</FieldLabel>
             <Input
               type="number"
               min={0}

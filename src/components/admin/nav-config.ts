@@ -3,7 +3,7 @@ import {
   PackageCheck, Receipt, CreditCard, Percent, Boxes, FolderTree, Star, Landmark,
   AlertTriangle, MessageSquare, LifeBuoy, BarChart3, ScrollText, UsersRound,
   Settings, UtensilsCrossed, Award, CheckSquare, Warehouse, Search,
-  Upload, ChefHat, Share2, Soup, Megaphone,
+  Upload, ChefHat, Share2, Soup, Megaphone, Images,
 } from "lucide-react";
 
 export type NavItem = {
@@ -47,6 +47,7 @@ export const navItems: NavItem[] = [
   { group: "Catalog", title: "Cuisines", to: "/cuisines", icon: UtensilsCrossed },
   { group: "Catalog", title: "Qualities", to: "/qualities", icon: Award },
   { group: "Catalog", title: "Restaurant Inventory", to: "/inventory", icon: Warehouse },
+  { group: "Catalog", title: "Media Library", to: "/media", icon: Images },
 
   { group: "Cloud Kitchen", title: "CK Dishes", to: "/ck-dishes", icon: Soup },
   { group: "Cloud Kitchen", title: "CK Requests", to: "/ck-requests", icon: ChefHat },

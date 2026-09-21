@@ -25,7 +25,11 @@ function mapCms(r: any) {
 
 function CmsPage() {
   const queryClient = useQueryClient();
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["cms"],
     queryFn: async () => {
       const list = await fetchList("/cms");
@@ -39,9 +43,15 @@ function CmsPage() {
       description="Landing pages, help articles, FAQs and legal pages."
       icon={<BookOpen className="h-5 w-5 text-primary" />}
       formFields={[
-        { key: "title", label: "Title", type: "text" },
-        { key: "slug", label: "Slug", type: "text" },
-        { key: "status", label: "Status", type: "select", options: ["draft", "published", "archived"] },
+        { key: "title", label: "Title", required: true, type: "text" },
+        { key: "slug", label: "Slug", required: true, type: "text" },
+        {
+          key: "status",
+          label: "Status",
+          required: true,
+          type: "select",
+          options: ["draft", "published", "archived"],
+        },
         { key: "body", label: "Body", type: "text" },
       ]}
       viewFields={[
@@ -55,17 +65,40 @@ function CmsPage() {
       loadDetail={async (row) => row}
       renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
-        { label: "Published", value: String(rows.filter((r) => r.status === "published").length), tone: "success" },
-        { label: "Drafts", value: String(rows.filter((r) => r.status === "draft").length), tone: "info" },
+        {
+          label: "Published",
+          value: String(rows.filter((r) => r.status === "published").length),
+          tone: "success",
+        },
+        {
+          label: "Drafts",
+          value: String(rows.filter((r) => r.status === "draft").length),
+          tone: "info",
+        },
         { label: "Total", value: String(rows.length) },
-        { label: "Authors", value: String(new Set(rows.map((r) => r.author).filter((a) => a && a !== "—")).size), tone: "info" },
+        {
+          label: "Authors",
+          value: String(new Set(rows.map((r) => r.author).filter((a) => a && a !== "—")).size),
+          tone: "info",
+        },
       ]}
       rows={rows}
       searchKeys={["id", "title", "slug", "author"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load CMS pages." : "No CMS pages found."}
+      emptyHint={
+        isLoading ? "Loading…" : isError ? "Failed to load CMS pages." : "No CMS pages found."
+      }
       columns={[
-        { key: "id", label: "ID", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
-        { key: "title", label: "Title", render: (r) => <span className="font-medium">{r.title}</span> },
+        {
+          key: "id",
+          label: "ID",
+          className: "font-mono text-xs",
+          render: (r) => String(r.id).slice(0, 8),
+        },
+        {
+          key: "title",
+          label: "Title",
+          render: (r) => <span className="font-medium">{r.title}</span>,
+        },
         { key: "slug", label: "Slug", className: "font-mono text-xs" },
         { key: "author", label: "Author" },
         { key: "updated", label: "Updated" },

@@ -4,7 +4,12 @@ import { DataPage } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { Bell, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fetchList, fetchNotificationDetail, markAllNotificationsRead, markNotificationRead } from "@/lib/api/resources";
+import {
+  fetchList,
+  fetchNotificationDetail,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -17,7 +22,11 @@ export const Route = createFileRoute("/_admin/notifications")({
 function NotificationsPage() {
   const queryClient = useQueryClient();
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
       const list = await fetchList("/notifications");
@@ -43,11 +52,12 @@ function NotificationsPage() {
       entityName="Notification"
       formFields={[
         { key: "category", label: "Category", type: "text" },
-        { key: "title", label: "Title", type: "text" },
-        { key: "body", label: "Detail", type: "text" },
+        { key: "title", label: "Title", required: true, type: "text" },
+        { key: "body", label: "Detail", required: true, type: "text" },
         {
           key: "status",
           label: "Status",
+          required: true,
           type: "select",
           options: ["read", "unread"],
         },
@@ -89,12 +99,22 @@ function NotificationsPage() {
       kpis={[
         { label: "Unread", value: String(unread), tone: "warning" },
         { label: "Total", value: String(rows.length) },
-        { label: "Approval queue", value: String(rows.filter((r) => /approv/i.test(r.category)).length), tone: "info" },
-        { label: "Critical", value: String(rows.filter((r) => /fraud|critical/i.test(r.category)).length), tone: "destructive" },
+        {
+          label: "Approval queue",
+          value: String(rows.filter((r) => /approv/i.test(r.category)).length),
+          tone: "info",
+        },
+        {
+          label: "Critical",
+          value: String(rows.filter((r) => /fraud|critical/i.test(r.category)).length),
+          tone: "destructive",
+        },
       ]}
       rows={rows}
       searchKeys={["id", "title", "body", "category"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load notifications." : "No notifications."}
+      emptyHint={
+        isLoading ? "Loading…" : isError ? "Failed to load notifications." : "No notifications."
+      }
       columns={[
         { key: "category", label: "Category" },
         {
@@ -110,7 +130,12 @@ function NotificationsPage() {
           key: "read",
           label: "Status",
           render: (r) => (
-            <span className={cn("text-xs", r.read ? "text-muted-foreground" : "text-primary font-medium")}>
+            <span
+              className={cn(
+                "text-xs",
+                r.read ? "text-muted-foreground" : "text-primary font-medium",
+              )}
+            >
               {r.read ? "Read" : "Unread"}
             </span>
           ),

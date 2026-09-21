@@ -34,8 +34,15 @@ function mapCuisineRow(r: any): CuisineRow {
     description: str(r.description, ""),
     sortOrder: num(r.sortOrder),
     status: str(r.status, "active"),
-    categories: cats.map((c: any) => str(c.name ?? c, "")).filter(Boolean).join(", ") || "—",
-    categoryIds: cats.map((c: any) => str(c.id ?? c)).filter(Boolean).join(", "),
+    categories:
+      cats
+        .map((c: any) => str(c.name ?? c, ""))
+        .filter(Boolean)
+        .join(", ") || "—",
+    categoryIds: cats
+      .map((c: any) => str(c.id ?? c))
+      .filter(Boolean)
+      .join(", "),
     products: Array.isArray(r.products) ? r.products.length : num(r.productsCount),
   };
 }
@@ -61,7 +68,11 @@ function CuisinesPage() {
   const qc = useQueryClient();
   const { categories } = useAdminLookups(["categories"]);
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["cuisines"],
     queryFn: async () => {
       const list = await fetchList("/cuisines", { all: "true", limit: 200 });
@@ -84,7 +95,7 @@ function CuisinesPage() {
       entityName="Cuisine"
       idKey="id"
       formFields={[
-        { key: "name", label: "Name", type: "text", placeholder: "e.g. Italian" },
+        { key: "name", label: "Name", required: true, type: "text", placeholder: "e.g. Italian" },
         { key: "slug", label: "Slug", type: "text", placeholder: "optional" },
         { key: "description", label: "Description", type: "text" },
         { key: "sortOrder", label: "Sort order", type: "number" },
@@ -97,6 +108,7 @@ function CuisinesPage() {
         {
           key: "status",
           label: "Status",
+          required: true,
           type: "select",
           options: ["active", "inactive"],
         },
@@ -121,10 +133,21 @@ function CuisinesPage() {
       ]}
       rows={rows}
       searchKeys={["name", "slug", "categories", "id"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load cuisines." : "No cuisines found."}
+      emptyHint={
+        isLoading ? "Loading…" : isError ? "Failed to load cuisines." : "No cuisines found."
+      }
       columns={[
-        { key: "id", label: "ID", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
-        { key: "name", label: "Cuisine", render: (r) => <span className="font-medium">{r.name}</span> },
+        {
+          key: "id",
+          label: "ID",
+          className: "font-mono text-xs",
+          render: (r) => String(r.id).slice(0, 8),
+        },
+        {
+          key: "name",
+          label: "Cuisine",
+          render: (r) => <span className="font-medium">{r.name}</span>,
+        },
         { key: "slug", label: "Slug", className: "font-mono text-xs" },
         { key: "categories", label: "Categories" },
         { key: "products", label: "Products" },

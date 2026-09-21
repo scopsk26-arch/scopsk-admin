@@ -26,7 +26,11 @@ function mapRating(r: any) {
 function RatingsPage() {
   const qc = useQueryClient();
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["admin", "ratings"],
     staleTime: 60_000,
     queryFn: async () => {
@@ -60,11 +64,7 @@ function RatingsPage() {
       idKey="id"
       searchKeys={["fromOrg", "toOrg", "purchaseOrder", "comment", "status"]}
       emptyHint={
-        isLoading
-          ? "Loading ratings…"
-          : isError
-            ? "Failed to load ratings."
-            : "No ratings yet."
+        isLoading ? "Loading ratings…" : isError ? "Failed to load ratings." : "No ratings yet."
       }
       columns={[
         { key: "fromOrg", label: "From", className: "whitespace-nowrap font-medium" },
@@ -96,6 +96,7 @@ function RatingsPage() {
         {
           key: "status",
           label: "Status",
+          required: true,
           type: "select",
           options: ["published", "hidden", "pending"],
         },

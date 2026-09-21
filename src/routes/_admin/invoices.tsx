@@ -22,13 +22,11 @@ function mapInvoice(r: any) {
   const tax = num(r.tax ?? r.vat);
   const total = num(r.total ?? r.subtotal);
   const vatRate =
-    num(meta.vatRate)
-    || num(r.vatRate)
-    || (subtotal > 0 && tax > 0 ? Math.round((tax / subtotal) * 1000) / 10 : 0);
+    num(meta.vatRate) ||
+    num(r.vatRate) ||
+    (subtotal > 0 && tax > 0 ? Math.round((tax / subtotal) * 1000) / 10 : 0);
   const commission = num(
-    r.commissionAmount
-      ?? r.purchaseOrder?.commissionAmount
-      ?? commissions.totalAmount,
+    r.commissionAmount ?? r.purchaseOrder?.commissionAmount ?? commissions.totalAmount,
   );
   return {
     id: str(r.id),
@@ -47,7 +45,10 @@ function mapInvoice(r: any) {
     paidAt: r.paidAt ? String(r.paidAt).slice(0, 10) : "—",
     type: str(r.type, "—"),
     status: str(r.status, "pending"),
-    organizationId: str(r.organizationId ?? r.issuerOrgId ?? r.buyerOrgId ?? r.organization?.id, ""),
+    organizationId: str(
+      r.organizationId ?? r.issuerOrgId ?? r.buyerOrgId ?? r.organization?.id,
+      "",
+    ),
   };
 }
 
@@ -59,7 +60,11 @@ function InvoicesList() {
   ]);
   const queryClient = useQueryClient();
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["invoices"],
     staleTime: 60_000,
     queryFn: async () => {
@@ -68,7 +73,9 @@ function InvoicesList() {
     },
   });
 
-  const outstanding = rows.filter((r) => !["paid", "cancelled"].includes(r.status)).reduce((s, r) => s + r.amount, 0);
+  const outstanding = rows
+    .filter((r) => !["paid", "cancelled"].includes(r.status))
+    .reduce((s, r) => s + r.amount, 0);
   const paid = rows.filter((r) => r.status === "paid").reduce((s, r) => s + r.amount, 0);
   const overdue = rows.filter((r) => r.status === "overdue").length;
   const vat = rows.reduce((s, r) => s + r.vat, 0);
@@ -88,7 +95,13 @@ function InvoicesList() {
         { key: "number", label: "Invoice #", type: "text" },
         { key: "party", label: "Party", type: "text" },
         { key: "amount", label: "Amount", type: "number" },
-        { key: "status", label: "Status", type: "select", options: ["paid", "pending", "overdue", "cancelled"] },
+        {
+          key: "status",
+          label: "Status",
+          required: true,
+          type: "select",
+          options: ["paid", "pending", "overdue", "cancelled"],
+        },
       ]}
       viewFields={[
         { key: "number", label: "Invoice #" },
@@ -116,17 +129,52 @@ function InvoicesList() {
       ]}
       rows={rows}
       searchKeys={["number", "po", "party", "issuer"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load invoices." : "No invoices found."}
+      emptyHint={
+        isLoading ? "Loading…" : isError ? "Failed to load invoices." : "No invoices found."
+      }
       columns={[
-        { key: "number", label: "Invoice", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
+        {
+          key: "number",
+          label: "Invoice",
+          className: "font-mono text-xs whitespace-nowrap w-[1%]",
+        },
         { key: "po", label: "PO", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
-        { key: "party", label: "Supplier", render: (r) => <span className="font-medium">{r.party}</span> },
-        { key: "subtotal", label: "Value", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.subtotal) },
-        { key: "vat", label: "VAT", className: "whitespace-nowrap w-[1%]", render: (r) => (r.vatRate ? `${r.vatRate}% · ${AED(r.vat)}` : AED(r.vat)) },
-        { key: "commission", label: "Commission", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.commission) },
-        { key: "total", label: "Total", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.total) },
+        {
+          key: "party",
+          label: "Supplier",
+          render: (r) => <span className="font-medium">{r.party}</span>,
+        },
+        {
+          key: "subtotal",
+          label: "Value",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => AED(r.subtotal),
+        },
+        {
+          key: "vat",
+          label: "VAT",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => (r.vatRate ? `${r.vatRate}% · ${AED(r.vat)}` : AED(r.vat)),
+        },
+        {
+          key: "commission",
+          label: "Commission",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => AED(r.commission),
+        },
+        {
+          key: "total",
+          label: "Total",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => AED(r.total),
+        },
         { key: "due", label: "Due", className: "whitespace-nowrap w-[1%]" },
-        { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
+        {
+          key: "status",
+          label: "Status",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => <StatusBadge status={r.status} />,
+        },
       ]}
       onUpdate={async (id, data, row) => {
         if (String(data.status) !== "paid") {

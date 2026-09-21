@@ -1,14 +1,14 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-
-import { Sparkles, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { login } from "@/lib/api/auth";
-import { ApiError } from "@/lib/api/client";
+import { ApiError, num } from "@/lib/api/client";
 import { BrandLogo } from "@/components/admin/BrandLogo";
 import { useTheme } from "@/components/admin/ThemeProvider";
 
@@ -24,6 +24,30 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Show last-known marketplace counts (saved after admin dashboard loads).
+  const { data: counts } = useQuery({
+    queryKey: ["login", "org-counts"],
+    staleTime: Infinity,
+    queryFn: async () => {
+      try {
+        const raw = localStorage.getItem("respy.login.counts");
+        if (raw) {
+          const parsed = JSON.parse(raw) as { restaurants?: number; suppliers?: number };
+          return {
+            restaurants: num(parsed.restaurants),
+            suppliers: num(parsed.suppliers),
+          };
+        }
+      } catch {
+        /* ignore */
+      }
+      return { restaurants: 0, suppliers: 0 };
+    },
+  });
+
+  const restaurantCount = counts?.restaurants ?? 0;
+  const supplierCount = counts?.suppliers ?? 0;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +74,6 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background text-foreground">
-      {/* Left brand panel */}
       <div className="relative hidden lg:flex flex-col p-12 overflow-hidden border-r border-border">
         <div className="absolute inset-0 mesh-bg opacity-90" />
         <div className="absolute inset-0 grid-bg opacity-40" />
@@ -60,25 +83,26 @@ function LoginPage() {
         </div>
 
         <div className="relative mt-auto max-w-md">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-card/80 text-xs mb-5">
-            <Sparkles className="h-3 w-3 text-primary" />
-            AI-powered procurement intelligence
-          </div>
           <h1 className="text-4xl font-display font-semibold tracking-tight leading-tight">
             The control surface for <span className="text-gradient">B2B foodservice</span> procurement.
           </h1>
           <p className="text-sm text-muted-foreground mt-4">
-            Manage thousands of restaurants and suppliers across anonymous RFQ and quotation workflows
-            with enterprise-grade tools and AI copilots.
+            Manage restaurants and suppliers across anonymous RFQ and quotation workflows
+            with enterprise-grade admin tools.
           </p>
 
-          <div className="mt-8 grid grid-cols-3 gap-3">
+          <div className="mt-8 grid grid-cols-2 gap-3">
             {[
-              { v: "2,847", l: "Restaurants" },
-              { v: "1,293", l: "Suppliers" },
-              { v: "AED 28.4M", l: "Volume" },
+              {
+                v: restaurantCount > 0 ? restaurantCount.toLocaleString() : "—",
+                l: "Restaurants",
+              },
+              {
+                v: supplierCount > 0 ? supplierCount.toLocaleString() : "—",
+                l: "Suppliers",
+              },
             ].map((s) => (
-            <div key={s.l} className="rounded-xl border border-border bg-card/90 p-3 shadow-soft">
+              <div key={s.l} className="rounded-xl border border-border bg-card/90 p-3 shadow-soft">
                 <div className="font-display text-xl font-semibold tabular-nums">{s.v}</div>
                 <div className="label-caps mt-1">{s.l}</div>
               </div>
@@ -87,7 +111,6 @@ function LoginPage() {
         </div>
       </div>
 
-      {/* Right form */}
       <div className="relative flex items-center justify-center p-6 lg:p-12">
         <Button
           type="button"
@@ -106,7 +129,7 @@ function LoginPage() {
 
           <h2 className="text-2xl font-display font-semibold tracking-tight">Sign in to your workspace</h2>
           <p className="text-sm text-muted-foreground mt-1.5">
-            Use your enterprise credentials to access the ResPy command center.
+            Use your admin credentials to access the ResPy command center.
           </p>
 
           <form onSubmit={onSubmit} className="mt-5 space-y-4">
@@ -122,12 +145,7 @@ function LoginPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <button type="button" className="text-xs text-primary hover:underline" onClick={() => toast.info("Reset link sent")}>
-                  Forgot?
-                </button>
-              </div>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -139,7 +157,9 @@ function LoginPage() {
             </div>
             <div className="flex items-center gap-2">
               <Checkbox id="remember" defaultChecked />
-              <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground">Remember me on this device</Label>
+              <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground">
+                Remember me on this device
+              </Label>
             </div>
 
             {error && (
@@ -149,13 +169,7 @@ function LoginPage() {
             <Button type="submit" className="w-full h-10" disabled={loading}>
               {loading ? "Signing you in…" : "Sign in"}
             </Button>
-
           </form>
-
-
-          <p className="text-xs text-muted-foreground text-center mt-8">
-            Need access? <Link to="/dashboard" className="text-primary hover:underline">Contact your admin</Link>
-          </p>
         </div>
       </div>
     </div>

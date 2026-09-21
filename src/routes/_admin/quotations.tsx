@@ -4,7 +4,12 @@ import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { QuotationDetailView } from "@/components/admin/DetailViews";
 import { Quote } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { approveQuotation, fetchList, fetchQuotationDetail, rejectQuotation } from "@/lib/api/resources";
+import {
+  approveQuotation,
+  fetchList,
+  fetchQuotationDetail,
+  rejectQuotation,
+} from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import { computeQuotationAiScore } from "@/lib/admin-export";
@@ -40,7 +45,11 @@ function QuotationsPage() {
   const { restaurants, suppliers, rfqs } = useAdminLookups(["restaurants", "suppliers", "rfqs"]);
   const queryClient = useQueryClient();
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["quotations"],
     staleTime: 60_000,
     queryFn: async () => {
@@ -51,7 +60,9 @@ function QuotationsPage() {
 
   const approved = rows.filter((r) => ["approved", "accepted"].includes(r.status)).length;
   const flagged = rows.filter((r) => r.status === "flagged").length;
-  const avgScore = rows.length ? (rows.reduce((s, r) => s + r.aiScore, 0) / rows.length).toFixed(1) : "0";
+  const avgScore = rows.length
+    ? (rows.reduce((s, r) => s + r.aiScore, 0) / rows.length).toFixed(1)
+    : "0";
 
   return (
     <DataPage
@@ -71,6 +82,7 @@ function QuotationsPage() {
         {
           key: "status",
           label: "Decision",
+          required: true,
           type: "select",
           options: ["approved", "rejected", "submitted", "draft", "pending"],
         },
@@ -104,19 +116,49 @@ function QuotationsPage() {
       ]}
       rows={rows}
       searchKeys={["number", "rfq", "supplier", "restaurant"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load quotations." : "No quotations found."}
+      emptyHint={
+        isLoading ? "Loading…" : isError ? "Failed to load quotations." : "No quotations found."
+      }
       columns={[
-        { key: "number", label: "Quotation", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
+        {
+          key: "number",
+          label: "Quotation",
+          className: "font-mono text-xs whitespace-nowrap w-[1%]",
+        },
         { key: "rfq", label: "RFQ", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
-        { key: "supplier", label: "Supplier", render: (r) => <span className="font-medium">{r.supplier}</span> },
+        {
+          key: "supplier",
+          label: "Supplier",
+          render: (r) => <span className="font-medium">{r.supplier}</span>,
+        },
         { key: "restaurant", label: "Restaurant" },
-        { key: "amount", label: "Amount", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.amount) },
-        { key: "aiScore", label: "AI Score", className: "whitespace-nowrap w-[1%]", render: (r) => (
-          <span className={cn("font-mono font-semibold",
-            r.aiScore >= 90 ? "text-success" : r.aiScore >= 75 ? "text-info" : "text-warning"
-          )}>{r.aiScore || "—"}</span>
-        ) },
-        { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
+        {
+          key: "amount",
+          label: "Amount",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => AED(r.amount),
+        },
+        {
+          key: "aiScore",
+          label: "AI Score",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => (
+            <span
+              className={cn(
+                "font-mono font-semibold",
+                r.aiScore >= 90 ? "text-success" : r.aiScore >= 75 ? "text-info" : "text-warning",
+              )}
+            >
+              {r.aiScore || "—"}
+            </span>
+          ),
+        },
+        {
+          key: "status",
+          label: "Status",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => <StatusBadge status={r.status} />,
+        },
       ]}
       onUpdate={async (id, data, row) => {
         const status = String(data.status || "");

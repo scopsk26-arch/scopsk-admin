@@ -25,6 +25,29 @@ export type Column<T> = {
   className?: string;
 };
 
+export function RequiredMark() {
+  return <span className="text-destructive ml-0.5 font-semibold" aria-hidden>*</span>;
+}
+
+export function FieldLabel({
+  htmlFor,
+  children,
+  required,
+  className,
+}: {
+  htmlFor?: string;
+  children: ReactNode;
+  required?: boolean;
+  className?: string;
+}) {
+  return (
+    <Label htmlFor={htmlFor} className={cn("text-xs", className)}>
+      {children}
+      {required ? <RequiredMark /> : null}
+    </Label>
+  );
+}
+
 export type Kpi = { label: string; value: string; hint?: string; tone?: "default" | "success" | "warning" | "destructive" | "info" };
 
 export type FormField = {
@@ -37,6 +60,8 @@ export type FormField = {
   selectOptions?: SelectOption[];
   placeholder?: string;
   allowClear?: boolean;
+  /** Show red * and block submit when empty. */
+  required?: boolean;
   /** Minimum value for number inputs (HTML min + clamp on change). */
   min?: number;
   /** Maximum value for number inputs. */
@@ -792,6 +817,19 @@ function ImageUrlField({
   );
 }
 
+function isFieldEmpty(field: FormField, value: unknown): boolean {
+  if (field.type === "readonly") return false;
+  if (field.type === "multiselect") {
+    return !Array.isArray(value) || value.length === 0;
+  }
+  if (field.type === "number") {
+    if (value === "" || value == null) return true;
+    return !Number.isFinite(Number(value));
+  }
+  if (typeof value === "string") return value.trim() === "";
+  return value == null || value === "";
+}
+
 function RecordDialog({
   open, onOpenChange, entity, fields, initial, onSubmit,
 }: {
@@ -804,6 +842,7 @@ function RecordDialog({
 }) {
   const isEdit = !!initial;
   const [form, setForm] = useState<Record<string, any>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const wasOpenRef = useRef(false);
@@ -828,21 +867,52 @@ function RecordDialog({
         } else if (Array.isArray(raw)) {
           init[f.key] = raw[0] != null ? String(raw[0]) : "";
         } else if (raw == null) {
-          init[f.key] = f.type === "number" ? 0 : "";
+          // Required numbers start blank so validation catches "not filled";
+          // optional numbers still default to 0 for convenience.
+          init[f.key] = f.type === "number" ? (f.required ? "" : 0) : "";
         } else {
           init[f.key] = raw;
         }
       });
       setForm(init);
+      setErrors({});
       setSaving(false);
       savingRef.current = false;
     }
     wasOpenRef.current = open;
   }, [open, initial, fields]);
 
+  const setField = (key: string, value: unknown) => {
+    setForm((p) => ({ ...p, [key]: value }));
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const validate = (): boolean => {
+    const next: Record<string, string> = {};
+    for (const f of fields) {
+      if (!f.required || f.type === "readonly") continue;
+      if (isFieldEmpty(f, form[f.key])) {
+        next[f.key] = `${f.label} is required`;
+      }
+    }
+    setErrors(next);
+    if (Object.keys(next).length > 0) {
+      const first = Object.values(next)[0];
+      toast.error(first || "Please fill all required fields");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (savingRef.current) return;
+    if (!validate()) return;
     savingRef.current = true;
     setSaving(true);
     try {
@@ -867,9 +937,14 @@ function RecordDialog({
           <DialogTitle>{isEdit ? `Edit ${entity.toLowerCase()}` : `New ${entity.toLowerCase()}`}</DialogTitle>
           <DialogDescription>
             {isEdit ? "Update fields and save changes." : `Add a new ${entity.toLowerCase()} to the system.`}
+            {fields.some((f) => f.required) ? (
+              <span className="block mt-1 text-xs">
+                Fields marked <RequiredMark /> are required.
+              </span>
+            ) : null}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden" noValidate>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 py-1 max-h-[calc(90vh-11.5rem)]">
             <fieldset disabled={saving} className="min-w-0 border-0 p-0 m-0">
             <div className="grid gap-4 sm:grid-cols-2 pb-4">
@@ -880,11 +955,14 @@ function RecordDialog({
                     (fields.length === 1 || f.type === "image" || f.type === "multiselect") && "sm:col-span-2",
                   )}
                 >
-                  <Label htmlFor={f.key} className="text-xs">{f.label}</Label>
+                  <Label htmlFor={f.key} className="text-xs">
+                    {f.label}
+                    {f.required ? <RequiredMark /> : null}
+                  </Label>
                   {f.type === "image" ? (
                     <ImageUrlField
                       value={String(form[f.key] ?? "")}
-                      onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
+                      onChange={(v) => setField(f.key, v)}
                       onFileIdChange={(fileId) =>
                         setForm((p) => ({ ...p, imageFileId: fileId }))
                       }
@@ -903,7 +981,7 @@ function RecordDialog({
                   ) : f.type === "multiselect" ? (
                     <SearchableMultiSelect
                       value={form[f.key] ?? []}
-                      onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
+                      onChange={(v) => setField(f.key, v)}
                       options={f.selectOptions ?? []}
                       placeholder={f.placeholder ?? `Select ${f.label.toLowerCase()}…`}
                       disabled={saving}
@@ -911,19 +989,21 @@ function RecordDialog({
                   ) : f.type === "searchable" || (f.selectOptions && f.selectOptions.length > 0) ? (
                     <SearchableSelect
                       value={String(form[f.key] ?? "")}
-                      onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
+                      onChange={(v) => setField(f.key, v)}
                       options={f.selectOptions ?? []}
                       placeholder={f.placeholder ?? `Search ${f.label.toLowerCase()}…`}
-                      allowClear={f.allowClear !== false}
+                      allowClear={f.required ? false : f.allowClear !== false}
                       disabled={saving}
                     />
                   ) : f.type === "select" && f.options ? (
                     <Select
                       value={String(form[f.key] ?? "")}
-                      onValueChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
+                      onValueChange={(v) => setField(f.key, v)}
                       disabled={saving}
                     >
-                      <SelectTrigger className="mt-1"><SelectValue placeholder={`Select ${f.label.toLowerCase()}`} /></SelectTrigger>
+                      <SelectTrigger className={cn("mt-1", errors[f.key] && "border-destructive")}>
+                        <SelectValue placeholder={`Select ${f.label.toLowerCase()}`} />
+                      </SelectTrigger>
                       <SelectContent>
                         {f.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                       </SelectContent>
@@ -933,28 +1013,32 @@ function RecordDialog({
                       id={f.key}
                       type={f.type === "number" ? "number" : "text"}
                       placeholder={f.placeholder}
+                      required={f.required}
                       min={f.type === "number" ? f.min : undefined}
                       max={f.type === "number" ? f.max : undefined}
                       value={form[f.key] ?? ""}
                       onChange={(e) => {
                         if (f.type !== "number") {
-                          setForm((p) => ({ ...p, [f.key]: e.target.value }));
+                          setField(f.key, e.target.value);
                           return;
                         }
                         const raw = e.target.value;
                         if (raw === "") {
-                          setForm((p) => ({ ...p, [f.key]: "" }));
+                          setField(f.key, "");
                           return;
                         }
                         let n = Number(raw);
                         if (!Number.isFinite(n)) n = f.min ?? 0;
                         if (f.min != null && n < f.min) n = f.min;
                         if (f.max != null && n > f.max) n = f.max;
-                        setForm((p) => ({ ...p, [f.key]: n }));
+                        setField(f.key, n);
                       }}
-                      className="mt-1"
+                      className={cn("mt-1", errors[f.key] && "border-destructive")}
                     />
                   )}
+                  {errors[f.key] ? (
+                    <p className="mt-1 text-[11px] text-destructive">{errors[f.key]}</p>
+                  ) : null}
                 </div>
               ))}
             </div>

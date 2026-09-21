@@ -21,7 +21,11 @@ type KycDoc = {
 function KycPage() {
   const queryClient = useQueryClient();
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["kyc", "applications"],
     queryFn: async () => {
       const list = await fetchList("/kyc/applications");
@@ -72,10 +76,16 @@ function KycPage() {
         {
           key: "status",
           label: "Decision",
+          required: true,
           type: "select",
           options: ["approved", "rejected", "under_review", "pending", "submitted"],
         },
-        { key: "notes", label: "Notes (required to reject)", type: "text", placeholder: "Rejection reason…" },
+        {
+          key: "notes",
+          label: "Notes (required to reject)",
+          type: "text",
+          placeholder: "Rejection reason…",
+        },
       ]}
       viewFields={[
         { key: "entity", label: "Entity" },

@@ -2,10 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Settings as SettingsIcon, Globe, CreditCard, Bell, Shield, Mail, SlidersHorizontal } from "lucide-react";
+import { FieldLabel } from "@/components/admin/DataPage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { api, asArray, str } from "@/lib/api/client";
 import { toast } from "sonner";
 
@@ -110,6 +110,20 @@ function SettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const requiredKeys: Array<{ key: string; label: string }> = [
+        { key: "marketplace_name", label: "Marketplace name" },
+        { key: "default_currency", label: "Default currency" },
+        { key: "default_timezone", label: "Default timezone" },
+        { key: "default_locale", label: "Default locale" },
+        { key: "restaurant_commission", label: "Restaurant commission %" },
+        { key: "supplier_commission", label: "Supplier commission %" },
+        { key: "vat_rate", label: "VAT rate %" },
+      ];
+      for (const r of requiredKeys) {
+        if (!String(form[r.key] ?? "").trim()) {
+          throw new Error(`${r.label} is required`);
+        }
+      }
       const payload: Record<string, string> = {
         ...form,
         anonymous_marketplace_default: anonymousDefault ? "true" : "false",
@@ -152,10 +166,10 @@ function SettingsPage() {
       title: "General",
       description: "Brand, locale and timezone for the marketplace.",
       fields: [
-        { key: "marketplace_name", label: "Marketplace name" },
-        { key: "default_currency", label: "Default currency" },
-        { key: "default_timezone", label: "Default timezone" },
-        { key: "default_locale", label: "Default locale" },
+        { key: "marketplace_name", label: "Marketplace name", required: true },
+        { key: "default_currency", label: "Default currency", required: true },
+        { key: "default_timezone", label: "Default timezone", required: true },
+        { key: "default_locale", label: "Default locale", required: true },
       ],
     },
     {
@@ -163,9 +177,9 @@ function SettingsPage() {
       title: "Commission & Tax",
       description: "Restaurant and supplier commission rates (platform-only; never shown on invoices).",
       fields: [
-        { key: "restaurant_commission", label: "Restaurant commission %" },
-        { key: "supplier_commission", label: "Supplier commission %" },
-        { key: "vat_rate", label: "VAT rate %" },
+        { key: "restaurant_commission", label: "Restaurant commission %", required: true },
+        { key: "supplier_commission", label: "Supplier commission %", required: true },
+        { key: "vat_rate", label: "VAT rate %", required: true },
         { key: "excise_rate", label: "Excise rate %" },
         { key: "payout_schedule", label: "Payout schedule" },
         { key: "min_payout", label: "Min. payout amount" },
@@ -230,7 +244,9 @@ function SettingsPage() {
             <div className="space-y-3">
               {s.fields.map((f) => (
                 <div key={f.key}>
-                  <Label className="text-xs text-muted-foreground">{f.label}</Label>
+                  <FieldLabel required={"required" in f && Boolean(f.required)} className="text-muted-foreground">
+                    {f.label}
+                  </FieldLabel>
                   <Input
                     value={form[f.key] ?? ""}
                     onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}

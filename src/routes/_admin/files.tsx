@@ -12,17 +12,20 @@ export const Route = createFileRoute("/_admin/files")({
 });
 
 function FilesPage() {
-  // Backend exposes upload/delete only — no list endpoint. Keep empty until one exists.
+  // List all uploaded files for Media Library / File Management.
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["files"],
     queryFn: async () => {
-      const list = await fetchList("/files");
+      const list = await fetchList("/files", { limit: 100 });
       return list.map((r: any) => ({
         id: str(r.id),
         name: str(r.originalName ?? r.filename ?? r.name, "—"),
         owner: str(r.uploadedBy ?? r.organizationId ?? r.owner, "—"),
         type: str(r.mimeType ?? r.type, "—"),
-        size: r.sizeBytes != null ? `${Math.round(Number(r.sizeBytes) / 1024)} KB` : str(r.size, "—"),
+        size:
+          r.size != null
+            ? `${Math.max(1, Math.round(Number(r.size) / 1024))} KB`
+            : str(r.sizeBytes, "—"),
         uploaded: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
         status: str(r.status, "active"),
       }));
@@ -32,7 +35,7 @@ function FilesPage() {
   return (
     <DataPage
       title="File Management"
-      description="No list API yet — upload via POST /files/upload. This page is view-only once listing ships."
+      description="Legacy table view of uploaded files. Prefer Media Library for upload + Copy CDN URL."
       disableCrud
       icon={<FolderOpen className="h-5 w-5 text-primary" />}
       viewFields={[
@@ -59,7 +62,7 @@ function FilesPage() {
       ]}
       rows={rows}
       searchKeys={["id", "name", "owner", "type"]}
-      emptyHint={isLoading ? "Loading…" : "No file list API yet — upload via /files/upload."}
+      emptyHint={isLoading ? "Loading…" : "No files yet — use Media Library to upload."}
       columns={[
         { key: "name", label: "File", render: (r) => <span className="font-medium font-mono text-xs">{r.name}</span> },
         { key: "owner", label: "Owner" },

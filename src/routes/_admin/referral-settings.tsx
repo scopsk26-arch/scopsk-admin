@@ -2,9 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SlidersHorizontal, Coins, Link2 } from "lucide-react";
+import { FieldLabel } from "@/components/admin/DataPage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -74,6 +74,12 @@ export function ReferralSettingsPanel({
   const save = useMutation({
     mutationFn: async () => {
       if (!form) throw new Error("Settings have not loaded yet");
+      if (!form.qualificationEvent.trim()) throw new Error("Qualification event is required");
+      if (!form.currency.trim()) throw new Error("Currency is required");
+      if (form.referrerRewardAmount.trim() === "") throw new Error("Referrer reward is required");
+      if (form.referredRewardAmount.trim() === "") throw new Error("Referred reward is required");
+      if (form.minimumOrderAmount.trim() === "") throw new Error("Minimum qualifying order is required");
+      if (!form.shareBaseUrl.trim()) throw new Error("Share base URL is required");
       return updateReferralSettings({
         ...form,
         maxRewardsPerReferrer: form.maxRewardsPerReferrer.trim() === "" ? null : form.maxRewardsPerReferrer,
@@ -136,7 +142,7 @@ export function ReferralSettingsPanel({
                 <Switch checked={form.enabled} onCheckedChange={(on) => set("enabled", on)} />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Qualification event</Label>
+                <FieldLabel required className="text-muted-foreground">Qualification event</FieldLabel>
                 <Select
                   value={form.qualificationEvent}
                   onValueChange={(v) => set("qualificationEvent", v)}
@@ -155,7 +161,7 @@ export function ReferralSettingsPanel({
                 </p>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Currency</Label>
+                <FieldLabel required className="text-muted-foreground">Currency</FieldLabel>
                 <Input
                   value={form.currency}
                   onChange={(e) => set("currency", e.target.value.toUpperCase().slice(0, 3))}
@@ -173,9 +179,9 @@ export function ReferralSettingsPanel({
                 <h2 className="font-display font-semibold">Reward amounts</h2>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">
+                <FieldLabel required className="text-muted-foreground">
                   Referrer reward ({form.currency || "AED"})
-                </Label>
+                </FieldLabel>
                 <Input
                   type="number"
                   min={0}
@@ -186,9 +192,9 @@ export function ReferralSettingsPanel({
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">
+                <FieldLabel required className="text-muted-foreground">
                   Referred reward ({form.currency || "AED"})
-                </Label>
+                </FieldLabel>
                 <Input
                   type="number"
                   min={0}
@@ -199,9 +205,9 @@ export function ReferralSettingsPanel({
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">
+                <FieldLabel required className="text-muted-foreground">
                   Minimum qualifying order ({form.currency || "AED"})
-                </Label>
+                </FieldLabel>
                 <Input
                   type="number"
                   min={0}
@@ -222,7 +228,7 @@ export function ReferralSettingsPanel({
                 <h2 className="font-display font-semibold">Limits</h2>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Max rewards per referrer</Label>
+                <FieldLabel className="text-muted-foreground">Max rewards per referrer</FieldLabel>
                 <Input
                   type="number"
                   min={0}
@@ -235,7 +241,7 @@ export function ReferralSettingsPanel({
                 <p className="text-xs text-muted-foreground mt-1">Leave blank for unlimited.</p>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Reward expiry (days)</Label>
+                <FieldLabel className="text-muted-foreground">Reward expiry (days)</FieldLabel>
                 <Input
                   type="number"
                   min={1}
@@ -255,7 +261,7 @@ export function ReferralSettingsPanel({
                 <h2 className="font-display font-semibold">Share link</h2>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Share base URL</Label>
+                <FieldLabel required className="text-muted-foreground">Share base URL</FieldLabel>
                 <Input
                   value={form.shareBaseUrl}
                   onChange={(e) => set("shareBaseUrl", e.target.value)}

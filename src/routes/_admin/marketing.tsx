@@ -16,7 +16,10 @@ function mapCampaign(r: any) {
     id: str(r.id),
     name: str(r.name ?? r.title, "—"),
     channel: str(r.channel, "—"),
-    audience: typeof r.audience === "object" ? JSON.stringify(r.audience) : str(r.audience ?? r.segment, "—"),
+    audience:
+      typeof r.audience === "object"
+        ? JSON.stringify(r.audience)
+        : str(r.audience ?? r.segment, "—"),
     sent: num(r.sent ?? r.stats?.sent ?? r.metrics?.sent),
     opens: num(r.opens ?? r.stats?.opens ?? r.metrics?.opens),
     clicks: num(r.clicks ?? r.stats?.clicks ?? r.metrics?.clicks),
@@ -27,7 +30,11 @@ function mapCampaign(r: any) {
 
 function MarketingPage() {
   const queryClient = useQueryClient();
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["marketing"],
     queryFn: async () => {
       const list = await fetchList("/marketing");
@@ -43,11 +50,18 @@ function MarketingPage() {
       description="Campaigns across email, SMS, push and in-app."
       icon={<Megaphone className="h-5 w-5 text-primary" />}
       formFields={[
-        { key: "name", label: "Campaign", type: "text" },
-        { key: "channel", label: "Channel", type: "select", options: ["email", "sms", "push", "in_app"] },
+        { key: "name", label: "Campaign", required: true, type: "text" },
+        {
+          key: "channel",
+          label: "Channel",
+          required: true,
+          type: "select",
+          options: ["email", "sms", "push", "in_app"],
+        },
         {
           key: "status",
           label: "Status",
+          required: true,
           type: "select",
           options: ["draft", "scheduled", "active", "completed", "cancelled"],
         },
@@ -68,14 +82,29 @@ function MarketingPage() {
         { label: "Active campaigns", value: String(active), tone: "info" },
         { label: "Reach", value: String(rows.reduce((s, r) => s + r.sent, 0)) },
         { label: "Opens", value: String(rows.reduce((s, r) => s + r.opens, 0)), tone: "success" },
-        { label: "Conversions", value: String(rows.reduce((s, r) => s + r.conv, 0)), tone: "success" },
+        {
+          label: "Conversions",
+          value: String(rows.reduce((s, r) => s + r.conv, 0)),
+          tone: "success",
+        },
       ]}
       rows={rows}
       searchKeys={["id", "name", "channel", "audience"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load campaigns." : "No campaigns found."}
+      emptyHint={
+        isLoading ? "Loading…" : isError ? "Failed to load campaigns." : "No campaigns found."
+      }
       columns={[
-        { key: "id", label: "ID", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
-        { key: "name", label: "Campaign", render: (r) => <span className="font-medium">{r.name}</span> },
+        {
+          key: "id",
+          label: "ID",
+          className: "font-mono text-xs",
+          render: (r) => String(r.id).slice(0, 8),
+        },
+        {
+          key: "name",
+          label: "Campaign",
+          render: (r) => <span className="font-medium">{r.name}</span>,
+        },
         { key: "channel", label: "Channel" },
         { key: "audience", label: "Audience" },
         { key: "sent", label: "Sent" },

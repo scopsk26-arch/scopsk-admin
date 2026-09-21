@@ -49,7 +49,11 @@ function mapApproval(r: any): ApprovalRow {
     entityType: approvalTypeLabel(str(r.entityType, "")),
     entityId: str(r.entityId, "—"),
     entityNumber: str(
-      entity?.number ?? r.purchaseOrder?.number ?? r.rfq?.number ?? r.quotation?.number ?? r.entityNumber,
+      entity?.number ??
+        r.purchaseOrder?.number ??
+        r.rfq?.number ??
+        r.quotation?.number ??
+        r.entityNumber,
       "—",
     ),
     entityTotal: entity?.total != null ? String(entity.total) : "—",
@@ -65,7 +69,11 @@ function mapApproval(r: any): ApprovalRow {
 function ApprovalsPage() {
   const queryClient = useQueryClient();
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["approvals"],
     staleTime: 60_000,
     queryFn: async () => {
@@ -75,7 +83,9 @@ function ApprovalsPage() {
   });
 
   const pending = rows.filter((r) => r.status === "pending").length;
-  const poApprovals = rows.filter((r) => String(r.entityType).toLowerCase().includes("purchase")).length;
+  const poApprovals = rows.filter((r) =>
+    String(r.entityType).toLowerCase().includes("purchase"),
+  ).length;
   const rfqApprovals = rows.filter((r) => String(r.entityType).toLowerCase() === "rfq").length;
 
   return (
@@ -92,6 +102,7 @@ function ApprovalsPage() {
         {
           key: "status",
           label: "Decision",
+          required: true,
           type: "select",
           options: ["approved", "rejected", "pending"],
         },
@@ -133,10 +144,21 @@ function ApprovalsPage() {
       ]}
       rows={rows}
       searchKeys={["organization", "entityType", "entityId", "entityNumber", "status", "id"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load approvals." : "No pending approvals."}
+      emptyHint={
+        isLoading ? "Loading…" : isError ? "Failed to load approvals." : "No pending approvals."
+      }
       columns={[
-        { key: "id", label: "ID", className: "font-mono text-xs whitespace-nowrap w-[1%]", render: (r) => String(r.id).slice(0, 8) },
-        { key: "organization", label: "Organization", render: (r) => <span className="font-medium">{r.organization}</span> },
+        {
+          key: "id",
+          label: "ID",
+          className: "font-mono text-xs whitespace-nowrap w-[1%]",
+          render: (r) => String(r.id).slice(0, 8),
+        },
+        {
+          key: "organization",
+          label: "Organization",
+          render: (r) => <span className="font-medium">{r.organization}</span>,
+        },
         { key: "entityType", label: "Type", className: "whitespace-nowrap w-[1%]" },
         {
           key: "entityNumber",
@@ -146,7 +168,12 @@ function ApprovalsPage() {
         },
         { key: "level", label: "Level", className: "whitespace-nowrap w-[1%]" },
         { key: "created", label: "Created", className: "whitespace-nowrap w-[1%]" },
-        { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
+        {
+          key: "status",
+          label: "Status",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => <StatusBadge status={r.status} />,
+        },
       ]}
       onUpdate={async (id, data, row) => {
         const status = String(data.status || "").toLowerCase();

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { DataPage, StatusBadge } from "@/components/admin/DataPage";
+import { DataPage, StatusBadge, FieldLabel } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { FolderTree, Plus } from "lucide-react";
 import { fetchCategoryDetail, fetchList } from "@/lib/api/resources";
@@ -9,12 +9,20 @@ import { api, num, str } from "@/lib/api/client";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
@@ -38,10 +46,7 @@ type CategoryRow = {
 
 function mapCategoryRow(r: any, byId?: Map<string, any>): CategoryRow {
   const parentId = str(r.parentId ?? r.parent?.id, "");
-  const parentName = str(
-    r.parent?.name ?? (parentId && byId?.get(parentId)?.name) ?? "",
-    "—",
-  );
+  const parentName = str(r.parent?.name ?? (parentId && byId?.get(parentId)?.name) ?? "", "—");
   let depth = 0;
   if (byId && parentId) {
     let cursor = parentId;
@@ -88,7 +93,11 @@ function CategoriesPage() {
   const [subStatus, setSubStatus] = useState("active");
   const [subSaving, setSubSaving] = useState(false);
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["catalog", "categories"],
     staleTime: 60_000,
     queryFn: async () => {
@@ -159,7 +168,13 @@ function CategoriesPage() {
         entityName="Category"
         idKey="id"
         formFields={[
-          { key: "name", label: "Category name", type: "text", placeholder: "e.g. Fresh Produce" },
+          {
+            key: "name",
+            label: "Category name",
+            required: true,
+            type: "text",
+            placeholder: "e.g. Fresh Produce",
+          },
           {
             key: "parentId",
             label: "Parent category",
@@ -171,6 +186,7 @@ function CategoriesPage() {
           {
             key: "status",
             label: "Status",
+            required: true,
             type: "select",
             options: ["active", "inactive", "draft", "archived"],
           },
@@ -200,19 +216,34 @@ function CategoriesPage() {
           { label: "Top-level", value: String(top) },
           { label: "Nested", value: String(nested), tone: "info" },
           { label: "Total", value: String(rows.length) },
-          { label: "Active", value: String(rows.filter((r) => r.status === "active").length), tone: "success" },
+          {
+            label: "Active",
+            value: String(rows.filter((r) => r.status === "active").length),
+            tone: "success",
+          },
         ]}
         rows={rows}
         searchKeys={["name", "parent", "id"]}
-        emptyHint={isLoading ? "Loading…" : isError ? "Failed to load categories." : "No categories found."}
+        emptyHint={
+          isLoading ? "Loading…" : isError ? "Failed to load categories." : "No categories found."
+        }
         columns={[
-          { key: "id", label: "ID", className: "font-mono text-xs", render: (r) => String(r.id).slice(0, 8) },
+          {
+            key: "id",
+            label: "ID",
+            className: "font-mono text-xs",
+            render: (r) => String(r.id).slice(0, 8),
+          },
           {
             key: "name",
             label: "Category",
             render: (r) => (
-              <span className="font-medium" style={{ paddingLeft: `${Math.min(r.depth, 4) * 12}px` }}>
-                {r.depth > 0 ? "↳ " : ""}{r.name}
+              <span
+                className="font-medium"
+                style={{ paddingLeft: `${Math.min(r.depth, 4) * 12}px` }}
+              >
+                {r.depth > 0 ? "↳ " : ""}
+                {r.name}
               </span>
             ),
           },
@@ -264,17 +295,23 @@ function CategoriesPage() {
         }}
       />
 
-      <Dialog open={!!subParent} onOpenChange={(o) => { if (!o) setSubParent(null); }}>
+      <Dialog
+        open={!!subParent}
+        onOpenChange={(o) => {
+          if (!o) setSubParent(null);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add subcategory</DialogTitle>
             <DialogDescription>
-              Creates a child under <span className="font-medium text-foreground">{subParent?.name}</span>.
+              Creates a child under{" "}
+              <span className="font-medium text-foreground">{subParent?.name}</span>.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div>
-              <Label className="text-xs">Name</Label>
+              <FieldLabel required>Name</FieldLabel>
               <Input
                 className="mt-1"
                 value={subName}
@@ -283,21 +320,25 @@ function CategoriesPage() {
               />
             </div>
             <div>
-              <Label className="text-xs">Status</Label>
+              <FieldLabel required>Status</FieldLabel>
               <Select value={subStatus} onValueChange={setSubStatus}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {["active", "inactive", "draft", "archived"].map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSubParent(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setSubParent(null)}>
+              Cancel
+            </Button>
             <Button disabled={subSaving} onClick={() => void createSubcategory()}>
               {subSaving ? "Saving…" : "Add subcategory"}
             </Button>

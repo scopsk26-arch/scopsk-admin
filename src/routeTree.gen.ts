@@ -33,6 +33,7 @@ import { Route as AdminPurchaseOrdersRouteImport } from './routes/_admin/purchas
 import { Route as AdminPaymentsRouteImport } from './routes/_admin/payments'
 import { Route as AdminOutstandingRouteImport } from './routes/_admin/outstanding'
 import { Route as AdminNotificationsRouteImport } from './routes/_admin/notifications'
+import { Route as AdminMediaRouteImport } from './routes/_admin/media'
 import { Route as AdminMarketingRouteImport } from './routes/_admin/marketing'
 import { Route as AdminLookupRouteImport } from './routes/_admin/lookup'
 import { Route as AdminKycRouteImport } from './routes/_admin/kyc'
@@ -178,6 +179,11 @@ const AdminOutstandingRoute = AdminOutstandingRouteImport.update({
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMediaRoute = AdminMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminMarketingRoute = AdminMarketingRouteImport.update({
@@ -341,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/kyc': typeof AdminKycRoute
   '/lookup': typeof AdminLookupRoute
   '/marketing': typeof AdminMarketingRoute
+  '/media': typeof AdminMediaRoute
   '/notifications': typeof AdminNotificationsRoute
   '/outstanding': typeof AdminOutstandingRoute
   '/payments': typeof AdminPaymentsRoute
@@ -392,6 +399,7 @@ export interface FileRoutesByTo {
   '/kyc': typeof AdminKycRoute
   '/lookup': typeof AdminLookupRoute
   '/marketing': typeof AdminMarketingRoute
+  '/media': typeof AdminMediaRoute
   '/notifications': typeof AdminNotificationsRoute
   '/outstanding': typeof AdminOutstandingRoute
   '/payments': typeof AdminPaymentsRoute
@@ -445,6 +453,7 @@ export interface FileRoutesById {
   '/_admin/kyc': typeof AdminKycRoute
   '/_admin/lookup': typeof AdminLookupRoute
   '/_admin/marketing': typeof AdminMarketingRoute
+  '/_admin/media': typeof AdminMediaRoute
   '/_admin/notifications': typeof AdminNotificationsRoute
   '/_admin/outstanding': typeof AdminOutstandingRoute
   '/_admin/payments': typeof AdminPaymentsRoute
@@ -498,6 +507,7 @@ export interface FileRouteTypes {
     | '/kyc'
     | '/lookup'
     | '/marketing'
+    | '/media'
     | '/notifications'
     | '/outstanding'
     | '/payments'
@@ -549,6 +559,7 @@ export interface FileRouteTypes {
     | '/kyc'
     | '/lookup'
     | '/marketing'
+    | '/media'
     | '/notifications'
     | '/outstanding'
     | '/payments'
@@ -601,6 +612,7 @@ export interface FileRouteTypes {
     | '/_admin/kyc'
     | '/_admin/lookup'
     | '/_admin/marketing'
+    | '/_admin/media'
     | '/_admin/notifications'
     | '/_admin/outstanding'
     | '/_admin/payments'
@@ -798,6 +810,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof AdminNotificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/media': {
+      id: '/_admin/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof AdminMediaRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_admin/marketing': {
@@ -1012,6 +1031,7 @@ interface AdminRouteChildren {
   AdminKycRoute: typeof AdminKycRoute
   AdminLookupRoute: typeof AdminLookupRoute
   AdminMarketingRoute: typeof AdminMarketingRoute
+  AdminMediaRoute: typeof AdminMediaRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminOutstandingRoute: typeof AdminOutstandingRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
@@ -1062,6 +1082,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminKycRoute: AdminKycRoute,
   AdminLookupRoute: AdminLookupRoute,
   AdminMarketingRoute: AdminMarketingRoute,
+  AdminMediaRoute: AdminMediaRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminOutstandingRoute: AdminOutstandingRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,

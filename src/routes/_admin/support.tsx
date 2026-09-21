@@ -33,7 +33,11 @@ function mapTicket(r: any) {
 
 function SupportPage() {
   const queryClient = useQueryClient();
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["support"],
     queryFn: async () => {
       const list = await fetchList("/support");
@@ -41,10 +45,13 @@ function SupportPage() {
     },
   });
 
-  const open = rows.filter((r) => ["open", "pending", "review", "in_progress"].includes(r.status)).length;
-  const complaints = rows.filter((r) =>
-    ["order_complaint", "complaint"].includes(String(r.category || "").toLowerCase()) ||
-    String(r.relatedCode || "").includes("/"),
+  const open = rows.filter((r) =>
+    ["open", "pending", "review", "in_progress"].includes(r.status),
+  ).length;
+  const complaints = rows.filter(
+    (r) =>
+      ["order_complaint", "complaint"].includes(String(r.category || "").toLowerCase()) ||
+      String(r.relatedCode || "").includes("/"),
   ).length;
 
   return (
@@ -53,11 +60,18 @@ function SupportPage() {
       description="Customer tickets and restaurant order complaints (ORDR / PO tracking codes). Status updates persist to the API."
       icon={<LifeBuoy className="h-5 w-5 text-primary" />}
       formFields={[
-        { key: "subject", label: "Subject", type: "text" },
-        { key: "priority", label: "Priority", type: "select", options: ["low", "medium", "high", "urgent"] },
+        { key: "subject", label: "Subject", required: true, type: "text" },
+        {
+          key: "priority",
+          label: "Priority",
+          required: true,
+          type: "select",
+          options: ["low", "medium", "high", "urgent"],
+        },
         {
           key: "status",
           label: "Status",
+          required: true,
           type: "select",
           options: ["open", "in_progress", "waiting", "resolved", "closed"],
         },
@@ -80,7 +94,10 @@ function SupportPage() {
           return {
             ...mapTicket({ ...row, ...d }),
             ...d,
-            relatedCode: str((d as any).relatedCode ?? (d as any).related_code ?? row.relatedCode, "—"),
+            relatedCode: str(
+              (d as any).relatedCode ?? (d as any).related_code ?? row.relatedCode,
+              "—",
+            ),
             messages: (d as any).messages,
           };
         } catch {
@@ -91,15 +108,39 @@ function SupportPage() {
       kpis={[
         { label: "Open tickets", value: String(open), tone: "info" },
         { label: "Order complaints", value: String(complaints), tone: "warning" },
-        { label: "High priority", value: String(rows.filter((r) => r.priority === "high" || r.priority === "urgent").length), tone: "destructive" },
-        { label: "Resolved", value: String(rows.filter((r) => r.status === "resolved").length), tone: "success" },
+        {
+          label: "High priority",
+          value: String(
+            rows.filter((r) => r.priority === "high" || r.priority === "urgent").length,
+          ),
+          tone: "destructive",
+        },
+        {
+          label: "Resolved",
+          value: String(rows.filter((r) => r.status === "resolved").length),
+          tone: "success",
+        },
       ]}
       rows={rows}
-      searchKeys={["number", "subject", "requester", "agent", "relatedCode", "organization", "category"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load tickets." : "No support tickets."}
+      searchKeys={[
+        "number",
+        "subject",
+        "requester",
+        "agent",
+        "relatedCode",
+        "organization",
+        "category",
+      ]}
+      emptyHint={
+        isLoading ? "Loading…" : isError ? "Failed to load tickets." : "No support tickets."
+      }
       columns={[
         { key: "number", label: "Ticket", className: "font-mono text-xs" },
-        { key: "subject", label: "Subject", render: (r) => <span className="font-medium">{r.subject}</span> },
+        {
+          key: "subject",
+          label: "Subject",
+          render: (r) => <span className="font-medium">{r.subject}</span>,
+        },
         {
           key: "relatedCode",
           label: "Order / PO",
@@ -113,11 +154,24 @@ function SupportPage() {
         { key: "category", label: "Category", className: "text-xs capitalize" },
         { key: "organization", label: "Org" },
         { key: "requester", label: "Requester" },
-        { key: "priority", label: "Priority", render: (r) => (
-          <span className={cn("text-xs font-medium",
-            r.priority === "high" || r.priority === "urgent" ? "text-destructive" : r.priority === "medium" ? "text-warning" : "text-muted-foreground"
-          )}>{r.priority}</span>
-        ) },
+        {
+          key: "priority",
+          label: "Priority",
+          render: (r) => (
+            <span
+              className={cn(
+                "text-xs font-medium",
+                r.priority === "high" || r.priority === "urgent"
+                  ? "text-destructive"
+                  : r.priority === "medium"
+                    ? "text-warning"
+                    : "text-muted-foreground",
+              )}
+            >
+              {r.priority}
+            </span>
+          ),
+        },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onCreate={async (data) => {

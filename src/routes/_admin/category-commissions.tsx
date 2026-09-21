@@ -20,7 +20,11 @@ export function CategoryCommissionsPanel() {
   const qc = useQueryClient();
   const { categories } = useAdminLookups(["categories"]);
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["admin", "category-commissions"],
     queryFn: fetchCategoryCommissions,
     staleTime: 60_000,
@@ -50,12 +54,25 @@ export function CategoryCommissionsPanel() {
         {
           key: "categoryId",
           label: "Category",
+          required: true,
           type: "searchable",
           selectOptions: categories,
           placeholder: "Search categories…",
         },
-        { key: "restaurantRate", label: "Restaurant rate %", type: "number", placeholder: "e.g. 4.5" },
-        { key: "supplierRate", label: "Supplier rate %", type: "number", placeholder: "e.g. 3.0" },
+        {
+          key: "restaurantRate",
+          label: "Restaurant rate %",
+          required: true,
+          type: "number",
+          placeholder: "e.g. 4.5",
+        },
+        {
+          key: "supplierRate",
+          label: "Supplier rate %",
+          required: true,
+          type: "number",
+          placeholder: "e.g. 3.0",
+        },
       ]}
       lookups={{ categoryId: categories }}
       viewFields={[
@@ -66,8 +83,16 @@ export function CategoryCommissionsPanel() {
       ]}
       kpis={[
         { label: "Configured", value: String(rows.length) },
-        { label: "Avg restaurant %", value: avgRestaurant === "—" ? "—" : `${avgRestaurant}%`, tone: "info" },
-        { label: "Avg supplier %", value: avgSupplier === "—" ? "—" : `${avgSupplier}%`, tone: "success" },
+        {
+          label: "Avg restaurant %",
+          value: avgRestaurant === "—" ? "—" : `${avgRestaurant}%`,
+          tone: "info",
+        },
+        {
+          label: "Avg supplier %",
+          value: avgSupplier === "—" ? "—" : `${avgSupplier}%`,
+          tone: "success",
+        },
         { label: "Catalog categories", value: String(categories.length || "—") },
       ]}
       rows={rows}
@@ -115,7 +140,9 @@ export function CategoryCommissionsPanel() {
         return {
           id: categoryId,
           categoryId,
-          category: categories.find((c) => c.value === categoryId)?.label ?? str((saved as any)?.category?.name, "—"),
+          category:
+            categories.find((c) => c.value === categoryId)?.label ??
+            str((saved as any)?.category?.name, "—"),
           restaurantRate,
           supplierRate,
         };

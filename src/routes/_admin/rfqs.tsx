@@ -12,14 +12,7 @@ export const Route = createFileRoute("/_admin/rfqs")({
   component: RfqsPage,
 });
 
-const RFQ_STATUSES = [
-  "draft",
-  "published",
-  "closed",
-  "awarded",
-  "cancelled",
-  "expired",
-] as const;
+const RFQ_STATUSES = ["draft", "published", "closed", "awarded", "cancelled", "expired"] as const;
 
 function mapRfqRow(r: any) {
   const qty =
@@ -68,7 +61,11 @@ function RfqsPage() {
   const { restaurants, categories } = useAdminLookups(["restaurants", "categories"]);
   const queryClient = useQueryClient();
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["rfqs"],
     staleTime: 60_000,
     queryFn: async () => {
@@ -93,12 +90,23 @@ function RfqsPage() {
       }}
       formFields={[
         { key: "number", label: "RFQ #", type: "text", placeholder: "RFQ-001" },
-        { key: "restaurant", label: "Restaurant", type: "searchable", placeholder: "Search restaurants…" },
-        { key: "category", label: "Category", type: "searchable", placeholder: "Search categories…" },
+        {
+          key: "restaurant",
+          label: "Restaurant",
+          type: "searchable",
+          placeholder: "Search restaurants…",
+        },
+        {
+          key: "category",
+          label: "Category",
+          type: "searchable",
+          placeholder: "Search categories…",
+        },
         { key: "quantity", label: "Quantity", type: "text" },
         {
           key: "status",
           label: "Status",
+          required: true,
           type: "select",
           options: [...RFQ_STATUSES],
         },
@@ -127,7 +135,11 @@ function RfqsPage() {
             ? (rows.reduce((s, r) => s + r.quotations, 0) / rows.length).toFixed(1)
             : "0",
         },
-        { label: "With quotes", value: String(rows.filter((r) => r.quotations > 0).length), tone: "success" },
+        {
+          label: "With quotes",
+          value: String(rows.filter((r) => r.quotations > 0).length),
+          tone: "success",
+        },
       ]}
       rows={rows}
       searchKeys={["number", "restaurant", "category", "title"]}

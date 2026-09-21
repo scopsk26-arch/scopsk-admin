@@ -3,7 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { PurchaseOrderDetailView } from "@/components/admin/DetailViews";
 import { ClipboardList } from "lucide-react";
-import { fetchList, fetchPurchaseOrderDetail, updatePurchaseOrderStatus } from "@/lib/api/resources";
+import {
+  fetchList,
+  fetchPurchaseOrderDetail,
+  updatePurchaseOrderStatus,
+} from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -12,7 +16,14 @@ export const Route = createFileRoute("/_admin/purchase-orders")({
   component: PurchaseOrdersPage,
 });
 
-const PO_STATUSES = ["draft", "confirmed", "in_progress", "delivered", "completed", "cancelled"] as const;
+const PO_STATUSES = [
+  "draft",
+  "confirmed",
+  "in_progress",
+  "delivered",
+  "completed",
+  "cancelled",
+] as const;
 
 function mapPo(r: any) {
   const items = Array.isArray(r.items) ? r.items : [];
@@ -51,18 +62,28 @@ function PurchaseOrdersPage() {
   const { restaurants, suppliers } = useAdminLookups(["restaurants", "suppliers"]);
   const queryClient = useQueryClient();
 
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["purchase-orders"],
     staleTime: 60_000,
     queryFn: async () => {
-      const list = await fetchList("/purchase-orders", { limit: 100, sortBy: "createdAt", sortOrder: "DESC" });
+      const list = await fetchList("/purchase-orders", {
+        limit: 100,
+        sortBy: "createdAt",
+        sortOrder: "DESC",
+      });
       return list
         .map(mapPo)
         .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
     },
   });
 
-  const open = rows.filter((r) => !["delivered", "cancelled", "closed", "completed"].includes(r.status)).length;
+  const open = rows.filter(
+    (r) => !["delivered", "cancelled", "closed", "completed"].includes(r.status),
+  ).length;
   const delivered = rows.filter((r) => ["delivered", "completed"].includes(r.status)).length;
   const gmv = rows.reduce((s, r) => s + r.amount, 0);
 
@@ -81,7 +102,13 @@ function PurchaseOrdersPage() {
         { key: "restaurant", label: "Buyer", type: "text" },
         { key: "supplier", label: "Supplier", type: "text" },
         { key: "amount", label: "Amount", type: "number" },
-        { key: "status", label: "Status", type: "select", options: [...PO_STATUSES] },
+        {
+          key: "status",
+          label: "Status",
+          required: true,
+          type: "select",
+          options: [...PO_STATUSES],
+        },
       ]}
       viewFields={[
         { key: "number", label: "PO #" },
@@ -105,25 +132,71 @@ function PurchaseOrdersPage() {
       renderView={(detail) => <PurchaseOrderDetailView detail={detail} />}
       kpis={[
         { label: "Open POs", value: String(open) },
-        { label: "In transit", value: String(rows.filter((r) => ["dispatched", "in_transit", "in_progress"].includes(r.status)).length), tone: "info" },
+        {
+          label: "In transit",
+          value: String(
+            rows.filter((r) => ["dispatched", "in_transit", "in_progress"].includes(r.status))
+              .length,
+          ),
+          tone: "info",
+        },
         { label: "Delivered", value: String(delivered), tone: "success" },
         { label: "GMV", value: AED(gmv) },
       ]}
       rows={rows}
       searchKeys={["number", "orderNumber", "restaurant", "supplier", "rfq"]}
-      emptyHint={isLoading ? "Loading…" : isError ? "Failed to load purchase orders." : "No purchase orders found."}
+      emptyHint={
+        isLoading
+          ? "Loading…"
+          : isError
+            ? "Failed to load purchase orders."
+            : "No purchase orders found."
+      }
       columns={[
         { key: "number", label: "PO", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
-        { key: "orderNumber", label: "Order", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
-        { key: "restaurant", label: "Buyer", render: (r) => <span className="font-medium">{r.restaurant}</span> },
+        {
+          key: "orderNumber",
+          label: "Order",
+          className: "font-mono text-xs whitespace-nowrap w-[1%]",
+        },
+        {
+          key: "restaurant",
+          label: "Buyer",
+          render: (r) => <span className="font-medium">{r.restaurant}</span>,
+        },
         { key: "supplier", label: "Supplier" },
         { key: "rfq", label: "RFQ", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         { key: "itemCount", label: "Items", className: "whitespace-nowrap w-[1%]" },
-        { key: "subtotal", label: "Value", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.subtotal) },
-        { key: "vat", label: "VAT", className: "whitespace-nowrap w-[1%]", render: (r) => (r.vatRate ? `${r.vatRate}% · ${AED(r.vat)}` : AED(r.vat)) },
-        { key: "commission", label: "Commission", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.commission) },
-        { key: "amount", label: "Total", className: "whitespace-nowrap w-[1%]", render: (r) => AED(r.amount) },
-        { key: "status", label: "Status", className: "whitespace-nowrap w-[1%]", render: (r) => <StatusBadge status={r.status} /> },
+        {
+          key: "subtotal",
+          label: "Value",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => AED(r.subtotal),
+        },
+        {
+          key: "vat",
+          label: "VAT",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => (r.vatRate ? `${r.vatRate}% · ${AED(r.vat)}` : AED(r.vat)),
+        },
+        {
+          key: "commission",
+          label: "Commission",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => AED(r.commission),
+        },
+        {
+          key: "amount",
+          label: "Total",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => AED(r.amount),
+        },
+        {
+          key: "status",
+          label: "Status",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => <StatusBadge status={r.status} />,
+        },
       ]}
       onUpdate={async (id, data, row) => {
         if (!data.status) throw new Error("Status is required");
