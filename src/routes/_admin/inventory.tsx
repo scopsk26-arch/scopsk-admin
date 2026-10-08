@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_admin/inventory")({
-  head: () => ({ meta: [{ title: "Restaurant Inventory — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Restaurant Inventory — ScopsK" }] }),
   component: InventoryPage,
 });
 

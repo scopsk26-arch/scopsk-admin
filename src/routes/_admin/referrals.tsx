@@ -14,7 +14,7 @@ import { num, str } from "@/lib/api/client";
 import { ReferralSettingsPanel } from "./referral-settings";
 
 export const Route = createFileRoute("/_admin/referrals")({
-  head: () => ({ meta: [{ title: "Referrals — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Referrals — ScopsK" }] }),
   component: ReferralsPage,
 });
 

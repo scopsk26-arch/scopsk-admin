@@ -15,7 +15,7 @@ import { useAdminLookups } from "@/hooks/useAdminLookups";
 import { computeQuotationAiScore } from "@/lib/admin-export";
 
 export const Route = createFileRoute("/_admin/quotations")({
-  head: () => ({ meta: [{ title: "Quotations — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Quotations — ScopsK" }] }),
   component: QuotationsPage,
 });
 
@@ -125,33 +125,16 @@ function QuotationsPage() {
           label: "Quotation",
           className: "font-mono text-xs whitespace-nowrap w-[1%]",
         },
-        { key: "rfq", label: "RFQ", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         {
           key: "supplier",
           label: "Supplier",
           render: (r) => <span className="font-medium">{r.supplier}</span>,
         },
-        { key: "restaurant", label: "Restaurant" },
         {
           key: "amount",
           label: "Amount",
           className: "whitespace-nowrap w-[1%]",
           render: (r) => AED(r.amount),
-        },
-        {
-          key: "aiScore",
-          label: "AI Score",
-          className: "whitespace-nowrap w-[1%]",
-          render: (r) => (
-            <span
-              className={cn(
-                "font-mono font-semibold",
-                r.aiScore >= 90 ? "text-success" : r.aiScore >= 75 ? "text-info" : "text-warning",
-              )}
-            >
-              {r.aiScore || "—"}
-            </span>
-          ),
         },
         {
           key: "status",

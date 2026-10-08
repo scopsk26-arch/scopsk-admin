@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/referral-settings")({
-  head: () => ({ meta: [{ title: "Referral Settings — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Referral Settings — ScopsK" }] }),
   component: ReferralSettingsPage,
 });
 
@@ -266,7 +266,7 @@ export function ReferralSettingsPanel({
                   value={form.shareBaseUrl}
                   onChange={(e) => set("shareBaseUrl", e.target.value)}
                   className="mt-1"
-                  placeholder="https://respy.app/ref"
+                  placeholder="https://scopsk.ae/ref"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Referral links are built as base URL + referral code.

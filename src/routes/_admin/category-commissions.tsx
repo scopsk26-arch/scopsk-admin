@@ -12,7 +12,7 @@ import { useAdminLookups } from "@/hooks/useAdminLookups";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/category-commissions")({
-  head: () => ({ meta: [{ title: "Category Commissions — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Category Commissions — ScopsK" }] }),
   component: CategoryCommissionsPage,
 });
 

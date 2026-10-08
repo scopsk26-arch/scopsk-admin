@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { api, asArray, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/fraud")({
-  head: () => ({ meta: [{ title: "Fraud Detection — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Fraud Detection — ScopsK" }] }),
   component: FraudPage,
 });
 
@@ -15,21 +15,17 @@ function FraudPage() {
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["ai", "fraud-signals"],
     queryFn: async () => {
-      try {
-        const raw = await api.get("/ai/fraud-signals");
-        const signals = asArray((raw as any)?.signals ?? raw);
-        return signals.map((r: any, i: number) => ({
-          id: str(r.id ?? r.code ?? `FR-${i + 1}`),
-          subject: str(r.subject ?? r.code, "—"),
-          reason: str(r.message ?? r.reason, "—"),
-          model: str(r.model ?? "FraudSignals", "—"),
-          severity: str(r.severity, "low"),
-          status: str(r.status, "open"),
-          payload: r,
-        }));
-      } catch {
-        return [];
-      }
+      const raw = await api.get("/ai/fraud-signals");
+      const signals = asArray((raw as any)?.signals ?? raw);
+      return signals.map((r: any, i: number) => ({
+        id: str(r.id ?? r.code ?? `FR-${i + 1}`),
+        subject: str(r.subject ?? r.code, "—"),
+        reason: str(r.message ?? r.reason, "—"),
+        model: str(r.model ?? "FraudSignals", "—"),
+        severity: str(r.severity, "low"),
+        status: str(r.status, "open"),
+        payload: r,
+      }));
     },
   });
 

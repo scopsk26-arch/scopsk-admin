@@ -7,7 +7,7 @@ import { fetchList } from "@/lib/api/resources";
 import { api, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/cms")({
-  head: () => ({ meta: [{ title: "CMS — ResPy" }] }),
+  head: () => ({ meta: [{ title: "CMS — ScopsK" }] }),
   component: CmsPage,
 });
 

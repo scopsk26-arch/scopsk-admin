@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryCommissionsPanel } from "./category-commissions";
 
 export const Route = createFileRoute("/_admin/commissions")({
-  head: () => ({ meta: [{ title: "Commissions — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Commissions — ScopsK" }] }),
   component: CommissionsPage,
 });
 

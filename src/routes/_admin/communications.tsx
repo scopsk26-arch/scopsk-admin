@@ -6,7 +6,7 @@ import { MessageSquare } from "lucide-react";
 import { EMPTY_LIST, fetchCommunications } from "@/lib/api/resources";
 
 export const Route = createFileRoute("/_admin/communications")({
-  head: () => ({ meta: [{ title: "Communications — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Communications — ScopsK" }] }),
   component: CommunicationsPage,
 });
 

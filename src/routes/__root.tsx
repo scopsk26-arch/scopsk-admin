@@ -10,6 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { BRAND_LOGOS } from "../lib/brand";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "@/components/admin/ThemeProvider";
 
@@ -78,22 +79,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ResPy Admin" },
-      { name: "description", content: "ResPy Admin — B2B restaurant procurement marketplace operations." },
-      { name: "author", content: "ResPy" },
-      { property: "og:title", content: "ResPy Admin" },
-      { property: "og:description", content: "ResPy Admin — B2B restaurant procurement marketplace operations." },
-      { property: "og:type", content: "website" },
+      { title: "ScopsK Admin" },
+      { name: "description", content: "ScopsK Admin — B2B restaurant procurement marketplace operations." },
+      { name: "author", content: "ScopsK" },
+      { property: "og:title", content: "ScopsK Admin" },
+      { property: "og:description", content: "ScopsK Admin — B2B restaurant procurement marketplace operations." },
+      { property: "og:image", content: BRAND_LOGOS.onLight },
+      { name: "twitter:image", content: BRAND_LOGOS.onLight },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "ResPy Admin" },
-      { name: "twitter:description", content: "ResPy Admin — B2B restaurant procurement marketplace operations." },
+      { name: "twitter:title", content: "ScopsK Admin" },
+      { name: "twitter:description", content: "ScopsK Admin — B2B restaurant procurement marketplace operations." },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "icon", href: BRAND_LOGOS.onLight, type: "image/png" },
+      { rel: "apple-touch-icon", href: BRAND_LOGOS.onLight },
     ],
   }),
   shellComponent: RootShell,

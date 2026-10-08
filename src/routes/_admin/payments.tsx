@@ -7,7 +7,7 @@ import { fetchInvoiceDetail, fetchList } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/payments")({
-  head: () => ({ meta: [{ title: "Payments — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Payments — ScopsK" }] }),
   component: PaymentsPage,
 });
 

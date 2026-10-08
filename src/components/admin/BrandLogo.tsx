@@ -1,21 +1,28 @@
 import { cn } from "@/lib/utils";
-import { useTheme } from "./ThemeProvider";
-import respyLogoLight from "@/assets/respy-logo-light.png";
-import respyLogoDark from "@/assets/respy-logo-dark.png";
+import { BRAND_LOGOS, type BrandLogoVariant } from "@/lib/brand";
+import { useTheme } from "@/components/admin/ThemeProvider";
 
 type BrandLogoProps = {
   className?: string;
   alt?: string;
+  /** Force a variant; default follows admin theme (dark → cream mark). */
+  variant?: BrandLogoVariant | "auto";
 };
 
-/** Official ResPy wordmark — light/dark variants from brand assets. */
-export function BrandLogo({ className, alt = "ResPy" }: BrandLogoProps) {
+export function BrandLogo({
+  className,
+  alt = "ScopsK",
+  variant = "auto",
+}: BrandLogoProps) {
   const { theme } = useTheme();
+  const resolved: BrandLogoVariant =
+    variant === "auto" ? (theme === "dark" ? "onDark" : "onLight") : variant;
+
   return (
     <img
-      src={theme === "dark" ? respyLogoDark : respyLogoLight}
+      src={BRAND_LOGOS[resolved]}
       alt={alt}
-      className={cn("h-10 w-auto max-w-[200px] object-contain object-left", className)}
+      className={cn("h-10 w-auto max-w-[220px] object-contain object-left", className)}
     />
   );
 }

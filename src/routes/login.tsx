@@ -13,7 +13,7 @@ import { BrandLogo } from "@/components/admin/BrandLogo";
 import { useTheme } from "@/components/admin/ThemeProvider";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Sign in — ResPy Admin" }] }),
+  head: () => ({ meta: [{ title: "Sign in — ScopsK Admin" }] }),
   component: LoginPage,
 });
 
@@ -129,7 +129,7 @@ function LoginPage() {
 
           <h2 className="text-2xl font-display font-semibold tracking-tight">Sign in to your workspace</h2>
           <p className="text-sm text-muted-foreground mt-1.5">
-            Use your admin credentials to access the ResPy command center.
+            Use your admin credentials to access the ScopsK command center.
           </p>
 
           <form onSubmit={onSubmit} className="mt-5 space-y-4">

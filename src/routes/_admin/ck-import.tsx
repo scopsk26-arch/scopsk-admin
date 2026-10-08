@@ -11,7 +11,7 @@ import { num, str } from "@/lib/api/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/ck-import")({
-  head: () => ({ meta: [{ title: "CK Bulk Import — ResPy" }] }),
+  head: () => ({ meta: [{ title: "CK Bulk Import — ScopsK" }] }),
   component: CkImportPage,
 });
 

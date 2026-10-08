@@ -9,7 +9,7 @@ import { fetchCloudKitchenProduction, fetchList } from "@/lib/api/resources";
 import { asArray, num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/ck-production")({
-  head: () => ({ meta: [{ title: "CK Production — ResPy" }] }),
+  head: () => ({ meta: [{ title: "CK Production — ScopsK" }] }),
   component: CkProductionPage,
 });
 

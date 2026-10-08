@@ -1,7 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Wallet, Search } from "lucide-react";
+import {
+  Wallet,
+  Search,
+  List,
+  FileText,
+  Landmark,
+  RefreshCw,
+  FilterX,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,25 +17,35 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AED, StatusBadge, FieldLabel } from "@/components/admin/DataPage";
 import { SearchableSelect } from "@/components/admin/SearchableSelect";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import {
   EMPTY_LIST,
+  acceptWalletCreditRequest,
+  acceptWalletWithdrawRequest,
   creditOrgWallet,
   debitOrgWallet,
+  fetchAdminWalletCreditRequests,
   fetchAdminWallets,
+  fetchAdminWalletWithdrawals,
   fetchOrgWallet,
   fetchOrgWalletTransactions,
+  refundWalletPayment,
+  rejectWalletCreditRequest,
+  rejectWalletWithdrawRequest,
   type AdminWalletRow,
+  type WalletCreditRequestRow,
   type WalletTransactionRow,
+  type WalletWithdrawalRow,
 } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/wallets")({
-  head: () => ({ meta: [{ title: "Wallet Management — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Wallet Management — ScopsK" }] }),
   component: WalletsPage,
 });
 
@@ -37,6 +55,13 @@ const TX_TONES: Record<string, "success" | "destructive" | "warning" | "info"> =
   hold: "warning",
   release: "info",
 };
+
+type WalletInnerTab =
+  | "balances"
+  | "credit-requests"
+  | "withdrawals"
+  | "refunds"
+  | "platform";
 
 function Kpi({ label, value, tone }: { label: string; value: string; tone?: "success" | "warning" | "info" }) {
   return (
@@ -52,11 +77,12 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone?: "suc
   );
 }
 
-export function WalletsManagement({ embedded = false }: { embedded?: boolean }) {
+function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" }) {
   const qc = useQueryClient();
   const { restaurants } = useAdminLookups(["restaurants"]);
   const [orgId, setOrgId] = useState("");
   const [walletQuery, setWalletQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [action, setAction] = useState<"credit" | "debit">("credit");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -72,19 +98,23 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
     isLoading: walletsLoading,
     isError: walletsError,
   } = useQuery({
-    queryKey: ["admin", "wallets", "restaurant"],
-    queryFn: () => fetchAdminWallets({ type: "restaurant" }),
+    queryKey: ["admin", "wallets", orgTypeFilter],
+    queryFn: () =>
+      fetchAdminWallets({
+        type: orgTypeFilter === "all" ? "all" : "restaurant",
+      }),
   });
 
   const filteredWallets = useMemo(() => {
     const needle = walletQuery.trim().toLowerCase();
-    if (!needle) return wallets;
-    return wallets.filter((w: AdminWalletRow) =>
-      [w.organization, w.publicCode, w.referralCode, w.orgType, w.status].some((v) =>
+    return (wallets as AdminWalletRow[]).filter((w) => {
+      if (statusFilter !== "all" && w.status !== statusFilter) return false;
+      if (!needle) return true;
+      return [w.organization, w.publicCode, w.referralCode, w.orgType, w.status].some((v) =>
         String(v).toLowerCase().includes(needle),
-      ),
-    );
-  }, [wallets, walletQuery]);
+      );
+    });
+  }, [wallets, walletQuery, statusFilter]);
 
   const totals = useMemo(() => {
     let available = 0;
@@ -151,32 +181,17 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
     onError: (err: Error) => toast.error(err.message || `Failed to ${action}`),
   });
 
-  return (
-    <div className={cn(embedded ? "space-y-6" : "p-6 lg:p-8 space-y-6")}>
-      {!embedded && (
-        <div className="flex items-start gap-3">
-          <div className="h-11 w-11 rounded-xl border border-border bg-card shadow-soft grid place-items-center shrink-0">
-            <Wallet className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-display font-semibold tracking-tight">Wallet Management</h1>
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              Restaurant wallets only — review ledgers and credit or debit balances
-              (idempotent when a key is provided).
-            </p>
-          </div>
-        </div>
-      )}
-      {embedded && (
-        <p className="text-sm text-muted-foreground">
-          Restaurant wallets only — credit or debit balances from admin.
-        </p>
-      )}
+  const clearFilters = () => {
+    setWalletQuery("");
+    setStatusFilter("all");
+  };
 
+  return (
+    <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label="Wallets" value={String(wallets.length)} />
         <Kpi label="Total available" value={AED(totals.available)} tone="success" />
-        <Kpi label="Total pending" value={AED(totals.pending)} tone="info" />
+        <Kpi label="Total pending" value={AED(totals.pending)} tone="success" />
         <Kpi label="Not active" value={String(totals.frozen)} tone="warning" />
       </div>
 
@@ -191,6 +206,23 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
               className="pl-9 h-9 bg-card"
             />
           </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-9 w-[160px] bg-card">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="frozen">Frozen</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          {(walletQuery || statusFilter !== "all") && (
+            <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" onClick={clearFilters}>
+              <FilterX className="h-3.5 w-3.5" />
+              Clear filters
+            </Button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -207,16 +239,16 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
             <tbody>
               {filteredWallets.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-14 text-center">
+                  <td colSpan={8} className="px-4 py-14 text-center">
                     <div className="text-sm font-medium text-foreground">No wallets</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {walletsLoading
                         ? "Loading wallets…"
                         : walletsError
                           ? "Failed to load wallets."
-                          : walletQuery
-                            ? "No wallets match your search."
-                            : "Wallets appear once an organization transacts on ResPy."}
+                          : walletQuery || statusFilter !== "all"
+                            ? "No wallets match your filters."
+                            : "Wallets appear once an organization transacts on ScopsK."}
                     </div>
                   </td>
                 </tr>
@@ -429,6 +461,432 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function CreditRequestsPanel() {
+  const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("open");
+  const q = useQuery({
+    queryKey: ["admin", "wallet-credit-requests", status],
+    queryFn: () =>
+      fetchAdminWalletCreditRequests({
+        status: status === "all" ? undefined : status,
+      }),
+  });
+  const rows = useMemo(() => {
+    const list = (q.data ?? EMPTY_LIST) as WalletCreditRequestRow[];
+    const needle = search.trim().toLowerCase();
+    if (!needle) return list;
+    return list.filter((r) =>
+      [r.organization, r.publicCode, r.number, r.subject, r.requester].some((v) =>
+        String(v).toLowerCase().includes(needle),
+      ),
+    );
+  }, [q.data, search]);
+
+  const acceptM = useMutation({
+    mutationFn: (ticketId: string) => acceptWalletCreditRequest(ticketId),
+    onSuccess: async () => {
+      toast.success("Credit request accepted · wallet topped up");
+      await qc.invalidateQueries({ queryKey: ["admin", "wallet-credit-requests"] });
+      await qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
+    },
+    onError: (err: Error) => toast.error(err.message || "Accept failed"),
+  });
+
+  const rejectM = useMutation({
+    mutationFn: (ticketId: string) => {
+      const reason = window.prompt("Reject reason (optional)") ?? undefined;
+      return rejectWalletCreditRequest(ticketId, reason);
+    },
+    onSuccess: async () => {
+      toast.success("Credit request rejected");
+      await qc.invalidateQueries({ queryKey: ["admin", "wallet-credit-requests"] });
+    },
+    onError: (err: Error) => toast.error(err.message || "Reject failed"),
+  });
+
+  const busy = acceptM.isPending || rejectM.isPending;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Restaurant wallet top-up requests. Accept credits that restaurant&apos;s wallet; reject closes
+        without changing the balance.
+      </p>
+      <div className="rounded-xl border border-border bg-card shadow-soft overflow-hidden">
+        <div className="p-4 flex flex-wrap gap-2 border-b border-border bg-muted/20">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search ticket, restaurant…"
+              className="pl-9 h-9 bg-card"
+            />
+          </div>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="h-9 w-[160px] bg-card">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="in_progress">In progress</SelectItem>
+              <SelectItem value="resolved">Resolved</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40 text-left">
+                {["Ticket", "Organization", "Amount", "Subject", "Requester", "Status", "Created", "Actions"].map((h) => (
+                  <th key={h} className="px-4 py-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-14 text-center text-sm text-muted-foreground">
+                    {q.isLoading ? "Loading…" : q.isError ? "Failed to load credit requests." : "No credit requests."}
+                  </td>
+                </tr>
+              ) : (
+                rows.map((r) => {
+                  const actionable = r.status === "open" || r.status === "in_progress";
+                  return (
+                    <tr key={r.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">{r.number}</td>
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">{r.organization}</td>
+                      <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">
+                        {r.amount > 0 ? AED(r.amount) : "—"}
+                      </td>
+                      <td className="px-4 py-3 max-w-[240px] truncate" title={r.subject}>{r.subject}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{r.requester}</td>
+                      <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={r.status} /></td>
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{r.createdAt}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {actionable ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="h-8"
+                              disabled={busy}
+                              onClick={() => acceptM.mutate(r.id)}
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8"
+                              disabled={busy}
+                              onClick={() => rejectM.mutate(r.id)}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WithdrawalsPanel() {
+  const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [requestStatus, setRequestStatus] = useState("pending");
+  const q = useQuery({
+    queryKey: ["admin", "wallet-withdrawals", requestStatus],
+    queryFn: () =>
+      fetchAdminWalletWithdrawals({
+        requestStatus: requestStatus === "all" ? undefined : requestStatus,
+      }),
+  });
+  const rows = useMemo(() => {
+    const list = (q.data ?? EMPTY_LIST) as WalletWithdrawalRow[];
+    const needle = search.trim().toLowerCase();
+    if (!needle) return list;
+    return list.filter((r) =>
+      [r.organization, r.publicCode, r.description, r.actor, r.bankName, r.bankAccountName].some((v) =>
+        String(v).toLowerCase().includes(needle),
+      ),
+    );
+  }, [q.data, search]);
+
+  const pendingTotal = useMemo(
+    () =>
+      rows
+        .filter((r) => r.requestStatus === "pending")
+        .reduce((s, r) => s + Number(r.amount || 0), 0),
+    [rows],
+  );
+
+  const acceptM = useMutation({
+    mutationFn: (requestId: string) => acceptWalletWithdrawRequest(requestId),
+    onSuccess: async () => {
+      toast.success("Withdraw accepted · wallet debited");
+      await qc.invalidateQueries({ queryKey: ["admin", "wallet-withdrawals"] });
+      await qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
+    },
+    onError: (err: Error) => toast.error(err.message || "Accept failed"),
+  });
+
+  const rejectM = useMutation({
+    mutationFn: (requestId: string) => {
+      const reason = window.prompt("Reject reason (optional)") ?? undefined;
+      return rejectWalletWithdrawRequest(requestId, reason);
+    },
+    onSuccess: async () => {
+      toast.success("Withdraw rejected · hold released");
+      await qc.invalidateQueries({ queryKey: ["admin", "wallet-withdrawals"] });
+      await qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
+    },
+    onError: (err: Error) => toast.error(err.message || "Reject failed"),
+  });
+
+  const busy = acceptM.isPending || rejectM.isPending;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Kpi label="Requests" value={String(rows.length)} />
+        <Kpi label="Pending amount" value={AED(pendingTotal)} tone="warning" />
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Supplier withdraw requests hold funds until you accept (final debit) or reject (release hold).
+      </p>
+      <div className="rounded-xl border border-border bg-card shadow-soft overflow-hidden">
+        <div className="p-4 flex flex-wrap gap-2 border-b border-border bg-muted/20">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search organization, bank…"
+              className="pl-9 h-9 bg-card"
+            />
+          </div>
+          <Select value={requestStatus} onValueChange={setRequestStatus}>
+            <SelectTrigger className="h-9 w-[160px] bg-card">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="accepted">Accepted</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40 text-left">
+                {["Organization", "Amount", "Bank", "Account", "Requester", "Status", "Date", "Actions"].map((h) => (
+                  <th key={h} className="px-4 py-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-14 text-center text-sm text-muted-foreground">
+                    {q.isLoading ? "Loading…" : q.isError ? "Failed to load withdrawals." : "No withdraw requests."}
+                  </td>
+                </tr>
+              ) : (
+                rows.map((r) => {
+                  const actionable = r.requestStatus === "pending";
+                  return (
+                    <tr key={r.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">
+                        <div>{r.organization}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{r.publicCode}</div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">{AED(r.amount)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{r.bankName}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm">{r.bankAccountName}</div>
+                        <div className="text-xs font-mono text-muted-foreground">{r.bankAccountNumber}</div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{r.actor}</td>
+                      <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={r.requestStatus} /></td>
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{r.createdAt}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {actionable ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="h-8"
+                              disabled={busy}
+                              onClick={() => acceptM.mutate(r.requestId)}
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8"
+                              disabled={busy}
+                              onClick={() => rejectM.mutate(r.requestId)}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RefundsPanel() {
+  const [paymentId, setPaymentId] = useState("");
+  const [reason, setReason] = useState("");
+  const mutate = useMutation({
+    mutationFn: () => {
+      if (!paymentId.trim()) throw new Error("Payment id is required");
+      return refundWalletPayment({
+        paymentId: paymentId.trim(),
+        reason: reason.trim() || undefined,
+      });
+    },
+    onSuccess: (result: any) => {
+      toast.success(result?.idempotent ? "Idempotent refund replayed" : "Wallet payment refunded");
+      setPaymentId("");
+      setReason("");
+    },
+    onError: (err: Error) => toast.error(err.message || "Refund failed"),
+  });
+
+  return (
+    <div className="max-w-xl space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Refund a wallet-funded payment back to the buyer organization wallet.
+      </p>
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-4">
+        <div>
+          <FieldLabel required className="text-muted-foreground">Payment ID</FieldLabel>
+          <Input
+            value={paymentId}
+            onChange={(e) => setPaymentId(e.target.value)}
+            className="mt-1 font-mono text-xs"
+            placeholder="UUID of the payment"
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Reason</Label>
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className="mt-1"
+            rows={3}
+            placeholder="Optional refund reason"
+          />
+        </div>
+        <div className="flex justify-end">
+          <Button disabled={mutate.isPending} onClick={() => mutate.mutate()}>
+            {mutate.isPending ? "Refunding…" : "Refund to wallet"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function WalletsManagement({ embedded = false }: { embedded?: boolean }) {
+  const [tab, setTab] = useState<WalletInnerTab>("balances");
+
+  return (
+    <div className={cn(embedded ? "space-y-6" : "p-6 lg:p-8 space-y-6")}>
+      <div className="flex items-start gap-3">
+        <div className="h-11 w-11 rounded-xl border border-border bg-card shadow-soft grid place-items-center shrink-0">
+          <Wallet className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-display font-semibold tracking-tight">Wallet Management</h1>
+          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+            Restaurant wallets only — review ledgers and credit or debit balances
+            (idempotent when a key is provided).
+          </p>
+        </div>
+      </div>
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v as WalletInnerTab)} className="space-y-6">
+        <TabsList className="h-auto flex-wrap justify-start gap-1 p-1">
+          <TabsTrigger value="balances" className="gap-1.5">
+            <List className="h-3.5 w-3.5" />
+            Balances
+          </TabsTrigger>
+          <TabsTrigger value="credit-requests" className="gap-1.5">
+            <FileText className="h-3.5 w-3.5" />
+            Credit requests
+          </TabsTrigger>
+          <TabsTrigger value="withdrawals" className="gap-1.5">
+            <Landmark className="h-3.5 w-3.5" />
+            Withdrawals
+          </TabsTrigger>
+          <TabsTrigger value="refunds" className="gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refunds
+          </TabsTrigger>
+          <TabsTrigger value="platform" className="gap-1.5">
+            <Landmark className="h-3.5 w-3.5" />
+            Platform wallet
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="balances" className="mt-0">
+          <BalancesPanel orgTypeFilter="restaurant" />
+        </TabsContent>
+        <TabsContent value="credit-requests" className="mt-0">
+          <CreditRequestsPanel />
+        </TabsContent>
+        <TabsContent value="withdrawals" className="mt-0">
+          <WithdrawalsPanel />
+        </TabsContent>
+        <TabsContent value="refunds" className="mt-0">
+          <RefundsPanel />
+        </TabsContent>
+        <TabsContent value="platform" className="mt-0">
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Full platform wallet register — restaurants, suppliers, and other org types.
+            </p>
+            <BalancesPanel orgTypeFilter="all" />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

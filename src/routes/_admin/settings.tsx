@@ -10,7 +10,7 @@ import { api, asArray, str } from "@/lib/api/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/settings")({
-  head: () => ({ meta: [{ title: "Settings — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Settings — ScopsK" }] }),
   component: SettingsPage,
 });
 

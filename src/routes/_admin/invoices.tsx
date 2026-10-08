@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WalletsManagement } from "./wallets";
 
 export const Route = createFileRoute("/_admin/invoices")({
-  head: () => ({ meta: [{ title: "Invoices — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Invoices — ScopsK" }] }),
   component: InvoicesPage,
 });
 

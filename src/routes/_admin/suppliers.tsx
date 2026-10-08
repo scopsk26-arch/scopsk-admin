@@ -14,7 +14,7 @@ import {
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/suppliers")({
-  head: () => ({ meta: [{ title: "Suppliers — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Suppliers — ScopsK" }] }),
   component: SuppliersPage,
 });
 

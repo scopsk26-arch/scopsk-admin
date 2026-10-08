@@ -10,7 +10,7 @@ import { fetchList } from "@/lib/api/resources";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_admin/media")({
-  head: () => ({ meta: [{ title: "Media Library — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Media Library — ScopsK" }] }),
   component: MediaLibraryPage,
 });
 
@@ -18,6 +18,7 @@ type MediaFile = {
   id: string;
   name: string;
   url: string;
+  objectKey: string;
   size: number;
   mimeType: string;
   purpose: string;
@@ -31,11 +32,24 @@ function formatBytes(n: number) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Canonical + legacy Spaces roots (backend uploadRoot + legacyUploadRoots). */
+function isPlatformMedia(file: { url: string; objectKey?: string }) {
+  const key = String(file.objectKey || "");
+  const url = String(file.url || "");
+  return (
+    key.startsWith("scopsk/") ||
+    key.startsWith("respy/") ||
+    url.includes("/scopsk/") ||
+    url.includes("/respy/")
+  );
+}
+
 function mapFile(r: any): MediaFile {
   return {
     id: str(r.id),
     name: str(r.originalName || r.fileName, "file"),
     url: str(r.cdnUrl, ""),
+    objectKey: str(r.objectKey, ""),
     size: num(r.size),
     mimeType: str(r.mimeType, ""),
     purpose: str(r.purpose, ""),
@@ -52,8 +66,14 @@ function MediaLibraryPage() {
   const { data: files = [], isLoading, isError } = useQuery({
     queryKey: ["admin", "media-library"],
     queryFn: async () => {
-      const list = await fetchList("/files", { imagesOnly: true, limit: 100 });
-      return asArray(list).map(mapFile).filter((f) => f.id && f.url);
+      const list = await fetchList("/files", {
+        imagesOnly: true,
+        scope: "media",
+        limit: 100,
+      });
+      const mapped = asArray(list).map(mapFile).filter((f) => f.id && f.url);
+      const scoped = mapped.filter(isPlatformMedia);
+      return scoped.length > 0 ? scoped : mapped;
     },
   });
 
@@ -129,7 +149,7 @@ function MediaLibraryPage() {
           <div>
             <h1 className="text-2xl font-display font-semibold tracking-tight">Media Library</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Files go to DigitalOcean Spaces under <code className="text-xs">respy/</code>. Copy the
+              Files go to DigitalOcean Spaces under the platform media root. Copy the
               CDN URL into dishes, banners, or catalog.
             </p>
           </div>
@@ -212,9 +232,14 @@ function MediaLibraryPage() {
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
           <ImagePlus className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-          <p className="font-medium">No images yet</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Click Upload to add files to DigitalOcean Spaces.
+          <p className="font-medium">No images in the media library yet</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+            Click Upload — new files go to{" "}
+            <code className="text-xs">
+              …/scopsk/YYYY-MM-DD/…
+            </code>{" "}
+            and their CDN URL will show here. Old <code className="text-xs">uploads/</code> and{" "}
+            <code className="text-xs">seed/</code> files are hidden from this page.
           </p>
         </div>
       ) : (

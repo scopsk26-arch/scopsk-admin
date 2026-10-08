@@ -6,7 +6,7 @@ import { fetchAdminOutstanding } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/outstanding")({
-  head: () => ({ meta: [{ title: "Outstanding — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Outstanding — ScopsK" }] }),
   component: OutstandingPage,
 });
 

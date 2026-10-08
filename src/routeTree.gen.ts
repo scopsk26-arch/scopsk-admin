@@ -32,6 +32,7 @@ import { Route as AdminQualitiesRouteImport } from './routes/_admin/qualities'
 import { Route as AdminPurchaseOrdersRouteImport } from './routes/_admin/purchase-orders'
 import { Route as AdminPaymentsRouteImport } from './routes/_admin/payments'
 import { Route as AdminOutstandingRouteImport } from './routes/_admin/outstanding'
+import { Route as AdminOrgReportsRouteImport } from './routes/_admin/org-reports'
 import { Route as AdminNotificationsRouteImport } from './routes/_admin/notifications'
 import { Route as AdminMediaRouteImport } from './routes/_admin/media'
 import { Route as AdminMarketingRouteImport } from './routes/_admin/marketing'
@@ -49,6 +50,7 @@ import { Route as AdminCommissionsRouteImport } from './routes/_admin/commission
 import { Route as AdminCmsRouteImport } from './routes/_admin/cms'
 import { Route as AdminCkRequestsRouteImport } from './routes/_admin/ck-requests'
 import { Route as AdminCkProductionRouteImport } from './routes/_admin/ck-production'
+import { Route as AdminCkOrdersRouteImport } from './routes/_admin/ck-orders'
 import { Route as AdminCkImportRouteImport } from './routes/_admin/ck-import'
 import { Route as AdminCkDishesRouteImport } from './routes/_admin/ck-dishes'
 import { Route as AdminCategoryCommissionsRouteImport } from './routes/_admin/category-commissions'
@@ -176,6 +178,11 @@ const AdminOutstandingRoute = AdminOutstandingRouteImport.update({
   path: '/outstanding',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOrgReportsRoute = AdminOrgReportsRouteImport.update({
+  id: '/org-reports',
+  path: '/org-reports',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -261,6 +268,11 @@ const AdminCkProductionRoute = AdminCkProductionRouteImport.update({
   path: '/ck-production',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCkOrdersRoute = AdminCkOrdersRouteImport.update({
+  id: '/ck-orders',
+  path: '/ck-orders',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminCkImportRoute = AdminCkImportRouteImport.update({
   id: '/ck-import',
   path: '/ck-import',
@@ -332,6 +344,7 @@ export interface FileRoutesByFullPath {
   '/category-commissions': typeof AdminCategoryCommissionsRoute
   '/ck-dishes': typeof AdminCkDishesRoute
   '/ck-import': typeof AdminCkImportRoute
+  '/ck-orders': typeof AdminCkOrdersRoute
   '/ck-production': typeof AdminCkProductionRoute
   '/ck-requests': typeof AdminCkRequestsRoute
   '/cms': typeof AdminCmsRoute
@@ -349,6 +362,7 @@ export interface FileRoutesByFullPath {
   '/marketing': typeof AdminMarketingRoute
   '/media': typeof AdminMediaRoute
   '/notifications': typeof AdminNotificationsRoute
+  '/org-reports': typeof AdminOrgReportsRoute
   '/outstanding': typeof AdminOutstandingRoute
   '/payments': typeof AdminPaymentsRoute
   '/purchase-orders': typeof AdminPurchaseOrdersRoute
@@ -384,6 +398,7 @@ export interface FileRoutesByTo {
   '/category-commissions': typeof AdminCategoryCommissionsRoute
   '/ck-dishes': typeof AdminCkDishesRoute
   '/ck-import': typeof AdminCkImportRoute
+  '/ck-orders': typeof AdminCkOrdersRoute
   '/ck-production': typeof AdminCkProductionRoute
   '/ck-requests': typeof AdminCkRequestsRoute
   '/cms': typeof AdminCmsRoute
@@ -401,6 +416,7 @@ export interface FileRoutesByTo {
   '/marketing': typeof AdminMarketingRoute
   '/media': typeof AdminMediaRoute
   '/notifications': typeof AdminNotificationsRoute
+  '/org-reports': typeof AdminOrgReportsRoute
   '/outstanding': typeof AdminOutstandingRoute
   '/payments': typeof AdminPaymentsRoute
   '/purchase-orders': typeof AdminPurchaseOrdersRoute
@@ -438,6 +454,7 @@ export interface FileRoutesById {
   '/_admin/category-commissions': typeof AdminCategoryCommissionsRoute
   '/_admin/ck-dishes': typeof AdminCkDishesRoute
   '/_admin/ck-import': typeof AdminCkImportRoute
+  '/_admin/ck-orders': typeof AdminCkOrdersRoute
   '/_admin/ck-production': typeof AdminCkProductionRoute
   '/_admin/ck-requests': typeof AdminCkRequestsRoute
   '/_admin/cms': typeof AdminCmsRoute
@@ -455,6 +472,7 @@ export interface FileRoutesById {
   '/_admin/marketing': typeof AdminMarketingRoute
   '/_admin/media': typeof AdminMediaRoute
   '/_admin/notifications': typeof AdminNotificationsRoute
+  '/_admin/org-reports': typeof AdminOrgReportsRoute
   '/_admin/outstanding': typeof AdminOutstandingRoute
   '/_admin/payments': typeof AdminPaymentsRoute
   '/_admin/purchase-orders': typeof AdminPurchaseOrdersRoute
@@ -492,6 +510,7 @@ export interface FileRouteTypes {
     | '/category-commissions'
     | '/ck-dishes'
     | '/ck-import'
+    | '/ck-orders'
     | '/ck-production'
     | '/ck-requests'
     | '/cms'
@@ -509,6 +528,7 @@ export interface FileRouteTypes {
     | '/marketing'
     | '/media'
     | '/notifications'
+    | '/org-reports'
     | '/outstanding'
     | '/payments'
     | '/purchase-orders'
@@ -544,6 +564,7 @@ export interface FileRouteTypes {
     | '/category-commissions'
     | '/ck-dishes'
     | '/ck-import'
+    | '/ck-orders'
     | '/ck-production'
     | '/ck-requests'
     | '/cms'
@@ -561,6 +582,7 @@ export interface FileRouteTypes {
     | '/marketing'
     | '/media'
     | '/notifications'
+    | '/org-reports'
     | '/outstanding'
     | '/payments'
     | '/purchase-orders'
@@ -597,6 +619,7 @@ export interface FileRouteTypes {
     | '/_admin/category-commissions'
     | '/_admin/ck-dishes'
     | '/_admin/ck-import'
+    | '/_admin/ck-orders'
     | '/_admin/ck-production'
     | '/_admin/ck-requests'
     | '/_admin/cms'
@@ -614,6 +637,7 @@ export interface FileRouteTypes {
     | '/_admin/marketing'
     | '/_admin/media'
     | '/_admin/notifications'
+    | '/_admin/org-reports'
     | '/_admin/outstanding'
     | '/_admin/payments'
     | '/_admin/purchase-orders'
@@ -805,6 +829,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOutstandingRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/org-reports': {
+      id: '/_admin/org-reports'
+      path: '/org-reports'
+      fullPath: '/org-reports'
+      preLoaderRoute: typeof AdminOrgReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/notifications': {
       id: '/_admin/notifications'
       path: '/notifications'
@@ -924,6 +955,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCkProductionRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/ck-orders': {
+      id: '/_admin/ck-orders'
+      path: '/ck-orders'
+      fullPath: '/ck-orders'
+      preLoaderRoute: typeof AdminCkOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/ck-import': {
       id: '/_admin/ck-import'
       path: '/ck-import'
@@ -1016,6 +1054,7 @@ interface AdminRouteChildren {
   AdminCategoryCommissionsRoute: typeof AdminCategoryCommissionsRoute
   AdminCkDishesRoute: typeof AdminCkDishesRoute
   AdminCkImportRoute: typeof AdminCkImportRoute
+  AdminCkOrdersRoute: typeof AdminCkOrdersRoute
   AdminCkProductionRoute: typeof AdminCkProductionRoute
   AdminCkRequestsRoute: typeof AdminCkRequestsRoute
   AdminCmsRoute: typeof AdminCmsRoute
@@ -1033,6 +1072,7 @@ interface AdminRouteChildren {
   AdminMarketingRoute: typeof AdminMarketingRoute
   AdminMediaRoute: typeof AdminMediaRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
+  AdminOrgReportsRoute: typeof AdminOrgReportsRoute
   AdminOutstandingRoute: typeof AdminOutstandingRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminPurchaseOrdersRoute: typeof AdminPurchaseOrdersRoute
@@ -1067,6 +1107,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCategoryCommissionsRoute: AdminCategoryCommissionsRoute,
   AdminCkDishesRoute: AdminCkDishesRoute,
   AdminCkImportRoute: AdminCkImportRoute,
+  AdminCkOrdersRoute: AdminCkOrdersRoute,
   AdminCkProductionRoute: AdminCkProductionRoute,
   AdminCkRequestsRoute: AdminCkRequestsRoute,
   AdminCmsRoute: AdminCmsRoute,
@@ -1084,6 +1125,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMarketingRoute: AdminMarketingRoute,
   AdminMediaRoute: AdminMediaRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
+  AdminOrgReportsRoute: AdminOrgReportsRoute,
   AdminOutstandingRoute: AdminOutstandingRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminPurchaseOrdersRoute: AdminPurchaseOrdersRoute,

@@ -9,7 +9,7 @@ import { useAdminLookups } from "@/hooks/useAdminLookups";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
 
 export const Route = createFileRoute("/_admin/cuisines")({
-  head: () => ({ meta: [{ title: "Cuisines — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Cuisines — ScopsK" }] }),
   component: CuisinesPage,
 });
 

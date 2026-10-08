@@ -27,7 +27,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/categories")({
-  head: () => ({ meta: [{ title: "Categories — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Categories — ScopsK" }] }),
   component: CategoriesPage,
 });
 
@@ -42,6 +42,7 @@ type CategoryRow = {
   status: string;
   vatRate: string;
   exciseRate: string;
+  imageUrl: string;
 };
 
 function mapCategoryRow(r: any, byId?: Map<string, any>): CategoryRow {
@@ -72,17 +73,20 @@ function mapCategoryRow(r: any, byId?: Map<string, any>): CategoryRow {
     status: str(r.status, "active"),
     vatRate: r.vatRate != null && r.vatRate !== "" ? String(r.vatRate) : "",
     exciseRate: r.exciseRate != null && r.exciseRate !== "" ? String(r.exciseRate) : "",
+    imageUrl: str(r.imageUrl, ""),
   };
 }
 
 function toCategoryPayload(data: Record<string, any>) {
   const parentId = data.parentId && String(data.parentId).trim() ? String(data.parentId) : null;
+  const imageUrl = data.imageUrl != null && String(data.imageUrl).trim() ? String(data.imageUrl).trim() : null;
   return {
     name: String(data.name || "").trim(),
     parentId,
     status: data.status || "active",
     vatRate: data.vatRate === "" || data.vatRate == null ? null : Number(data.vatRate),
     exciseRate: data.exciseRate === "" || data.exciseRate == null ? null : Number(data.exciseRate),
+    imageUrl,
   };
 }
 
@@ -184,6 +188,12 @@ function CategoriesPage() {
             allowClear: true,
           },
           {
+            key: "imageUrl",
+            label: "Picture",
+            type: "image",
+            placeholder: "Upload category image",
+          },
+          {
             key: "status",
             label: "Status",
             required: true,
@@ -195,6 +205,7 @@ function CategoriesPage() {
         ]}
         lookups={{ parent: parentOptions, parentId: parentOptions }}
         viewFields={[
+          { key: "imageUrl", label: "Picture", type: "image" },
           { key: "name", label: "Category" },
           { key: "parent", label: "Parent" },
           { key: "depth", label: "Level" },
@@ -229,10 +240,18 @@ function CategoriesPage() {
         }
         columns={[
           {
-            key: "id",
-            label: "ID",
-            className: "font-mono text-xs",
-            render: (r) => String(r.id).slice(0, 8),
+            key: "imageUrl",
+            label: "Image",
+            className: "whitespace-nowrap w-[1%]",
+            render: (r) => (
+              <span className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-border bg-muted/50 flex items-center justify-center">
+                {r.imageUrl ? (
+                  <img src={r.imageUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-[9px] text-muted-foreground">—</span>
+                )}
+              </span>
+            ),
           },
           {
             key: "name",

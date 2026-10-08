@@ -19,7 +19,7 @@ import { useAdminLookups } from "@/hooks/useAdminLookups";
 type OrgDoc = { id?: string; type: string; url?: string; fileName?: string };
 
 export const Route = createFileRoute("/_admin/restaurants")({
-  head: () => ({ meta: [{ title: "Restaurants — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Restaurants — ScopsK" }] }),
   component: RestaurantsPage,
 });
 

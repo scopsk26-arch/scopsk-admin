@@ -10,7 +10,7 @@ import { fetchList, reorderBanners } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/banners")({
-  head: () => ({ meta: [{ title: "Banners — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Banners — ScopsK" }] }),
   component: BannersPage,
 });
 
@@ -22,6 +22,7 @@ type BannerRow = {
   ctaLabel: string;
   ctaTarget: string;
   status: string;
+  type: string;
   sortOrder: number;
   startsAt: string;
   endsAt: string;
@@ -37,6 +38,7 @@ function mapBanner(r: any): BannerRow {
     ctaLabel: str(r.ctaLabel, ""),
     ctaTarget: str(r.ctaTarget, ""),
     status: str(r.status, "inactive"),
+    type: str(r.type, "homepage"),
     sortOrder: num(r.sortOrder),
     startsAt: r.startsAt ? String(r.startsAt).slice(0, 10) : "",
     endsAt: r.endsAt ? String(r.endsAt).slice(0, 10) : "",
@@ -117,6 +119,13 @@ function BannersPage() {
           type: "select",
           options: ["active", "inactive"],
         },
+        {
+          key: "type",
+          label: "Placement",
+          required: true,
+          type: "select",
+          options: ["homepage", "cloud_kitchen"],
+        },
         { key: "sortOrder", label: "Sort order", type: "number" },
         { key: "startsAt", label: "Starts at (YYYY-MM-DD)", type: "text" },
         { key: "endsAt", label: "Ends at (YYYY-MM-DD)", type: "text" },
@@ -128,6 +137,7 @@ function BannersPage() {
         { key: "ctaLabel", label: "CTA Label" },
         { key: "ctaTarget", label: "CTA Target" },
         { key: "status", label: "Status" },
+        { key: "type", label: "Placement" },
         { key: "sortOrder", label: "Sort order" },
         { key: "startsAt", label: "Starts at" },
         { key: "endsAt", label: "Ends at" },
@@ -202,6 +212,7 @@ function BannersPage() {
         },
         { key: "startsAt", label: "Starts" },
         { key: "endsAt", label: "Ends" },
+        { key: "type", label: "Placement" },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onCreate={async (data) => {
@@ -213,6 +224,7 @@ function BannersPage() {
           ctaLabel: data.ctaLabel || null,
           ctaTarget: data.ctaTarget || null,
           status: data.status || "active",
+          type: data.type || "homepage",
           sortOrder: data.sortOrder != null && data.sortOrder !== "" ? Number(data.sortOrder) : 0,
           startsAt: data.startsAt || null,
           endsAt: data.endsAt || null,
@@ -228,6 +240,7 @@ function BannersPage() {
           ctaLabel: data.ctaLabel || null,
           ctaTarget: data.ctaTarget || null,
           status: data.status,
+          type: data.type,
           sortOrder:
             data.sortOrder != null && data.sortOrder !== "" ? Number(data.sortOrder) : undefined,
           startsAt: data.startsAt || null,

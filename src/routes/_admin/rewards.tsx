@@ -10,7 +10,7 @@ import { EMPTY_LIST, fetchAdminRewards } from "@/lib/api/resources";
 import { num } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/rewards")({
-  head: () => ({ meta: [{ title: "Rewards — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Rewards — ScopsK" }] }),
   component: RewardsPage,
 });
 

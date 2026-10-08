@@ -8,7 +8,7 @@ import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/ck-requests")({
-  head: () => ({ meta: [{ title: "CK Requests — ResPy" }] }),
+  head: () => ({ meta: [{ title: "CK Requests — ScopsK" }] }),
   component: CkRequestsPage,
 });
 

@@ -1191,6 +1191,148 @@ export async function refundWalletPayment(body: { paymentId: string; reason?: st
   return api.post("/admin/wallets/refund", body);
 }
 
+export type WalletWithdrawalRow = {
+  id: string;
+  /** Hold referenceId — use for accept/reject APIs */
+  requestId: string;
+  organizationId: string;
+  organization: string;
+  orgType: string;
+  publicCode: string;
+  amount: number;
+  currency: string;
+  /** pending | accepted | rejected */
+  requestStatus: string;
+  status: string;
+  description: string;
+  bankName: string;
+  bankAccountName: string;
+  bankAccountNumber: string;
+  bankIban: string;
+  createdAt: string;
+  actor: string;
+};
+
+export async function fetchAdminWalletWithdrawals(query?: {
+  search?: string;
+  status?: string;
+  requestStatus?: string;
+  orgType?: string;
+}) {
+  const rows = await fetchAllPages("/admin/wallets/withdrawals", {
+    search: query?.search,
+    orgType: query?.orgType,
+    requestStatus: query?.requestStatus,
+  });
+  // Prefer hold rows (requests). Debit rows are payout ledger after accept.
+  const mapped = rows
+    .filter((r: any) => r.referenceType === "wallet_withdraw_request" && r.type === "hold")
+    .map((r: any): WalletWithdrawalRow => {
+      const wallet = r.wallet ?? {};
+      const org = wallet.organization ?? {};
+      const user = r.createdByUser ?? {};
+      const meta = (r.metadata || {}) as Record<string, unknown>;
+      return {
+        id: str(r.id),
+        requestId: str(r.referenceId, str(r.id)),
+        organizationId: str(wallet.organizationId ?? org.id, ""),
+        organization: str(org.name, "—"),
+        orgType: str(org.type, "—"),
+        publicCode: str(org.publicCode, "—"),
+        amount: num(r.amount),
+        currency: str(wallet.currency, "AED"),
+        requestStatus: str(meta.requestStatus, "pending"),
+        status: str(r.status, "posted"),
+        description: str(r.description, "—"),
+        bankName: str(meta.bankName, "—"),
+        bankAccountName: str(meta.bankAccountName, "—"),
+        bankAccountNumber: str(meta.bankAccountNumber, "—"),
+        bankIban: str(meta.bankIban, "—"),
+        createdAt: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 16) : "—",
+        actor: [user.firstName, user.lastName].filter(Boolean).join(" ") || str(user.email, "—"),
+      };
+    });
+  if (query?.requestStatus) {
+    return mapped.filter((r) => r.requestStatus === query.requestStatus);
+  }
+  return mapped;
+}
+
+export async function acceptWalletWithdrawRequest(requestId: string) {
+  return api.post(`/admin/wallets/withdrawals/${requestId}/accept`, {});
+}
+
+export async function rejectWalletWithdrawRequest(requestId: string, reason?: string) {
+  return api.post(`/admin/wallets/withdrawals/${requestId}/reject`, {
+    reason: reason?.trim() || undefined,
+  });
+}
+
+export type WalletCreditRequestRow = {
+  id: string;
+  number: string;
+  organizationId: string;
+  organization: string;
+  orgType: string;
+  publicCode: string;
+  subject: string;
+  relatedCode: string;
+  amount: number;
+  currency: string;
+  status: string;
+  priority: string;
+  createdAt: string;
+  requester: string;
+};
+
+function parseTopUpFromTicket(relatedCode: string, subject: string): { amount: number; currency: string } {
+  const m = relatedCode.match(/^TOPUP:([A-Z]{3}):(\d+(?:\.\d+)?)$/i);
+  if (m) return { currency: m[1].toUpperCase(), amount: num(m[2]) };
+  const sm = subject.match(/([A-Z]{3})\s+(\d+(?:\.\d+)?)/i);
+  if (sm) return { currency: sm[1].toUpperCase(), amount: num(sm[2]) };
+  return { currency: "AED", amount: 0 };
+}
+
+export async function fetchAdminWalletCreditRequests(query?: {
+  search?: string;
+  status?: string;
+}) {
+  const rows = await fetchAllPages("/admin/wallets/credit-requests", query);
+  return rows.map((r: any): WalletCreditRequestRow => {
+    const org = r.organization ?? {};
+    const user = r.creator ?? {};
+    const relatedCode = str(r.relatedCode, "");
+    const subject = str(r.subject, "—");
+    const parsed = parseTopUpFromTicket(relatedCode, subject);
+    return {
+      id: str(r.id),
+      number: str(r.number, "—"),
+      organizationId: str(r.organizationId ?? org.id, ""),
+      organization: str(org.name, "—"),
+      orgType: str(org.type, "—"),
+      publicCode: str(org.publicCode, "—"),
+      subject,
+      relatedCode: relatedCode || "—",
+      amount: parsed.amount,
+      currency: parsed.currency,
+      status: str(r.status, "open"),
+      priority: str(r.priority, "medium"),
+      createdAt: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 16) : "—",
+      requester: [user.firstName, user.lastName].filter(Boolean).join(" ") || str(user.email, "—"),
+    };
+  });
+}
+
+export async function acceptWalletCreditRequest(ticketId: string) {
+  return api.post(`/admin/wallets/credit-requests/${ticketId}/accept`, {});
+}
+
+export async function rejectWalletCreditRequest(ticketId: string, reason?: string) {
+  return api.post(`/admin/wallets/credit-requests/${ticketId}/reject`, {
+    reason: reason?.trim() || undefined,
+  });
+}
+
 export async function importCloudKitchenDishes(file: File, cloudKitchenId?: string) {
   const form = new FormData();
   form.append("file", file);
@@ -1221,6 +1363,26 @@ export async function fetchCloudKitchenProduction(query?: {
     totals?: { produced?: number; sold?: number; remaining?: number };
     rows?: any[];
   }>("/admin/cloud-kitchen/production", { query });
+}
+
+export async function fetchCloudKitchenOrders(query?: {
+  limit?: number;
+  page?: number;
+  status?: string;
+  cloudKitchenId?: string;
+}) {
+  return api.get<any>("/admin/cloud-kitchen/orders", { query });
+}
+
+export async function updateCloudKitchenOrderStatus(
+  orderId: string,
+  status: string,
+  deliverySlot?: string | null,
+) {
+  return api.patch<any>(`/admin/cloud-kitchen/orders/${orderId}/status`, {
+    status,
+    deliverySlot,
+  });
 }
 
 /** PATCH /admin/banners/reorder — persist banner sort order. */

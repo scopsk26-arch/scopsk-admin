@@ -15,7 +15,7 @@ import { EMPTY_LIST, fetchAdminDashboard } from "@/lib/api/resources";
 import { getSessionUser } from "@/lib/auth-session";
 
 export const Route = createFileRoute("/_admin/dashboard")({
-  head: () => ({ meta: [{ title: "Command Center — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Command Center — ScopsK" }] }),
   component: Dashboard,
 });
 
@@ -137,7 +137,7 @@ function Dashboard() {
               to="/rfqs"
               className="px-3 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium grid place-items-center hover:opacity-90"
             >
-              New RFQ
+              View RFQs
             </Link>
             <Link
               to="/reports"

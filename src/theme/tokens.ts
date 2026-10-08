@@ -1,5 +1,5 @@
 /**
- * ResPy Admin design tokens
+ * ScopsK Admin design tokens
  * Source of truth: res-py-mobile-app/src/theme/{colors,typography,layout,shadows}.ts
  * CSS variables in styles.css mirror these values for Tailwind.
  */

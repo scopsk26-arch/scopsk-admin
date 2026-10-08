@@ -30,7 +30,7 @@ function normalizeSlotLabel(raw: string) {
 }
 
 export const Route = createFileRoute("/_admin/ck-dishes")({
-  head: () => ({ meta: [{ title: "CK Dishes — ResPy" }] }),
+  head: () => ({ meta: [{ title: "CK Dishes — ScopsK" }] }),
   component: CkDishesPage,
 });
 

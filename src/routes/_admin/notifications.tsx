@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/notifications")({
-  head: () => ({ meta: [{ title: "Notifications — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Notifications — ScopsK" }] }),
   component: NotificationsPage,
 });
 
@@ -40,6 +40,9 @@ function NotificationsPage() {
         status: Boolean(r.readAt ?? r.read ?? r.isRead) ? "read" : "unread",
       }));
     },
+    // Live updates via Socket.IO `data:changed` (AdminRealtime) — no interval polling.
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
   });
 
   const unread = rows.filter((r) => !r.read).length;

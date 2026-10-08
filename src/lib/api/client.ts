@@ -26,7 +26,7 @@ export class ApiError extends Error {
 }
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "")
-  || "https://res-py-apis-2aa637410d3d.herokuapp.com/api/v1";
+  || "https://api.scopsk.ae/api/v1";
 
 type RequestOptions = {
   method?: string;

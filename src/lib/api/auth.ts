@@ -46,7 +46,7 @@ export async function login(email: string, password: string): Promise<LoginResul
     const profile = await api.get<MeResult>("/auth/me");
     if (profile?.user) {
       orgId = profile.organizations?.[0]?.id ?? orgId;
-      setSessionUser(profile.user);
+      setSessionUser({ ...profile.user, roles: profile.roles });
       if (orgId) setOrgId(orgId);
     }
   } catch {
@@ -59,7 +59,7 @@ export async function login(email: string, password: string): Promise<LoginResul
 export async function me(): Promise<MeResult> {
   const data = await api.get<MeResult>("/auth/me");
   if (data?.user) {
-    setSessionUser(data.user);
+    setSessionUser({ ...data.user, roles: data.roles });
     const orgId = data.organizations?.[0]?.id;
     if (orgId) setOrgId(orgId);
   }

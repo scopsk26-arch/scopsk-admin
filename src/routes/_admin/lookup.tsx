@@ -10,7 +10,7 @@ import { fetchLookup } from "@/lib/api/resources";
 import { ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/lookup")({
-  head: () => ({ meta: [{ title: "Code Lookup — ResPy Admin" }] }),
+  head: () => ({ meta: [{ title: "Code Lookup — ScopsK Admin" }] }),
   component: LookupPage,
 });
 

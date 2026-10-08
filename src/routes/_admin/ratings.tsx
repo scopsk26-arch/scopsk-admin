@@ -6,7 +6,7 @@ import { fetchList, updateRating } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/ratings")({
-  head: () => ({ meta: [{ title: "Ratings — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Ratings — ScopsK" }] }),
   component: RatingsPage,
 });
 

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { EMPTY_LIST, createApiKey, fetchApiKeys, revokeApiKey } from "@/lib/api/resources";
 
 export const Route = createFileRoute("/_admin/api")({
-  head: () => ({ meta: [{ title: "API Management — ResPy" }] }),
+  head: () => ({ meta: [{ title: "API Management — ScopsK" }] }),
   component: ApiKeysPage,
 });
 

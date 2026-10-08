@@ -9,7 +9,7 @@ import { buildDetailedCsv, downloadCsv, flattenForExport } from "@/lib/admin-exp
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/reports")({
-  head: () => ({ meta: [{ title: "Reports & BI — ResPy" }] }),
+  head: () => ({ meta: [{ title: "Reports & BI — ScopsK" }] }),
   component: ReportsPage,
 });
 
