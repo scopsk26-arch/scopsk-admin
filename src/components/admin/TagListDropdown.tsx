@@ -63,7 +63,7 @@ export function TagListDropdown({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-2" onClick={(e) => e.stopPropagation()}>
-        <p className="px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+        <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">
           {items.length} selected
         </p>
         <ul className="max-h-56 overflow-y-auto">

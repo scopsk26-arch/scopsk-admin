@@ -21,6 +21,11 @@ function AdminLayout() {
           <main className="flex-1 min-w-0">
             <Outlet />
           </main>
+          <footer className="shrink-0 border-t border-border px-6 py-4 lg:px-8">
+            <p className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} ScopsK. All rights reserved.
+            </p>
+          </footer>
         </div>
       </div>
       <Toaster position="top-right" richColors closeButton />

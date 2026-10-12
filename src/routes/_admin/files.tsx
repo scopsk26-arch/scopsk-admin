@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { FolderOpen } from "lucide-react";
-import { fetchFileDetail, fetchList } from "@/lib/api/resources";
+import { fetchFileDetail } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/files")({
@@ -13,24 +13,24 @@ export const Route = createFileRoute("/_admin/files")({
 
 function FilesPage() {
   // List all uploaded files for Media Library / File Management.
-  const { data: rows = [], isLoading } = useQuery({
+  const list = usePagedList({
     queryKey: ["files"],
-    queryFn: async () => {
-      const list = await fetchList("/files", { limit: 100 });
-      return list.map((r: any) => ({
-        id: str(r.id),
-        name: str(r.originalName ?? r.filename ?? r.name, "—"),
-        owner: str(r.uploadedBy ?? r.organizationId ?? r.owner, "—"),
-        type: str(r.mimeType ?? r.type, "—"),
-        size:
-          r.size != null
-            ? `${Math.max(1, Math.round(Number(r.size) / 1024))} KB`
-            : str(r.sizeBytes, "—"),
-        uploaded: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
-        status: str(r.status, "active"),
-      }));
-    },
+    path: "/files",
+    map: (r: any) => ({
+      id: str(r.id),
+      name: str(r.originalName ?? r.filename ?? r.name, "—"),
+      owner: str(r.uploadedBy ?? r.organizationId ?? r.owner, "—"),
+      type: str(r.mimeType ?? r.type, "—"),
+      size:
+        r.size != null
+          ? `${Math.max(1, Math.round(Number(r.size) / 1024))} KB`
+          : str(r.sizeBytes, "—"),
+      uploaded: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
+      status: str(r.status, "active"),
+    }),
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
 
   return (
     <DataPage
@@ -61,6 +61,7 @@ function FilesPage() {
         { label: "Storage used", value: "—", tone: "info" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["id", "name", "owner", "type"]}
       emptyHint={isLoading ? "Loading…" : "No files yet — use Media Library to upload."}
       columns={[

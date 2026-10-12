@@ -3,8 +3,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Settings as SettingsIcon, Globe, CreditCard, Bell, Shield, Mail, SlidersHorizontal } from "lucide-react";
 import { FieldLabel } from "@/components/admin/DataPage";
+import { SearchableMultiSelect } from "@/components/admin/SearchableSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { api, asArray, str } from "@/lib/api/client";
 import { toast } from "sonner";
@@ -13,6 +21,66 @@ export const Route = createFileRoute("/_admin/settings")({
   head: () => ({ meta: [{ title: "Settings — ScopsK" }] }),
   component: SettingsPage,
 });
+
+type SettingOption = { value: string; label: string };
+
+const CURRENCIES: SettingOption[] = [
+  { value: "AED", label: "AED — UAE Dirham" },
+  { value: "SAR", label: "SAR — Saudi Riyal" },
+  { value: "USD", label: "USD — US Dollar" },
+  { value: "EUR", label: "EUR — Euro" },
+  { value: "GBP", label: "GBP — British Pound" },
+];
+
+const TIMEZONES: SettingOption[] = [
+  { value: "Asia/Dubai", label: "Asia/Dubai" },
+  { value: "Asia/Riyadh", label: "Asia/Riyadh" },
+  { value: "Asia/Kuwait", label: "Asia/Kuwait" },
+  { value: "Asia/Qatar", label: "Asia/Qatar" },
+  { value: "Asia/Bahrain", label: "Asia/Bahrain" },
+  { value: "Asia/Muscat", label: "Asia/Muscat" },
+  { value: "UTC", label: "UTC" },
+];
+
+const LOCALES: SettingOption[] = [
+  { value: "en-AE", label: "en-AE — English (UAE)" },
+  { value: "ar-AE", label: "ar-AE — Arabic (UAE)" },
+  { value: "en-US", label: "en-US — English (US)" },
+  { value: "ar-SA", label: "ar-SA — Arabic (Saudi Arabia)" },
+];
+
+const PAYOUT_SCHEDULES: SettingOption[] = [
+  { value: "Daily", label: "Daily" },
+  { value: "Weekly", label: "Weekly" },
+  { value: "Biweekly", label: "Biweekly" },
+  { value: "Monthly", label: "Monthly" },
+];
+
+const EMAIL_PROVIDERS: SettingOption[] = [
+  { value: "Postmark", label: "Postmark" },
+  { value: "SendGrid", label: "SendGrid" },
+  { value: "Amazon SES", label: "Amazon SES" },
+  { value: "SMTP", label: "SMTP" },
+];
+
+const SMS_PROVIDERS: SettingOption[] = [
+  { value: "Unifonic", label: "Unifonic" },
+  { value: "Twilio", label: "Twilio" },
+  { value: "MessageBird", label: "MessageBird" },
+];
+
+const DELIVERY_OPTIONS: SettingOption[] = [
+  { value: "one_to_two_days", label: "1–2 days" },
+  { value: "two_to_three_days", label: "2–3 days" },
+  { value: "custom_date", label: "Custom date" },
+];
+
+const APPROVAL_LEVELS: SettingOption[] = [
+  { value: "0", label: "0 — No approval" },
+  { value: "1", label: "1 level" },
+  { value: "2", label: "2 levels" },
+  { value: "3", label: "3 levels" },
+];
 
 const SETTING_KEYS = [
   "marketplace_name",
@@ -36,6 +104,16 @@ const SETTING_KEYS = [
   "anonymous_marketplace_default",
 ] as const;
 
+function settingText(value: unknown, fallback: string): string {
+  if (value == null) return fallback;
+  if (Array.isArray(value)) return value.map((item) => String(item)).join(", ");
+  if (typeof value === "object") {
+    if ("value" in value) return settingText((value as { value?: unknown }).value, fallback);
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
 function SettingsPage() {
   const queryClient = useQueryClient();
   const { data: settings = [] } = useQuery({
@@ -53,16 +131,7 @@ function SettingsPage() {
     [settings],
   );
 
-  const getSetting = (key: string, fallback: string) => {
-    const v = settingMap[key];
-    if (v == null) return fallback;
-    if (typeof v === "object" && v !== null && "value" in (v as object)) {
-      return String((v as { value?: unknown }).value ?? fallback);
-    }
-    if (Array.isArray(v)) return v.join(", ");
-    if (typeof v === "object") return JSON.stringify(v);
-    return String(v);
-  };
+  const getSetting = (key: string, fallback: string) => settingText(settingMap[key], fallback);
 
   const [form, setForm] = useState<Record<string, string>>({});
   const [flagState, setFlagState] = useState<Record<string, boolean>>({});
@@ -167,9 +236,9 @@ function SettingsPage() {
       description: "Brand, locale and timezone for the marketplace.",
       fields: [
         { key: "marketplace_name", label: "Marketplace name", required: true },
-        { key: "default_currency", label: "Default currency", required: true },
-        { key: "default_timezone", label: "Default timezone", required: true },
-        { key: "default_locale", label: "Default locale", required: true },
+        { key: "default_currency", label: "Default currency", required: true, options: CURRENCIES },
+        { key: "default_timezone", label: "Default timezone", required: true, options: TIMEZONES },
+        { key: "default_locale", label: "Default locale", required: true, options: LOCALES },
       ],
     },
     {
@@ -181,7 +250,7 @@ function SettingsPage() {
         { key: "supplier_commission", label: "Supplier commission %", required: true },
         { key: "vat_rate", label: "VAT rate %", required: true },
         { key: "excise_rate", label: "Excise rate %" },
-        { key: "payout_schedule", label: "Payout schedule" },
+        { key: "payout_schedule", label: "Payout schedule", options: PAYOUT_SCHEDULES },
         { key: "min_payout", label: "Min. payout amount" },
       ],
     },
@@ -192,8 +261,8 @@ function SettingsPage() {
       fields: [
         { key: "min_rfq_value_aed", label: "Min RFQ value (AED)" },
         { key: "matching_min_stock_pct", label: "Matching min stock %" },
-        { key: "default_po_approval_levels", label: "Default PO approval levels" },
-        { key: "delivery_options", label: "Delivery options (comma-separated)" },
+        { key: "default_po_approval_levels", label: "Default PO approval levels", options: APPROVAL_LEVELS },
+        { key: "delivery_options", label: "Delivery options", options: DELIVERY_OPTIONS, multiple: true },
       ],
     },
     {
@@ -203,8 +272,8 @@ function SettingsPage() {
       fields: [
         { key: "sender_email", label: "Sender email" },
         { key: "sms_sender", label: "SMS sender" },
-        { key: "email_provider", label: "Email provider" },
-        { key: "sms_provider", label: "SMS provider" },
+        { key: "email_provider", label: "Email provider", options: EMAIL_PROVIDERS },
+        { key: "sms_provider", label: "SMS provider", options: SMS_PROVIDERS },
       ],
     },
   ];
@@ -242,18 +311,56 @@ function SettingsPage() {
             <div className="flex items-center gap-2.5 mb-1">{s.icon}<h2 className="font-display font-semibold">{s.title}</h2></div>
             <p className="text-sm text-muted-foreground mb-4">{s.description}</p>
             <div className="space-y-3">
-              {s.fields.map((f) => (
-                <div key={f.key}>
-                  <FieldLabel required={"required" in f && Boolean(f.required)} className="text-muted-foreground">
-                    {f.label}
-                  </FieldLabel>
-                  <Input
-                    value={form[f.key] ?? ""}
-                    onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                    className="mt-1"
-                  />
-                </div>
-              ))}
+              {s.fields.map((f) => {
+                const current = form[f.key] ?? "";
+                const options = "options" in f ? f.options : undefined;
+                const multiple = "multiple" in f && f.multiple;
+                const choices =
+                  options && !multiple && current && !options.some((option) => option.value === current)
+                    ? [{ value: current, label: current }, ...options]
+                    : options;
+                return (
+                  <div key={f.key}>
+                    <FieldLabel
+                      required={"required" in f && Boolean(f.required)}
+                      className="text-sm font-medium text-foreground/90"
+                    >
+                      {f.label}
+                    </FieldLabel>
+                    {multiple && options ? (
+                      <SearchableMultiSelect
+                        value={current}
+                        options={options}
+                        searchable={false}
+                        placeholder="Select delivery options"
+                        onChange={(values) => setForm((prev) => ({ ...prev, [f.key]: values.join(", ") }))}
+                      />
+                    ) : choices ? (
+                      <Select
+                        value={current || undefined}
+                        onValueChange={(value) => setForm((prev) => ({ ...prev, [f.key]: value }))}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder={`Select ${f.label.toLowerCase()}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {choices.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        value={current}
+                        onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                        className="mt-1"
+                      />
+                    )}
+                  </div>
+                );
+              })}
               {s.title === "Matching & Marketplace" && (
                 <div className="flex items-start justify-between gap-4 py-2 border-t border-border mt-2 pt-4">
                   <div>

@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { QuotationDetailView } from "@/components/admin/DetailViews";
 import { Quote } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   approveQuotation,
-  fetchList,
   fetchQuotationDetail,
   rejectQuotation,
 } from "@/lib/api/resources";
@@ -45,18 +45,14 @@ function QuotationsPage() {
   const { restaurants, suppliers, rfqs } = useAdminLookups(["restaurants", "suppliers", "rfqs"]);
   const queryClient = useQueryClient();
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["quotations"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const list = await fetchList("/quotations");
-      return list.map(mapQuotation);
-    },
+    path: "/quotations",
+    map: mapQuotation,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const approved = rows.filter((r) => ["approved", "accepted"].includes(r.status)).length;
   const flagged = rows.filter((r) => r.status === "flagged").length;
@@ -115,6 +111,7 @@ function QuotationsPage() {
         { label: "Avg. AI score", value: avgScore, tone: "info" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["number", "rfq", "supplier", "restaurant"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load quotations." : "No quotations found."

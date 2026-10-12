@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { Share2, SlidersHorizontal } from "lucide-react";
 import {
-  DataPage, DetailKv, DetailSection, DetailTable, StatusBadge, AED,
+  DataPage, DetailKv, DetailSection, DetailTable, StatusBadge, AED, formatStatusLabel,
 } from "@/components/admin/DataPage";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { EMPTY_LIST, fetchAdminReferral, fetchAdminReferrals } from "@/lib/api/resources";
+import { fetchAdminReferral, fetchAdminReferrals } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { ReferralSettingsPanel } from "./referral-settings";
 
@@ -58,10 +58,23 @@ function RewardCard({ title, reward }: { title: string; reward: any }) {
 function ReferralsList({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [status, setStatus] = useState("all");
 
-  const { data: rows = EMPTY_LIST, isLoading, isError } = useQuery({
+  const list = usePagedList({
     queryKey: ["admin", "referrals", status],
-    queryFn: () => fetchAdminReferrals(status === "all" ? undefined : { status }),
+    path: "/admin/referrals",
+    query: status === "all" ? undefined : { status },
+    load: ({ page, pageSize, search, sort }) =>
+      fetchAdminReferrals({
+        status: status === "all" ? undefined : status,
+        page,
+        limit: pageSize,
+        search: search || undefined,
+        sortBy: "createdAt",
+        sortOrder: sort === "oldest" ? "ASC" : "DESC",
+      }),
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const count = (s: string) => rows.filter((r: any) => r.status === s).length;
 
@@ -73,12 +86,13 @@ function ReferralsList({ onOpenSettings }: { onOpenSettings: () => void }) {
       disableCrud
       entityName="Referral"
       kpis={[
-        { label: "Total", value: String(rows.length) },
+        { label: "Total", value: String(list.total) },
         { label: "Pending", value: String(count("pending")), tone: "warning" },
         { label: "Qualified", value: String(count("qualified")), tone: "info" },
         { label: "Rewarded", value: String(count("rewarded")), tone: "success" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       idKey="id"
       searchKeys={["referralCode", "referrer", "referred", "referrerCode", "referredCode", "status"]}
       emptyHint={
@@ -99,7 +113,7 @@ function ReferralsList({ onOpenSettings }: { onOpenSettings: () => void }) {
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
               {STATUSES.map((s) => (
-                <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                <SelectItem key={s} value={s}>{formatStatusLabel(s)}</SelectItem>
               ))}
             </SelectContent>
           </Select>

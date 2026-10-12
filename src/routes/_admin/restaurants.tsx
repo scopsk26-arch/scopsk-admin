@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { OrganizationDetailView } from "@/components/admin/DetailViews";
 import { TagListDropdown } from "@/components/admin/TagListDropdown";
-import { ExternalLink, Store } from "lucide-react";
+import { Store } from "lucide-react";
 import {
   fetchOrganizationDetail,
-  fetchOrganizationsByType,
   mapOrgRow,
+  deleteOrganization,
   updateOrganization,
   updateOrgProfile,
   updateOrgSettings,
@@ -16,7 +17,7 @@ import {
 import { api } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
-type OrgDoc = { id?: string; type: string; url?: string; fileName?: string };
+type OrgDoc = { id?: string; type: string; url?: string; fileName?: string; status?: string };
 
 export const Route = createFileRoute("/_admin/restaurants")({
   head: () => ({ meta: [{ title: "Restaurants — ScopsK" }] }),
@@ -28,18 +29,15 @@ function RestaurantsPage() {
   const cuisineLookups = useMemo(() => ({ cuisineIds: cuisineOptions }), [cuisineOptions]);
   const queryClient = useQueryClient();
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["organizations", "restaurant"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      // List API already embeds profile + settings — do not N+1 /profile + /settings per row.
-      return fetchOrganizationsByType("restaurant");
-    },
+    path: "/organizations",
+    query: { type: "restaurant" },
+    map: (row) => mapOrgRow(row, "restaurant"),
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const active = rows.filter((r) => r.status === "active").length;
   const pending = rows.filter((r) => r.status === "pending").length;
@@ -53,6 +51,7 @@ function RestaurantsPage() {
       lookups={cuisineLookups}
       formFields={[
         { key: "name", label: "Restaurant", required: true, type: "text" },
+        { key: "email", label: "Email", type: "text", placeholder: "sarah@primeplate.io" },
         {
           key: "cuisineIds",
           label: "Cuisines",
@@ -96,24 +95,8 @@ function RestaurantsPage() {
         { key: "email", label: "Email" },
         { key: "phone", label: "Phone" },
         { key: "legalName", label: "Legal name" },
-        { key: "cuisines", label: "Cuisines" },
         { key: "region", label: "Region" },
-        { key: "ownerName", label: "Owner" },
-        { key: "tradeLicenseNumber", label: "Trade license" },
-        { key: "vatRegistrationNumber", label: "VAT #" },
-        { key: "foodLicenseNumber", label: "Food license" },
-        { key: "rating", label: "Rating (0–5)" },
-        { key: "poApprovalLevels", label: "PO approval levels" },
-        { key: "minRfqValueAed", label: "Min RFQ (AED)" },
-        { key: "deliveryFeeMode", label: "Delivery fee mode" },
-        { key: "deliveryFeeValue", label: "Delivery fee value" },
-        { key: "creditLimit", label: "Credit limit" },
-        { key: "paymentTermsDays", label: "Payment terms (days)" },
-        { key: "discountMode", label: "Discount mode" },
-        { key: "discountValue", label: "Discount value" },
-        { key: "verificationStatus", label: "Verification" },
         { key: "status", label: "Status" },
-        { key: "documentCount", label: "Documents" },
       ]}
       loadDetail={async (row) => fetchOrganizationDetail(row.id)}
       loadEdit={async (row) => {
@@ -151,15 +134,20 @@ function RestaurantsPage() {
           discountValue: mapped.discountValue,
         };
       }}
-      renderView={(detail) => <OrganizationDetailView detail={detail} />}
+      renderView={(detail, row) => <OrganizationDetailView detail={detail} row={row} />}
       kpis={[
-        { label: "Total restaurants", value: String(rows.length) },
+        { label: "Total restaurants", value: String(list.total) },
         { label: "Active", value: String(active), tone: "success" },
         { label: "Pending verification", value: String(pending), tone: "warning" },
         { label: "Total spend", value: AED(spend), tone: "info" },
       ]}
       rows={rows}
-      searchKeys={["name", "region", "cuisines", "industry", "tradeLicenseNumber", "id"]}
+      serverPagination={pagedListProps(list)}
+      onStatusChange={async (id, status) => {
+        await updateOrganization(id, { status }, "restaurant");
+        await queryClient.invalidateQueries({ queryKey: ["organizations", "restaurant"] });
+      }}
+      searchKeys={["name", "email", "region", "cuisines", "industry", "tradeLicenseNumber", "id"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load restaurants." : "No restaurants found."
       }
@@ -174,6 +162,17 @@ function RestaurantsPage() {
           key: "name",
           label: "Restaurant",
           render: (r) => <span className="font-medium">{r.name}</span>,
+        },
+        {
+          key: "email",
+          label: "Email",
+          className: "whitespace-nowrap",
+          render: (r) =>
+            r.email ? (
+              <span className="text-sm">{r.email}</span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            ),
         },
         {
           key: "cuisines",
@@ -199,38 +198,14 @@ function RestaurantsPage() {
             if (!count) {
               return <span className="text-xs text-muted-foreground">None</span>;
             }
-            if (!docs.length) {
-              return <span className="text-xs text-muted-foreground">{count} file(s)</span>;
-            }
+            const pending = docs.filter((d) => !d.status || d.status === "pending").length;
+            const rejected = docs.filter((d) => d.status === "rejected").length;
+            const tone = rejected ? "rejected" : pending ? "pending" : "approved";
             return (
-              <div className="flex flex-col gap-1 max-w-[220px]">
-                {docs.slice(0, 3).map((d, i) =>
-                  d.url ? (
-                    <a
-                      key={d.id || `${d.type}-${i}`}
-                      href={d.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                    >
-                      <ExternalLink className="h-3 w-3 shrink-0" />
-                      <span className="truncate">
-                        {(d.type || d.fileName || "file").replace(/_/g, " ")}
-                      </span>
-                    </a>
-                  ) : (
-                    <span
-                      key={d.id || `${d.type}-${i}`}
-                      className="text-xs text-muted-foreground truncate"
-                    >
-                      {(d.type || "document").replace(/_/g, " ")}
-                    </span>
-                  ),
-                )}
-                {docs.length > 3 && (
-                  <span className="text-xs text-muted-foreground">+{docs.length - 3} more</span>
-                )}
-              </div>
+              <span className="inline-flex items-center gap-2">
+                <span className="text-xs tabular-nums">{count}</span>
+                <StatusBadge status={docs.length ? tone : "pending"} />
+              </span>
             );
           },
         },
@@ -245,7 +220,7 @@ function RestaurantsPage() {
             <StatusBadge status={r.verificationStatus !== "—" ? r.verificationStatus : r.status} />
           ),
         },
-        { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+        { key: "status", label: "Status" },
       ]}
       onUpdate={async (id, data) => {
         if (!data.name?.trim()) throw new Error("Restaurant name is required");
@@ -297,6 +272,7 @@ function RestaurantsPage() {
           paymentTermsDays,
           discountMode: String(data.discountMode ?? updated.discountMode ?? "none"),
           discountValue,
+          email: String(data.email ?? updated.email ?? ""),
           ownerName: String(data.ownerName ?? updated.ownerName ?? ""),
           tradeLicenseNumber: String(data.tradeLicenseNumber ?? updated.tradeLicenseNumber ?? ""),
           vatRegistrationNumber: String(
@@ -306,6 +282,10 @@ function RestaurantsPage() {
           cuisineIds,
           cuisines: cuisineLabel || updated.cuisines || "—",
         };
+      }}
+      onDelete={async (id) => {
+        await deleteOrganization(id);
+        await queryClient.invalidateQueries({ queryKey: ["organizations", "restaurant"] });
       }}
     />
   );

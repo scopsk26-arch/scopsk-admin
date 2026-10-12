@@ -181,7 +181,7 @@ function mapOrgCommercial(r: any) {
   };
 }
 
-function mapOrgRow(r: any, type: "restaurant" | "supplier") {
+export function mapOrgRow(r: any, type: "restaurant" | "supplier") {
   const { cuisineIds, cuisineLabel } = mapOrgCuisines(r);
   const commercial = mapOrgCommercial(r);
   return {
@@ -325,8 +325,6 @@ export async function updateOrgProfile(
   return api.patch(`/organizations/${organizationId}/profile`, payload);
 }
 
-export { mapOrgRow };
-
 /** PATCH supplier — prefers /suppliers/:id (admin), falls back to /organizations/:id. */
 export async function updateOrganization(
   id: string,
@@ -416,6 +414,41 @@ export async function updateOrganization(
   return mapOrgRow(updated, type);
 }
 
+export type PagedRows = {
+  rows: any[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+/** One page from a list endpoint. Sends page, limit, and search. */
+export async function fetchPage(
+  path: string,
+  query?: Record<string, string | number | boolean | undefined | null>,
+  headers?: Record<string, string>,
+): Promise<PagedRows> {
+  const pageSize = Math.min(100, Math.max(1, Number(query?.limit) || 20));
+  const page = Math.max(1, Number(query?.page) || 1);
+  const { data, meta } = await api.getEnvelope(path, {
+    query: { ...query, page, limit: pageSize },
+    headers,
+  });
+  const rows = asArray(data);
+  const metaTotal = Number(meta?.total);
+  const metaPages = Number(meta?.totalPages);
+  let total: number;
+  if (Number.isFinite(metaTotal) && metaTotal >= 0) {
+    total = metaTotal;
+  } else if (Number.isFinite(metaPages) && metaPages > 0) {
+    total = metaPages * pageSize;
+  } else if (rows.length < pageSize) {
+    total = (page - 1) * pageSize + rows.length;
+  } else {
+    total = page * pageSize + 1;
+  }
+  return { rows, total, page, pageSize };
+}
+
 export async function fetchList(path: string, query?: Record<string, string | number | boolean | undefined | null>) {
   try {
     return await fetchAllPages(path, query);
@@ -496,13 +529,24 @@ export type CommissionRow = {
 };
 
 /** GET /admin/commissions — returns rows + optional aggregates from envelope. */
-export async function fetchCommissions(query?: { status?: string }) {
+export async function fetchCommissions(query?: {
+  status?: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: string;
+}) {
   let aggregates: { pendingTotal?: number; settledTotal?: number; accruedTotal?: number } | null = null;
   let list: any[] = [];
+  let total = 0;
 
   try {
-    const raw = await api.get<any>("/admin/commissions", { query });
+    const { data, meta } = await api.getEnvelope<any>("/admin/commissions", { query });
+    const raw = data;
     list = asArray(raw);
+    const metaTotal = Number(meta?.total);
+    total = Number.isFinite(metaTotal) && metaTotal >= 0 ? metaTotal : list.length;
     if (raw && typeof raw === "object" && !Array.isArray(raw)) {
       const obj = raw as Record<string, unknown>;
       if (obj.aggregates && typeof obj.aggregates === "object") {
@@ -555,7 +599,7 @@ export async function fetchCommissions(query?: { status?: string }) {
     };
   });
 
-  return { rows, aggregates };
+  return { rows, aggregates, total };
 }
 
 export async function settleCommission(id: string, status: "settled" | "cancelled" | "pending" = "settled") {
@@ -710,19 +754,27 @@ function orgHeaders(organizationId?: string | null) {
 }
 
 export async function approveKyc(id: string, notes?: string) {
-  return api.post(`/kyc/applications/${id}/approve`, { notes: notes || undefined });
+  return api.post(`/kyc/applications/${id}/approve`, { notes: notes || undefined }, { toastOnSuccess: true });
 }
 
 export async function rejectKyc(id: string, notes: string) {
-  return api.post(`/kyc/applications/${id}/reject`, { notes });
+  return api.post(`/kyc/applications/${id}/reject`, { notes }, { toastOnSuccess: true });
+}
+
+export async function reviewKycDocument(
+  id: string,
+  status: "approved" | "rejected",
+  notes?: string,
+) {
+  return api.post(`/kyc/documents/${id}/review`, { status, notes: notes || undefined }, { toastOnSuccess: true });
 }
 
 export async function approveQuotation(id: string, buyerOrgId: string) {
-  return api.post(`/quotations/${id}/approve`, {}, { headers: orgHeaders(buyerOrgId) });
+  return api.post(`/quotations/${id}/approve`, {}, { headers: orgHeaders(buyerOrgId), toastOnSuccess: true });
 }
 
 export async function rejectQuotation(id: string, buyerOrgId: string, reason?: string) {
-  return api.post(`/quotations/${id}/reject`, { reason }, { headers: orgHeaders(buyerOrgId) });
+  return api.post(`/quotations/${id}/reject`, { reason }, { headers: orgHeaders(buyerOrgId), toastOnSuccess: true });
 }
 
 export async function updatePurchaseOrderStatus(id: string, status: string, organizationId: string) {
@@ -734,19 +786,19 @@ export async function updateDeliveryStatus(id: string, status: string, organizat
 }
 
 export async function markInvoicePaid(id: string, organizationId: string) {
-  return api.post(`/invoices/${id}/mark-paid`, { method: "admin" }, { headers: orgHeaders(organizationId) });
+  return api.post(`/invoices/${id}/mark-paid`, { method: "admin" }, { headers: orgHeaders(organizationId), toastOnSuccess: true });
 }
 
 export async function approveApprovalRequest(id: string, notes?: string) {
-  return api.post(`/approvals/${id}/approve`, { notes: notes || undefined });
+  return api.post(`/approvals/${id}/approve`, { notes: notes || undefined }, { toastOnSuccess: true });
 }
 
 export async function rejectApprovalRequest(id: string, reason?: string) {
-  return api.post(`/approvals/${id}/reject`, { reason: reason || undefined, notes: reason || undefined });
+  return api.post(`/approvals/${id}/reject`, { reason: reason || undefined, notes: reason || undefined }, { toastOnSuccess: true });
 }
 
 export async function markNotificationRead(id: string) {
-  return api.post(`/notifications/${id}/read`);
+  return api.post(`/notifications/${id}/read`, undefined, { toastOnSuccess: true });
 }
 
 export async function markAllNotificationsRead() {
@@ -842,19 +894,23 @@ export async function fetchPendingOrganizations(type: "restaurant" | "supplier")
 }
 
 export async function approveOrganization(id: string, reason?: string) {
-  return api.post(`/organizations/${id}/approve`, { reason: reason || undefined });
+  return api.post(`/organizations/${id}/approve`, { reason: reason || undefined }, { toastOnSuccess: true });
 }
 
 export async function rejectOrganization(id: string, reason: string) {
-  return api.post(`/organizations/${id}/reject`, { reason });
+  return api.post(`/organizations/${id}/reject`, { reason }, { toastOnSuccess: true });
 }
 
 export async function activateOrganization(id: string, reason?: string) {
-  return api.post(`/organizations/${id}/activate`, { reason: reason || undefined });
+  return api.post(`/organizations/${id}/activate`, { reason: reason || undefined }, { toastOnSuccess: true });
 }
 
 export async function deactivateOrganization(id: string, reason?: string) {
-  return api.post(`/organizations/${id}/deactivate`, { reason: reason || undefined });
+  return api.post(`/organizations/${id}/deactivate`, { reason: reason || undefined }, { toastOnSuccess: true });
+}
+
+export async function deleteOrganization(id: string) {
+  return api.delete(`/organizations/${id}`);
 }
 
 export type CategoryCommissionRow = {
@@ -865,15 +921,24 @@ export type CategoryCommissionRow = {
   supplierRate: number;
 };
 
-export async function fetchCategoryCommissions() {
-  const list = await fetchList("/admin/category-commissions");
-  return list.map((r: any): CategoryCommissionRow => ({
-    id: str(r.categoryId ?? r.id),
-    categoryId: str(r.categoryId ?? r.category?.id),
-    category: str(r.category?.name ?? r.categoryName, "—"),
-    restaurantRate: num(r.restaurantRate),
-    supplierRate: num(r.supplierRate),
-  }));
+export async function fetchCategoryCommissions(query?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: string;
+}) {
+  const page = await fetchPage("/admin/category-commissions", query);
+  return {
+    total: page.total,
+    rows: page.rows.map((r: any): CategoryCommissionRow => ({
+      id: str(r.categoryId ?? r.id),
+      categoryId: str(r.categoryId ?? r.category?.id),
+      category: str(r.category?.name ?? r.categoryName, "—"),
+      restaurantRate: num(r.restaurantRate),
+      supplierRate: num(r.supplierRate),
+    })),
+  };
 }
 
 export async function upsertCategoryCommission(data: {
@@ -918,9 +983,13 @@ export async function fetchAdminWallets(query?: {
   status?: string;
   walletStatus?: string;
   search?: string;
+  page?: number;
+  limit?: number;
 }) {
-  const rows = await fetchAllPages("/admin/wallets", { type: "all", ...query });
-  return rows.map((r: any): AdminWalletRow => {
+  const page = await fetchPage("/admin/wallets", { type: "all", ...query });
+  return {
+    total: page.total,
+    rows: page.rows.map((r: any): AdminWalletRow => {
     const org = r.organization ?? {};
     return {
       id: str(r.id),
@@ -937,7 +1006,8 @@ export async function fetchAdminWallets(query?: {
       status: str(r.status, "active"),
       updated: r.updatedAt ? String(r.updatedAt).replace("T", " ").slice(0, 16) : "—",
     };
-  });
+  }),
+  };
 }
 
 export type WalletTransactionRow = {
@@ -1026,9 +1096,13 @@ export async function fetchAdminReferrals(query?: {
   referrerOrganizationId?: string;
   referredOrganizationId?: string;
   search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: string;
 }) {
-  const rows = await fetchAllPages("/admin/referrals", query);
-  return rows.map(mapReferralRow);
+  const page = await fetchPage("/admin/referrals", query);
+  return { rows: page.rows.map(mapReferralRow), total: page.total };
 }
 
 /** GET /admin/referrals/:id — includes both reward records. */
@@ -1064,9 +1138,16 @@ export async function fetchAdminRewards(query?: {
   status?: string;
   type?: string;
   organizationId?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: string;
 }) {
-  const rows = await fetchAllPages("/admin/rewards", query);
-  return rows.map((r: any): RewardRow => {
+  const page = await fetchPage("/admin/rewards", query);
+  return {
+    total: page.total,
+    rows: page.rows.map((r: any): RewardRow => {
     const org = r.organization ?? {};
     return {
       id: str(r.id),
@@ -1085,7 +1166,8 @@ export async function fetchAdminRewards(query?: {
       expiresAt: r.expiresAt ? String(r.expiresAt).slice(0, 10) : "—",
       created: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
     };
-  });
+  }),
+  };
 }
 
 export type ReferralProgramSettings = {
@@ -1218,14 +1300,18 @@ export async function fetchAdminWalletWithdrawals(query?: {
   status?: string;
   requestStatus?: string;
   orgType?: string;
+  page?: number;
+  limit?: number;
 }) {
-  const rows = await fetchAllPages("/admin/wallets/withdrawals", {
+  const page = await fetchPage("/admin/wallets/withdrawals", {
     search: query?.search,
     orgType: query?.orgType,
     requestStatus: query?.requestStatus,
+    page: query?.page,
+    limit: query?.limit,
   });
   // Prefer hold rows (requests). Debit rows are payout ledger after accept.
-  const mapped = rows
+  const mapped = page.rows
     .filter((r: any) => r.referenceType === "wallet_withdraw_request" && r.type === "hold")
     .map((r: any): WalletWithdrawalRow => {
       const wallet = r.wallet ?? {};
@@ -1252,10 +1338,10 @@ export async function fetchAdminWalletWithdrawals(query?: {
         actor: [user.firstName, user.lastName].filter(Boolean).join(" ") || str(user.email, "—"),
       };
     });
-  if (query?.requestStatus) {
-    return mapped.filter((r) => r.requestStatus === query.requestStatus);
-  }
-  return mapped;
+  const rows = query?.requestStatus
+    ? mapped.filter((r) => r.requestStatus === query.requestStatus)
+    : mapped;
+  return { rows, total: page.total };
 }
 
 export async function acceptWalletWithdrawRequest(requestId: string) {
@@ -1296,9 +1382,13 @@ function parseTopUpFromTicket(relatedCode: string, subject: string): { amount: n
 export async function fetchAdminWalletCreditRequests(query?: {
   search?: string;
   status?: string;
+  page?: number;
+  limit?: number;
 }) {
-  const rows = await fetchAllPages("/admin/wallets/credit-requests", query);
-  return rows.map((r: any): WalletCreditRequestRow => {
+  const page = await fetchPage("/admin/wallets/credit-requests", query);
+  return {
+    total: page.total,
+    rows: page.rows.map((r: any): WalletCreditRequestRow => {
     const org = r.organization ?? {};
     const user = r.creator ?? {};
     const relatedCode = str(r.relatedCode, "");
@@ -1320,7 +1410,8 @@ export async function fetchAdminWalletCreditRequests(query?: {
       createdAt: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 16) : "—",
       requester: [user.firstName, user.lastName].filter(Boolean).join(" ") || str(user.email, "—"),
     };
-  });
+  }),
+  };
 }
 
 export async function acceptWalletCreditRequest(ticketId: string) {

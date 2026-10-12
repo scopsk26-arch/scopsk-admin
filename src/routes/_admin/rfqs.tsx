@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { RfqDetailView } from "@/components/admin/DetailViews";
 import { FileText } from "lucide-react";
-import { fetchList, fetchRfqDetail } from "@/lib/api/resources";
+import { fetchRfqDetail } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -61,18 +62,14 @@ function RfqsPage() {
   const { restaurants, categories } = useAdminLookups(["restaurants", "categories"]);
   const queryClient = useQueryClient();
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["rfqs"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const list = await fetchList("/rfqs", { limit: 100 });
-      return list.map(mapRfqRow);
-    },
+    path: "/rfqs",
+    map: mapRfqRow,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const open = rows.filter((r) =>
     ["open", "published", "active", "supplier_invited", "negotiation"].includes(r.status),
@@ -128,7 +125,7 @@ function RfqsPage() {
       renderView={(detail) => <RfqDetailView detail={detail} />}
       kpis={[
         { label: "Active RFQs", value: String(open), tone: "info" },
-        { label: "Total RFQs", value: String(rows.length) },
+        { label: "Total RFQs", value: String(list.total) },
         {
           label: "Avg. responses",
           value: rows.length
@@ -142,6 +139,7 @@ function RfqsPage() {
         },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["number", "restaurant", "category", "title"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load RFQs." : "No RFQs found."}
       columns={[
@@ -153,7 +151,7 @@ function RfqsPage() {
             <span className="font-medium">
               {r.restaurant}
               {r.cloudKitchen ? (
-                <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <span className="ml-2 text-xs font-medium text-muted-foreground">
                   CK
                 </span>
               ) : null}
@@ -185,7 +183,7 @@ function RfqsPage() {
             const published = await api.post<any>(
               `/rfqs/${id}/publish`,
               {},
-              { headers: { "X-Organization-Id": headerOrg } },
+              { headers: { "X-Organization-Id": headerOrg }, toastOnSuccess: true },
             );
             await queryClient.invalidateQueries({ queryKey: ["rfqs"] });
             return mapRfqRow(published);

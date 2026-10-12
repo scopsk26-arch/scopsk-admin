@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent, type PointerEvent, type WheelEvent } from "react";
+import { useMemo, useRef, useState, type MouseEvent, type PointerEvent, type WheelEvent } from "react";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -130,7 +130,7 @@ export function SearchableSelect({
   );
 }
 
-/** Multi-select searchable dropdown — keeps popover open while toggling. */
+/** Multi-select dropdown — stays open while options are toggled. */
 export function SearchableMultiSelect({
   value,
   onChange,
@@ -138,6 +138,7 @@ export function SearchableMultiSelect({
   placeholder = "Select…",
   emptyLabel = "No results",
   disabled = false,
+  searchable = true,
 }: {
   value?: string | string[];
   onChange: (value: string[]) => void;
@@ -145,8 +146,11 @@ export function SearchableMultiSelect({
   placeholder?: string;
   emptyLabel?: string;
   disabled?: boolean;
+  /** Hide the search box for short, fixed lists such as settings enums. */
+  searchable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const selectedIds = useMemo(() => {
     const tokens = parseMultiValue(value);
     return tokens
@@ -184,51 +188,65 @@ export function SearchableMultiSelect({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) return;
+        requestAnimationFrame(() => {
+          triggerRef.current?.scrollIntoView({ block: "center", inline: "nearest" });
+        });
+      }}
+      modal
+    >
       <PopoverTrigger asChild>
         <Button
+          ref={triggerRef}
           type="button"
           variant="outline"
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className="mt-1 w-full justify-between font-normal h-auto min-h-10 py-1.5"
+          className="mt-1 h-auto min-h-9 w-full justify-between whitespace-normal px-3 py-1.5 text-sm font-normal hover:bg-card"
         >
-          <div className="flex flex-1 flex-wrap gap-1.5 min-w-0 text-left">
+          <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 text-left">
             {selectedOptions.length === 0 ? (
-              <span className="text-muted-foreground truncate">{placeholder}</span>
+              <span className="truncate text-sm font-normal text-muted-foreground">{placeholder}</span>
             ) : (
               selectedOptions.map((o) => (
                 <span
                   key={o.value}
-                  className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium max-w-full"
+                  className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[13px] font-medium leading-5"
                 >
                   <span className="truncate">{o.label}</span>
                   <span
                     role="button"
                     tabIndex={-1}
                     aria-label={`Remove ${o.label}`}
-                    className="inline-flex shrink-0 rounded-sm opacity-60 hover:opacity-100 cursor-pointer"
+                    className="inline-flex shrink-0 cursor-pointer rounded-sm opacity-60 hover:opacity-100"
                     onPointerDown={(e) => stopTriggerAndRemove(o.value, e)}
                     onClick={(e) => stopTriggerAndRemove(o.value, e)}
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-3.5 w-3.5" />
                   </span>
                 </span>
               ))
             )}
           </div>
-          <ChevronsUpDown className="h-3.5 w-3.5 opacity-50 shrink-0 ml-2" />
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0 z-[60]"
+        className="z-[60] w-[var(--radix-popover-trigger-width)] p-0"
         align="start"
+        side="bottom"
+        sideOffset={6}
+        collisionPadding={16}
         onWheel={stopWheelPropagation}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        <Command shouldFilter>
-          <CommandInput placeholder="Search…" />
+        <Command shouldFilter={searchable}>
+          {searchable ? <CommandInput placeholder="Search…" /> : null}
           <CommandList
             className="max-h-[240px] overflow-y-auto overscroll-contain"
             onWheel={stopWheelPropagation}
@@ -242,6 +260,7 @@ export function SearchableMultiSelect({
                     key={o.value}
                     value={`${o.label} ${o.value}`}
                     onSelect={() => toggle(o.value)}
+                    className="text-sm font-normal"
                   >
                     <Check
                       className={cn("mr-2 h-4 w-4", checked ? "opacity-100" : "opacity-0")}

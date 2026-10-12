@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage } from "@/components/admin/DataPage";
 import { Percent } from "lucide-react";
 import {
@@ -20,15 +21,21 @@ export function CategoryCommissionsPanel() {
   const qc = useQueryClient();
   const { categories } = useAdminLookups(["categories"]);
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["admin", "category-commissions"],
-    queryFn: fetchCategoryCommissions,
-    staleTime: 60_000,
+    path: "/admin/category-commissions",
+    load: ({ page, pageSize, search, sort }) =>
+      fetchCategoryCommissions({
+        page,
+        limit: pageSize,
+        search: search || undefined,
+        sortBy: "createdAt",
+        sortOrder: sort === "oldest" ? "ASC" : "DESC",
+      }),
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const avgRestaurant = useMemo(() => {
     if (!rows.length) return "—";
@@ -96,6 +103,7 @@ export function CategoryCommissionsPanel() {
         { label: "Catalog categories", value: String(categories.length || "—") },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["category", "categoryId"]}
       emptyHint={
         isLoading

@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
+import { DataPage, AED } from "@/components/admin/DataPage";
 import { OrganizationDetailView } from "@/components/admin/DetailViews";
 import { TagListDropdown } from "@/components/admin/TagListDropdown";
 import { Truck } from "lucide-react";
 import {
+  deleteOrganization,
   fetchOrganizationDetail,
-  fetchOrganizationsByType,
+  mapOrgRow,
   updateOrganization,
   updateOrgProfile,
   updateOrgSettings,
@@ -22,18 +24,15 @@ function SuppliersPage() {
   const { categories } = useAdminLookups(["categories"]);
   const queryClient = useQueryClient();
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["organizations", "supplier"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      // List API already embeds profile + settings — do not N+1 /profile + /settings per row.
-      return fetchOrganizationsByType("supplier");
-    },
+    path: "/organizations",
+    query: { type: "supplier" },
+    map: (row) => mapOrgRow(row, "supplier"),
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const verified = rows.filter((r) => ["verified", "active"].includes(r.status)).length;
   const pending = rows.filter((r) => r.status === "pending").length;
@@ -95,26 +94,22 @@ function SuppliersPage() {
         { key: "phone", label: "Phone" },
         { key: "legalName", label: "Legal name" },
         { key: "region", label: "Region" },
-        { key: "ownerName", label: "Owner" },
-        { key: "tradeLicenseNumber", label: "Trade license" },
-        { key: "vatRegistrationNumber", label: "VAT #" },
-        { key: "poApprovalLevels", label: "PO approval levels" },
-        { key: "minRfqValueAed", label: "Min RFQ (AED)" },
-        { key: "rfqIntakeMode", label: "RFQ intake" },
-        { key: "revenue", label: "Revenue (90d)" },
-        { key: "winRate", label: "Win rate" },
-        { key: "verificationStatus", label: "Verification" },
         { key: "status", label: "Status" },
       ]}
       loadDetail={async (row) => fetchOrganizationDetail(row.id)}
-      renderView={(detail) => <OrganizationDetailView detail={detail} />}
+      renderView={(detail, row) => <OrganizationDetailView detail={detail} row={row} />}
       kpis={[
-        { label: "Total suppliers", value: String(rows.length) },
+        { label: "Total suppliers", value: String(list.total) },
         { label: "Verified", value: String(verified), tone: "success" },
         { label: "Pending review", value: String(pending), tone: "warning" },
         { label: "Avg. win-rate", value: `${avgWin}%`, tone: "info" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
+      onStatusChange={async (id, status) => {
+        await updateOrganization(id, { status }, "supplier");
+        await queryClient.invalidateQueries({ queryKey: ["organizations", "supplier"] });
+      }}
       searchKeys={["name", "id", "email", "status"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load suppliers." : "No suppliers found."
@@ -132,6 +127,17 @@ function SuppliersPage() {
           render: (r) => <span className="font-medium">{r.name}</span>,
         },
         {
+          key: "email",
+          label: "Email",
+          className: "whitespace-nowrap",
+          render: (r) =>
+            r.email ? (
+              <span className="text-sm">{r.email}</span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            ),
+        },
+        {
           key: "categories",
           label: "Categories",
           className: "whitespace-nowrap max-w-[220px]",
@@ -147,7 +153,7 @@ function SuppliersPage() {
         },
         { key: "revenue", label: "Revenue (90d)", render: (r) => AED(r.revenue) },
         { key: "winRate", label: "Win rate", render: (r) => `${r.winRate}%` },
-        { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+        { key: "status", label: "Status" },
       ]}
       onUpdate={async (id, data) => {
         if (!id || id === "undefined") throw new Error("Missing supplier id");
@@ -173,12 +179,17 @@ function SuppliersPage() {
           poApprovalLevels: Number(data.poApprovalLevels ?? updated.poApprovalLevels),
           minRfqValueAed: Number(data.minRfqValueAed ?? updated.minRfqValueAed),
           rfqIntakeMode: String(data.rfqIntakeMode ?? updated.rfqIntakeMode ?? "manual"),
+          email: String(data.email ?? updated.email ?? ""),
           ownerName: String(data.ownerName ?? updated.ownerName ?? ""),
           tradeLicenseNumber: String(data.tradeLicenseNumber ?? updated.tradeLicenseNumber ?? ""),
           vatRegistrationNumber: String(
             data.vatRegistrationNumber ?? updated.vatRegistrationNumber ?? "",
           ),
         };
+      }}
+      onDelete={async (id) => {
+        await deleteOrganization(id);
+        await queryClient.invalidateQueries({ queryKey: ["organizations", "supplier"] });
       }}
     />
   );

@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { RfqDetailView } from "@/components/admin/DetailViews";
 import { ChefHat } from "lucide-react";
-import { fetchList, fetchRfqDetail } from "@/lib/api/resources";
+import { fetchRfqDetail } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -59,18 +60,15 @@ function CkRequestsPage() {
   const { restaurants } = useAdminLookups(["restaurants"]);
   const queryClient = useQueryClient();
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["rfqs", "cloud_kitchen"],
-    staleTime: 30_000,
-    queryFn: async () => {
-      const list = await fetchList("/rfqs", { limit: 100, channel: "cloud_kitchen" });
-      return list.map(mapRfqRow);
-    },
+    path: "/rfqs",
+    query: { channel: "cloud_kitchen" },
+    map: mapRfqRow,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const open = rows.filter((r) =>
     ["open", "published", "active", "supplier_invited", "negotiation"].includes(r.status),
@@ -121,6 +119,7 @@ function CkRequestsPage() {
         { label: "Total CK requests", value: String(rows.length) },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["number", "restaurant", "title"]}
       emptyHint={
         isLoading
@@ -169,7 +168,7 @@ function CkRequestsPage() {
             const published = await api.post<any>(
               `/rfqs/${id}/publish`,
               {},
-              { headers: { "X-Organization-Id": headerOrg } },
+              { headers: { "X-Organization-Id": headerOrg }, toastOnSuccess: true },
             );
             await queryClient.invalidateQueries({ queryKey: ["rfqs"] });
             return mapRfqRow(published);

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { Flag } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
 import { api, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/org-reports")({
@@ -46,17 +46,14 @@ function mapReport(r: any) {
 
 function OrgReportsPage() {
   const qc = useQueryClient();
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["admin", "organization-reports"],
-    queryFn: async () => {
-      const list = await fetchList("/organization-reports");
-      return list.map(mapReport);
-    },
+    path: "/organization-reports",
+    map: mapReport,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const open = rows.filter((r) =>
     ["submitted", "acknowledged", "investigating", "awaiting_response"].includes(r.status),
@@ -70,10 +67,11 @@ function OrgReportsPage() {
       entityName="Report"
       hideView={false}
       kpis={[
-        { label: "Total", value: String(rows.length) },
+        { label: "Total", value: String(list.total) },
         { label: "Open", value: String(open), tone: "warning" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       idKey="id"
       searchKeys={["number", "reporter", "reported", "reason", "status"]}
       emptyHint={
@@ -129,7 +127,7 @@ function OrgReportsPage() {
         }
         return (
           <div className="space-y-3">
-            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <div className="text-xs font-semibold text-muted-foreground">
               Evidence
             </div>
             {links.map((ev: { name: string; url: string }) => (
@@ -177,7 +175,7 @@ function OrgReportsPage() {
           status,
           adminNotes: data.adminNotes || undefined,
           resolution: data.resolution || undefined,
-        });
+        }, { toastOnSuccess: true });
         await qc.invalidateQueries({ queryKey: ["admin", "organization-reports"] });
         return mapReport(updated);
       }}

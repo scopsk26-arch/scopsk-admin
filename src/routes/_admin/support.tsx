@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { LifeBuoy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fetchList, fetchSupportTicketDetail } from "@/lib/api/resources";
+import { fetchSupportTicketDetail } from "@/lib/api/resources";
 import { api, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/support")({
@@ -33,17 +34,14 @@ function mapTicket(r: any) {
 
 function SupportPage() {
   const queryClient = useQueryClient();
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["support"],
-    queryFn: async () => {
-      const list = await fetchList("/support");
-      return list.map(mapTicket);
-    },
+    path: "/support",
+    map: mapTicket,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const open = rows.filter((r) =>
     ["open", "pending", "review", "in_progress"].includes(r.status),
@@ -122,6 +120,7 @@ function SupportPage() {
         },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={[
         "number",
         "subject",
@@ -180,7 +179,7 @@ function SupportPage() {
           subject: data.subject,
           priority: data.priority || "medium",
           body: data.subject,
-        });
+        }, { toastOnSuccess: true });
         await queryClient.invalidateQueries({ queryKey: ["support"] });
         return mapTicket(created);
       }}

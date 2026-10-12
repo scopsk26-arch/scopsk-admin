@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { ApprovalDetailView } from "@/components/admin/DetailViews";
 import { CheckSquare } from "lucide-react";
 import {
   approveApprovalRequest,
   fetchApprovalDetail,
-  fetchList,
   rejectApprovalRequest,
 } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
@@ -69,18 +69,14 @@ function mapApproval(r: any): ApprovalRow {
 function ApprovalsPage() {
   const queryClient = useQueryClient();
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["approvals"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const list = await fetchList("/approvals");
-      return list.map(mapApproval);
-    },
+    path: "/approvals",
+    map: mapApproval,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const pending = rows.filter((r) => r.status === "pending").length;
   const poApprovals = rows.filter((r) =>
@@ -143,6 +139,7 @@ function ApprovalsPage() {
         },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["organization", "entityType", "entityId", "entityNumber", "status", "id"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load approvals." : "No pending approvals."

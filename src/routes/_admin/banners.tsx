@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { useCallback, useState } from "react";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { Button } from "@/components/ui/button";
 import { ArrowDown, ArrowUp, Megaphone } from "lucide-react";
 import { toast } from "sonner";
-import { fetchList, reorderBanners } from "@/lib/api/resources";
+import { reorderBanners } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/banners")({
@@ -60,17 +61,14 @@ function buildBannerReorderItems(bannerRows: BannerRow[]): { id: string; sortOrd
 function BannersPage() {
   const queryClient = useQueryClient();
   const [reorderBusy, setReorderBusy] = useState<string | null>(null);
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["admin", "banners"],
-    queryFn: async () => {
-      const list = await fetchList("/admin/banners", { limit: 100 });
-      return sortBanners(list.map(mapBanner));
-    },
+    path: "/admin/banners",
+    prepare: (raw) => sortBanners(raw.map(mapBanner)),
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin", "banners"] });
 
@@ -160,6 +158,7 @@ function BannersPage() {
         },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["id", "title", "subtitle", "ctaLabel", "ctaTarget"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load banners." : "No banners found."}
       columns={[
@@ -228,7 +227,7 @@ function BannersPage() {
           sortOrder: data.sortOrder != null && data.sortOrder !== "" ? Number(data.sortOrder) : 0,
           startsAt: data.startsAt || null,
           endsAt: data.endsAt || null,
-        });
+        }, { toastOnSuccess: true });
         await invalidate();
         return mapBanner(created);
       }}

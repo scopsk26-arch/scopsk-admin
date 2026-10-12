@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { FolderTree, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { EMPTY_LIST, fetchCommissionDetail, fetchCommissions, settleCommission } from "@/lib/api/resources";
+import { fetchCommissionDetail, fetchCommissions, settleCommission } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryCommissionsPanel } from "./category-commissions";
@@ -26,13 +27,25 @@ function DocCode({ value }: { value: string }) {
 
 function CommissionsLedger() {
   const qc = useQueryClient();
-  const { data, isLoading, isError } = useQuery({
+  const list = usePagedList({
     queryKey: ["admin", "commissions"],
-    queryFn: () => fetchCommissions(),
+    path: "/admin/commissions",
+    load: ({ page, pageSize, search, sort, status }) =>
+      fetchCommissions({
+        page,
+        limit: pageSize,
+        search: search || undefined,
+        status: status !== "all" ? status : undefined,
+        sortBy: "createdAt",
+        sortOrder: sort === "oldest" ? "ASC" : "DESC",
+      }).then((data) => ({
+        rows: data.rows,
+        total: data.total,
+      })),
   });
-
-  const rows = data?.rows ?? EMPTY_LIST;
-  const aggregates = data?.aggregates;
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const settleMut = useMutation({
     mutationFn: (id: string) => settleCommission(id, "settled"),
@@ -43,12 +56,9 @@ function CommissionsLedger() {
     onError: (err: Error) => toast.error(err.message || "Failed to settle"),
   });
 
-  const accrued = aggregates?.accruedTotal
-    ?? rows.filter((r: any) => r.status === "pending" || r.status === "approved").reduce((s: number, r: any) => s + num(r.commission), 0);
-  const paid = aggregates?.settledTotal
-    ?? rows.filter((r: any) => r.status === "settled" || r.status === "paid").reduce((s: number, r: any) => s + num(r.commission), 0);
-  const awaiting = aggregates?.pendingTotal
-    ?? rows.filter((r: any) => r.status === "pending").reduce((s: number, r: any) => s + num(r.commission), 0);
+  const accrued = rows.filter((r: any) => r.status === "pending" || r.status === "approved").reduce((s: number, r: any) => s + num(r.commission), 0);
+  const paid = rows.filter((r: any) => r.status === "settled" || r.status === "paid").reduce((s: number, r: any) => s + num(r.commission), 0);
+  const awaiting = rows.filter((r: any) => r.status === "pending").reduce((s: number, r: any) => s + num(r.commission), 0);
   const rates = rows.map((r: any) => parseFloat(String(r.rate).replace("%", ""))).filter((n: number) => Number.isFinite(n) && n > 0);
   const avgRate = rates.length ? (rates.reduce((a: number, b: number) => a + b, 0) / rates.length).toFixed(1) : "—";
 
@@ -121,6 +131,7 @@ function CommissionsLedger() {
         { label: "Pending", value: AED(awaiting), tone: "warning" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["id", "order", "po", "organization", "party"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load commissions." : "No commissions yet — they appear when a supplier accepts an order."}
       columns={[
@@ -171,12 +182,12 @@ function CommissionsPage() {
       <div className="px-6 lg:px-8 pt-6 lg:pt-8">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
-            <TabsTrigger value="ledger" className="gap-1.5">
-              <Percent className="h-3.5 w-3.5" />
+            <TabsTrigger value="ledger">
+              <Percent />
               Ledger
             </TabsTrigger>
-            <TabsTrigger value="rates" className="gap-1.5">
-              <FolderTree className="h-3.5 w-3.5" />
+            <TabsTrigger value="rates">
+              <FolderTree />
               Category rates
             </TabsTrigger>
           </TabsList>

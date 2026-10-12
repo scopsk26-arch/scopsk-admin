@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EventTimeline } from "@/components/admin/DetailViews";
 import { fetchLookup } from "@/lib/api/resources";
 import { ApiError } from "@/lib/api/client";
 
@@ -230,16 +231,7 @@ function InvestigationView({ result }: { result: any }) {
 
       {Array.isArray(result.rfqTimeline) && result.rfqTimeline.length > 0 ? (
         <Section title="RFQ timeline">
-          <div className="max-h-64 overflow-auto space-y-2">
-            {result.rfqTimeline.map((ev: any) => (
-              <div key={ev.id} className="text-xs border-b border-border/40 pb-2">
-                <div className="font-medium">{ev.event}</div>
-                <div className="text-muted-foreground font-mono">
-                  {ev.createdAt ? new Date(ev.createdAt).toLocaleString() : "—"}
-                </div>
-              </div>
-            ))}
-          </div>
+          <EventTimeline rows={result.rfqTimeline} kind="rfq" />
         </Section>
       ) : null}
 

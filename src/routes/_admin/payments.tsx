@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { PaymentDetailView } from "@/components/admin/DetailViews";
 import { CreditCard } from "lucide-react";
-import { fetchInvoiceDetail, fetchList } from "@/lib/api/resources";
+import { fetchInvoiceDetail } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/payments")({
@@ -44,13 +44,14 @@ function mapPayment(r: any) {
 }
 
 function PaymentsPage() {
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const list = usePagedList({
     queryKey: ["payments"],
-    queryFn: async () => {
-      const list = await fetchList("/payments");
-      return list.map(mapPayment);
-    },
+    path: "/payments",
+    map: mapPayment,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const processed = rows
     .filter((r) => ["succeeded", "completed", "paid", "active"].includes(r.status))
@@ -98,6 +99,7 @@ function PaymentsPage() {
         { label: "Rows", value: String(rows.length), tone: "info" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["id", "invoice", "method", "provider", "organization"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load payments." : "No payments yet."}
       columns={[

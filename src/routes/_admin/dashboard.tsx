@@ -8,7 +8,7 @@ import {
 import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
 } from "recharts";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/admin/DataPage";
 import { cn } from "@/lib/utils";
 import { api, asArray, num, str } from "@/lib/api/client";
 import { EMPTY_LIST, fetchAdminDashboard } from "@/lib/api/resources";
@@ -309,23 +309,5 @@ function WidgetCard({ title, children }: { title: string; children: React.ReactN
 }
 
 function StatusPill({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    open: "bg-success/15 text-success",
-    closed: "bg-muted text-muted-foreground",
-    draft: "bg-warning/15 text-warning",
-    active: "bg-success/15 text-success",
-    pending: "bg-warning/15 text-warning",
-    suspended: "bg-destructive/15 text-destructive",
-    verified: "bg-info/15 text-info",
-    expired: "bg-muted text-muted-foreground",
-    awarded: "bg-success/15 text-success",
-  };
-  return (
-    <Badge
-      variant="outline"
-      className={cn("border-0 text-[10px] capitalize", map[status] ?? "bg-muted text-muted-foreground")}
-    >
-      {status}
-    </Badge>
-  );
+  return <StatusBadge status={status} />;
 }

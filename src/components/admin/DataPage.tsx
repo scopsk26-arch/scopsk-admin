@@ -16,7 +16,9 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { SearchableSelect, SearchableMultiSelect, type SelectOption } from "@/components/admin/SearchableSelect";
-import { api } from "@/lib/api/client";
+import { ListFilters } from "@/components/admin/OrgListFilters";
+import { StatusMenu } from "@/components/admin/OrgStatusMenu";
+import { api, takeMutationToast } from "@/lib/api/client";
 
 export type Column<T> = {
   key: keyof T | string;
@@ -171,8 +173,12 @@ export function DataPage<T extends Record<string, any>>({
   onCreate,
   onUpdate,
   onDelete,
+  onRowClick,
+  onStatusChange,
+  rowClassName,
   pageSize = 20,
   exportExcludeKeys = [],
+  serverPagination,
 }: {
   title: string;
   description: string;
@@ -204,10 +210,32 @@ export function DataPage<T extends Record<string, any>>({
   onCreate?: (data: Record<string, any>) => Promise<T | void> | T | void;
   onUpdate?: (id: string, data: Record<string, any>, row: T) => Promise<T | void> | T | void;
   onDelete?: (id: string, row: T) => Promise<void> | void;
+  /**
+   * Row click handler. Return false to fall through to the detail dialog.
+   * Any other return value handles the click.
+   */
+  onRowClick?: (row: T) => boolean | void;
+  /** Save a new status from the row menu. Falls back to onUpdate when omitted. */
+  onStatusChange?: (id: string, status: string, row: T) => Promise<void> | void;
+  /** Extra classes for a body row, such as a nested subcategory. */
+  rowClassName?: (row: T) => string | undefined;
   /** Rows per page in the table footer (client-side). */
   pageSize?: number;
   /** Keys omitted from detailed CSV export. */
   exportExcludeKeys?: string[];
+  /** When set, Previous/Next and search call the API instead of slicing the loaded rows. */
+  serverPagination?: {
+    page: number;
+    total: number;
+    pageSize?: number;
+    onPageChange: (page: number) => void;
+    search: string;
+    onSearchChange: (value: string) => void;
+    sort?: string;
+    onSortChange?: (value: string) => void;
+    status?: string;
+    onStatusChange?: (value: string) => void;
+  };
 }) {
   // Prefer an explicit singular name so View titles stay "View Purchase Order", not "View ords (purchase orders)".
   const entity =
@@ -216,6 +244,9 @@ export function DataPage<T extends Record<string, any>>({
   const [rows, setRows] = useState<T[]>(initialRows);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const [localSort, setLocalSort] = useState("newest");
+  const [localStatus, setLocalStatus] = useState("all");
+  const [statusBusy, setStatusBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<T | null>(null);
   const [viewing, setViewing] = useState<T | null>(null);
   const [viewDetail, setViewDetail] = useState<Record<string, any> | null>(null);
@@ -242,16 +273,17 @@ export function DataPage<T extends Record<string, any>>({
         .join(";"),
     [initialRows, idKey],
   );
+  const isServerPaged = Boolean(serverPagination);
   useEffect(() => {
     setRows(initialRows);
-    setPage(1);
+    if (!isServerPaged) setPage(1);
     // rowsSyncKey encodes identity of the incoming rows
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowsSyncKey]);
+  }, [rowsSyncKey, isServerPaged]);
 
   useEffect(() => {
-    setPage(1);
-  }, [q]);
+    if (!isServerPaged) setPage(1);
+  }, [q, isServerPaged]);
 
   // Auto-derive form fields from columns when not provided — relation fields become searchable.
   const fields: FormField[] = useMemo(() => {
@@ -346,25 +378,88 @@ export function DataPage<T extends Record<string, any>>({
     }
   };
 
-  const filtered = useMemo(() => {
-    if (!q.trim()) return rows;
-    const needle = q.toLowerCase();
-    return rows.filter((r) =>
-      (searchKeys.length ? searchKeys : Object.keys(r)).some((k) => {
-        const v = r[k as keyof T];
-        return v != null && String(v).toLowerCase().includes(needle);
-      })
-    );
-  }, [q, rows, searchKeys]);
+  const statusChoices =
+    fields.find((field) => field.key === "status" && field.options?.length)?.options ?? [];
+  const sortValue = serverPagination?.sort ?? localSort;
+  const statusValue = serverPagination?.status ?? localStatus;
+  const setSortValue = (value: string) => {
+    if (serverPagination?.onSortChange) serverPagination.onSortChange(value);
+    else {
+      setLocalSort(value);
+      setPage(1);
+    }
+  };
+  const setStatusValue = (value: string) => {
+    if (serverPagination?.onStatusChange) serverPagination.onStatusChange(value);
+    else {
+      setLocalStatus(value);
+      setPage(1);
+    }
+  };
+  const showSortFilter = Boolean(serverPagination?.onSortChange) || !serverPagination;
+  const showStatusFilter = statusChoices.length > 0 && !filters;
 
-  const size = Math.max(1, Number(pageSize) || 20);
-  const totalFiltered = filtered.length;
+  const changeStatus = async (row: T, next: string) => {
+    const id = String(row[idKey as keyof T] ?? "");
+    if (!id) return;
+    setStatusBusy(id);
+    try {
+      if (onStatusChange) {
+        await onStatusChange(id, next, row);
+      } else if (onUpdate) {
+        const data: Record<string, any> = { status: next };
+        for (const field of formFields ?? []) {
+          if (field.key === "status") continue;
+          const value = row[field.key as keyof T];
+          if (value !== undefined) data[field.key] = value;
+        }
+        await onUpdate(id, data, row);
+      }
+      toast.success("Status updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update status");
+    } finally {
+      setStatusBusy(null);
+    }
+  };
+
+  const filtered = useMemo(() => {
+    if (serverPagination) return rows;
+    let next = rows;
+    if (q.trim()) {
+      const needle = q.toLowerCase();
+      next = next.filter((r) =>
+        (searchKeys.length ? searchKeys : Object.keys(r)).some((k) => {
+          const v = r[k as keyof T];
+          return v != null && String(v).toLowerCase().includes(needle);
+        }),
+      );
+    }
+    if (statusValue !== "all") {
+      next = next.filter(
+        (r) => String((r as { status?: unknown }).status ?? "").toLowerCase() === statusValue.toLowerCase(),
+      );
+    }
+    const timed = [...next].sort((a, b) => {
+      const at = Date.parse(String((a as { createdAt?: unknown; created?: unknown }).createdAt ?? (a as { created?: unknown }).created ?? ""));
+      const bt = Date.parse(String((b as { createdAt?: unknown; created?: unknown }).createdAt ?? (b as { created?: unknown }).created ?? ""));
+      const av = Number.isFinite(at) ? at : 0;
+      const bv = Number.isFinite(bt) ? bt : 0;
+      if (!av && !bv) return 0;
+      return sortValue === "oldest" ? av - bv : bv - av;
+    });
+    return timed;
+  }, [q, rows, searchKeys, serverPagination, statusValue, sortValue]);
+
+  const size = Math.max(1, Number(serverPagination?.pageSize ?? pageSize) || 20);
+  const totalFiltered = serverPagination ? serverPagination.total : filtered.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / size));
-  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const currentPage = Math.min(Math.max(1, serverPagination?.page ?? page), totalPages);
   const pageRows = useMemo(() => {
+    if (serverPagination) return rows;
     const start = (currentPage - 1) * size;
     return filtered.slice(start, start + size);
-  }, [filtered, currentPage, size]);
+  }, [filtered, currentPage, size, rows, serverPagination]);
   const rangeFrom = totalFiltered === 0 ? 0 : (currentPage - 1) * size + 1;
   const rangeTo = Math.min(currentPage * size, totalFiltered);
   const canGoPrev = currentPage > 1;
@@ -389,7 +484,9 @@ export function DataPage<T extends Record<string, any>>({
           ?? `${entity.slice(0, 3).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
         const newRow = { ...(created ?? data), [idKey]: id } as T;
         setRows((prev) => [newRow, ...prev]);
-        toast.success(`${entity} created`, { description: String(id) });
+        if (!takeMutationToast()) {
+          toast.success(`${entity} created`, { description: String(id) });
+        }
         setCreating(false);
       } else {
         if (!onUpdate) {
@@ -403,7 +500,9 @@ export function DataPage<T extends Record<string, any>>({
             ? ({ ...r, ...(updated ?? data) } as T)
             : r
         )));
-        toast.success(`${entity} updated`);
+        if (!takeMutationToast()) {
+          toast.success(`${entity} updated`);
+        }
         setEditing(null);
       }
     } catch (err) {
@@ -430,56 +529,45 @@ export function DataPage<T extends Record<string, any>>({
     }
   };
 
-  const handleExport = () => {
-    const skip = new Set(["actions", "payload", "detail", ...exportExcludeKeys.map(String)]);
-    const viewKeys = (viewFields?.length ? viewFields : columns)
-      .map((c) => String("key" in c ? c.key : ""))
-      .filter((k) => k && !skip.has(k));
-    // Prefer detailed row keys (all scalar fields) so export is richer than visible columns
-    const sample = filtered[0] || {};
-    const extraKeys = Object.keys(sample).filter(
-      (k) => !skip.has(k) && !viewKeys.includes(k) && typeof (sample as any)[k] !== "function",
-    );
-    const headerKeys = [...viewKeys, ...extraKeys];
-    const labels = headerKeys.map((k) => {
-      const fromView = viewFields?.find((f) => f.key === k)?.label;
-      const fromCol = columns.find((c) => String(c.key) === k)?.label;
-      return fromView || fromCol || k;
-    });
-
-    const cell = (r: T, k: string) => {
-      const v = (r as any)[k];
-      if (v == null) return "";
-      if (Array.isArray(v)) return v.map((x) => (typeof x === "object" ? JSON.stringify(x) : String(x))).join("; ");
-      if (typeof v === "object") {
-        try {
-          return JSON.stringify(v);
-        } catch {
-          return String(v);
-        }
-      }
-      return String(v);
-    };
-
-    const csv = [
-      labels.map((l) => (/[",\n]/.test(l) ? `"${l.replace(/"/g, '""')}"` : l)).join(","),
-      ...filtered.map((r) =>
-        headerKeys
-          .map((k) => {
-            const s = cell(r, k);
-            return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-          })
-          .join(","),
-      ),
-    ].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title.toLowerCase().replace(/\s+/g, "-")}-detailed.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Detailed export complete", { description: `${filtered.length} rows` });
+  const handleExport = async () => {
+    const skip = new Set(["actions", "payload", "detail", "addSub", ...exportExcludeKeys.map(String)]);
+    const exportColumns = columns
+      .map((column) => ({ key: String(column.key), label: column.label.trim() }))
+      .filter((column) => column.key && column.label && !skip.has(column.key));
+    if (!exportColumns.length) {
+      toast.error("Nothing to export");
+      return;
+    }
+    const searchText = (serverPagination ? serverPagination.search : q).trim();
+    const meta = [
+      `${filtered.length} row${filtered.length === 1 ? "" : "s"}`,
+      `Sort: ${sortValue === "oldest" ? "Oldest" : "Newest"}`,
+      statusChoices.length ? (statusValue === "all" ? "All statuses" : `Status: ${formatStatusLabel(statusValue)}`) : null,
+      searchText ? `Search: ${searchText}` : null,
+    ].filter((line): line is string => Boolean(line));
+    const filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "export"}.pdf`;
+    try {
+      const { downloadTablePdf } = await import("@/lib/pdf-export");
+      downloadTablePdf({
+        title,
+        description,
+        filename,
+        columns: exportColumns,
+        rows: filtered.map((row) => {
+          const record: Record<string, unknown> = {};
+          for (const column of exportColumns) {
+            const value = (row as Record<string, unknown>)[column.key];
+            record[column.key] = column.key === "status" && value != null ? formatStatusLabel(String(value)) : value;
+          }
+          return record;
+        }),
+        meta,
+        kpis: kpis.map((kpi) => ({ label: kpi.label, value: String(kpi.value) })),
+      });
+      toast.success("PDF exported", { description: `${filtered.length} rows · ${title}` });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
   };
 
   return (
@@ -498,7 +586,7 @@ export function DataPage<T extends Record<string, any>>({
         </div>
         <div className="flex gap-2">
           {!hideExport && (
-            <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1.5" />Export</Button>
+            <Button variant="outline" size="sm" onClick={() => void handleExport()}><Download className="h-4 w-4 mr-1.5" />Export</Button>
           )}
           {canCreate && (
             <Button size="sm" onClick={() => setCreating(true)}>
@@ -531,12 +619,28 @@ export function DataPage<T extends Record<string, any>>({
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
+              value={serverPagination ? serverPagination.search : q}
+              onChange={(e) => {
+                if (serverPagination) serverPagination.onSearchChange(e.target.value);
+                else setQ(e.target.value);
+              }}
               placeholder="Search..."
               className="pl-9 h-9 bg-card"
             />
           </div>
+          {showSortFilter ? (
+            <ListFilters
+              sort={sortValue}
+              status={statusValue}
+              statusOptions={
+                showStatusFilter
+                  ? statusChoices.map((value) => ({ value, label: formatStatusLabel(value) }))
+                  : undefined
+              }
+              onSortChange={setSortValue}
+              onStatusChange={setStatusValue}
+            />
+          ) : null}
           {filters}
         </div>
 
@@ -545,7 +649,7 @@ export function DataPage<T extends Record<string, any>>({
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 {columns.map((c) => (
-                  <th key={String(c.key)} className={cn("px-4 py-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground", c.className)}>
+                  <th key={String(c.key)} className={cn("px-4 py-2.5 text-xs font-semibold text-muted-foreground", c.className)}>
                     {c.label}
                   </th>
                 ))}
@@ -556,20 +660,57 @@ export function DataPage<T extends Record<string, any>>({
               {pageRows.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length + (showRowActions ? 1 : 0)} className="px-4 py-14 text-center">
-                    <div className="text-sm font-medium text-foreground">No results</div>
-                    <div className="text-xs text-muted-foreground mt-1">{emptyHint ?? "Try adjusting search or filters."}</div>
+                    {/^loading\b/i.test((emptyHint ?? "").trim()) ? (
+                      <div className="text-sm text-muted-foreground">{emptyHint}</div>
+                    ) : (
+                      <>
+                        <div className="text-sm font-medium text-foreground">No results</div>
+                        <div className="text-xs text-muted-foreground mt-1">{emptyHint ?? "Try adjusting search or filters."}</div>
+                      </>
+                    )}
                   </td>
                 </tr>
               ) : (
                 pageRows.map((row, i) => (
-                  <tr key={String(row[idKey as keyof T] ?? i)} className="border-b border-border last:border-0 hover:bg-primary/[0.04] transition-colors">
-                    {columns.map((c) => (
-                      <td key={String(c.key)} className={cn("px-4 py-3 align-middle", c.className)}>
-                        {c.render ? c.render(row) : String(row[c.key as keyof T] ?? "—")}
-                      </td>
-                    ))}
+                  <tr
+                    key={String(row[idKey as keyof T] ?? i)}
+                    className={cn(
+                      "border-b border-border last:border-0 hover:bg-primary/[0.04] transition-colors",
+                      (canView || onRowClick) && "cursor-pointer",
+                      rowClassName?.(row),
+                    )}
+                    onClick={() => {
+                      if (onRowClick && onRowClick(row) !== false) return;
+                      if (canView) void openView(row);
+                    }}
+                  >
+                    {columns.map((c) => {
+                      const isStatus = String(c.key) === "status";
+                      const canEditStatus = isStatus && statusChoices.length > 0 && Boolean(onStatusChange || onUpdate);
+                      const rowId = String(row[idKey as keyof T] ?? "");
+                      return (
+                        <td
+                          key={String(c.key)}
+                          className={cn("px-4 py-3 align-middle", c.className)}
+                          onClick={canEditStatus ? (event) => event.stopPropagation() : undefined}
+                        >
+                          {canEditStatus ? (
+                            <StatusMenu
+                              status={String((row as { status?: unknown }).status ?? "")}
+                              options={statusChoices}
+                              disabled={statusBusy === rowId}
+                              onChange={(next) => void changeStatus(row, next)}
+                            />
+                          ) : c.render ? (
+                            c.render(row)
+                          ) : (
+                            String(row[c.key as keyof T] ?? "—")
+                          )}
+                        </td>
+                      );
+                    })}
                     {showRowActions && (
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap" onClick={(event) => event.stopPropagation()}>
                         <div className="flex gap-1 justify-end">
                           {canUpdate && (
                             <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => void openEdit(row)} aria-label="Edit">
@@ -608,7 +749,11 @@ export function DataPage<T extends Record<string, any>>({
               variant="ghost"
               size="sm"
               disabled={!canGoPrev}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              onClick={() => {
+                const next = Math.max(1, currentPage - 1);
+                if (serverPagination) serverPagination.onPageChange(next);
+                else setPage(next);
+              }}
             >
               Previous
             </Button>
@@ -616,7 +761,11 @@ export function DataPage<T extends Record<string, any>>({
               variant="ghost"
               size="sm"
               disabled={!canGoNext}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => {
+                const next = Math.min(totalPages, currentPage + 1);
+                if (serverPagination) serverPagination.onPageChange(next);
+                else setPage(next);
+              }}
             >
               Next
             </Button>
@@ -673,7 +822,7 @@ export function DataPage<T extends Record<string, any>>({
                   }
                   return (
                     <div key={f.key} className={cn(displayViewFields.length === 1 && "sm:col-span-2")}>
-                      <div className="text-xs text-muted-foreground uppercase tracking-wider">{f.label}</div>
+                      <div className="text-xs font-medium text-muted-foreground">{f.label}</div>
                       <div className="mt-1 text-sm font-medium break-words">{display}</div>
                     </div>
                   );
@@ -1005,7 +1154,13 @@ function RecordDialog({
                         <SelectValue placeholder={`Select ${f.label.toLowerCase()}`} />
                       </SelectTrigger>
                       <SelectContent>
-                        {f.options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        {f.options.map((o) => (
+                          <SelectItem key={o} value={o}>
+                            {f.key === "status" || f.key === "verificationStatus" || f.key === "decision"
+                              ? formatStatusLabel(o)
+                              : o}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   ) : (
@@ -1113,7 +1268,7 @@ function formatViewValue(raw: unknown, field: FormField): ReactNode {
 export function DetailSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="space-y-2 border-t border-border pt-4">
-      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</div>
+      <div className="text-xs font-semibold text-muted-foreground">{title}</div>
       {children}
     </div>
   );
@@ -1125,7 +1280,7 @@ export function DetailKv({ rows }: { rows: { label: string; value: ReactNode }[]
     <div className="grid gap-3 sm:grid-cols-2">
       {rows.map((r) => (
         <div key={r.label}>
-          <div className="text-xs text-muted-foreground uppercase tracking-wider">{r.label}</div>
+          <div className="text-xs font-medium text-muted-foreground">{r.label}</div>
           <div className="mt-1 text-sm font-medium break-words">{r.value ?? "—"}</div>
         </div>
       ))}
@@ -1152,7 +1307,7 @@ export function DetailTable({
         <thead>
           <tr className="border-b border-border bg-muted/30 text-left">
             {columns.map((c) => (
-              <th key={c.key} className={cn("px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground", c.className)}>
+              <th key={c.key} className={cn("px-3 py-2 text-xs font-semibold text-muted-foreground", c.className)}>
                 {c.label}
               </th>
             ))}
@@ -1174,11 +1329,25 @@ export function DetailTable({
   );
 }
 
+/** "picked_up" → "Picked Up". Keeps an em dash as-is. */
+export function formatStatusLabel(status: string) {
+  const raw = String(status ?? "").trim();
+  if (!raw || raw === "—") return raw || "—";
+  return raw
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
 export function StatusBadge({ status, tone }: { status: string; tone?: "success" | "warning" | "destructive" | "info" | "default" | "brand" }) {
-  const t = tone ?? inferTone(status);
+  const raw = String(status ?? "").trim();
+  if (!raw || raw === "—") return <span className="text-muted-foreground">—</span>;
+  const t = tone ?? inferTone(raw);
   return (
     <span className={cn(
-      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold border",
+      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold border whitespace-nowrap",
       t === "success" && "bg-success/10 text-success border-success/20",
       t === "warning" && "bg-warning/12 text-warning border-warning/25",
       t === "destructive" && "bg-destructive/10 text-destructive border-destructive/20",
@@ -1195,31 +1364,36 @@ export function StatusBadge({ status, tone }: { status: string; tone?: "success"
         t === "brand" && "bg-primary",
         t === "default" && "bg-muted-foreground",
       )} />
-      {status}
+      {formatStatusLabel(raw)}
     </span>
   );
 }
 
 /** Semantic tones mirror mobile Badge tones: sage/success, brand, warning, default. */
 function inferTone(status: string): "success" | "warning" | "destructive" | "info" | "default" | "brand" {
-  const s = status.toLowerCase().replace(/[_-]+/g, " ").trim();
+  const s = status.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
   if ([
     "active", "verified", "approved", "delivered", "paid", "resolved", "sent",
     "published", "success", "completed", "online", "open", "awarded", "settled",
+    "credited", "qualified", "rewarded", "live", "enabled", "available", "accepted",
   ].includes(s)) return "success";
   if ([
-    "in progress", "in_progress", "processing", "dispatched", "ready", "confirmed",
-    "preparing", "accepted", "bid",
-  ].includes(s) || s.includes("progress")) return "brand";
+    "in progress", "processing", "dispatched", "ready", "confirmed", "preparing",
+    "bid", "picked up", "in transit", "out for delivery", "shipped", "negotiation",
+    "supplier invited", "investigating", "acknowledged", "submitted", "under review",
+    "in review", "awaiting response", "partial",
+  ].includes(s) || s.includes("progress") || s.includes("transit") || s.startsWith("picked")) return "brand";
   if ([
-    "pending", "pending approval", "pending_approval", "draft", "review", "queued",
-    "scheduled", "awaiting approval", "awaiting_approval", "unverified",
-  ].includes(s) || s.includes("pending")) return "warning";
+    "pending", "pending approval", "draft", "review", "queued", "scheduled",
+    "awaiting approval", "unverified", "trialing", "past due", "hidden", "frozen",
+    "unread", "flagged", "delayed", "warning", "at risk", "high", "medium",
+  ].includes(s) || s.includes("pending") || s.includes("await")) return "warning";
   if ([
     "suspended", "rejected", "failed", "closed", "critical", "blocked", "banned",
-    "cancelled", "canceled", "void", "overdue", "expired",
-  ].includes(s)) return "destructive";
-  if (["flagged", "delayed", "warning", "at risk", "high"].includes(s)) return "warning";
+    "cancelled", "canceled", "void", "overdue", "expired", "dismissed", "disputed",
+    "damaged",
+  ].includes(s) || s.startsWith("damaged") || s.startsWith("fail")) return "destructive";
+  if (["new", "invited", "refunded", "info"].includes(s)) return "info";
   return "default";
 }
 

@@ -43,7 +43,7 @@ export function KpiCard({
       </div>
       <div className="relative mt-4">
         <div className="text-2xl font-display font-semibold tracking-tight tabular-nums">{value}</div>
-        <div className="label-caps mt-1.5 normal-case tracking-wider">{label}</div>
+        <div className="label-caps mt-1.5">{label}</div>
       </div>
     </Link>
   );

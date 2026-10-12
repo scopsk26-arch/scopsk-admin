@@ -1,6 +1,6 @@
 import { io, type Socket } from "socket.io-client";
 import type { QueryClient } from "@tanstack/react-query";
-import { getAccessToken } from "@/lib/auth-session";
+import { getAccessToken, subscribeSession } from "@/lib/auth-session";
 
 export type DataChangedPayload = {
   resource?: string;
@@ -11,10 +11,18 @@ export type DataChangedPayload = {
   at?: string;
 };
 
+export type AdminSocketStatus = "idle" | "connecting" | "connected" | "disconnected" | "error";
+
+export type AdminSocketEventMap = {
+  "data:changed": DataChangedPayload;
+};
+
+export type AdminSocketEventName = keyof AdminSocketEventMap;
+
 function resolveSocketOrigin(): string {
   const base =
     (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ||
-    "https://api.scopsk.ae/api/v1";
+    "https://scopsk-apis-c2f3bfd4da40.herokuapp.com/api/v1";
   return base.replace(/\/api\/v1\/?$/, "");
 }
 
@@ -47,6 +55,9 @@ export function invalidateFromDataChanged(qc: QueryClient, event: DataChangedPay
   if (resource === "invoices" || hasTag("invoices")) {
     void qc.invalidateQueries({ queryKey: ["invoices"] }).catch(ignore);
   }
+  if (resource === "payments" || hasTag("payments")) {
+    void qc.invalidateQueries({ queryKey: ["payments"] }).catch(ignore);
+  }
   if (resource === "wallets" || hasTag("wallet")) {
     void qc.invalidateQueries({ queryKey: ["admin", "wallets"] }).catch(ignore);
     void qc.invalidateQueries({ queryKey: ["admin", "wallet"] }).catch(ignore);
@@ -54,48 +65,168 @@ export function invalidateFromDataChanged(qc: QueryClient, event: DataChangedPay
     void qc.invalidateQueries({ queryKey: ["admin", "wallet-credit-requests"] }).catch(ignore);
     void qc.invalidateQueries({ queryKey: ["admin", "wallet-withdrawals"] }).catch(ignore);
   }
-  if (resource === "organizations" || hasTag("organizations")) {
+  if (resource === "organizations" || resource === "suppliers" || hasTag("organizations")) {
     void qc.invalidateQueries({ queryKey: ["organizations"] }).catch(ignore);
   }
   if (resource === "support" || hasTag("support")) {
     void qc.invalidateQueries({ queryKey: ["support"] }).catch(ignore);
   }
+  if (resource === "ck_orders" || hasTag("ck_orders")) {
+    void qc.invalidateQueries({ queryKey: ["ck-orders"] }).catch(ignore);
+  }
 }
 
-let socket: Socket | null = null;
+/**
+ * One Socket.IO connection for the admin app.
+ * Screens subscribe through useSocket, not by calling io() again.
+ */
+class AdminSocketManager {
+  private socket: Socket | null = null;
+  private status: AdminSocketStatus = "idle";
+  private lastToken: string | null = null;
+  private started = false;
+  private sessionUnsub: (() => void) | null = null;
+  private onVisible: (() => void) | null = null;
+  private statusListeners = new Set<(status: AdminSocketStatus) => void>();
+  private handlers: {
+    [K in AdminSocketEventName]: Set<(payload: AdminSocketEventMap[K]) => void>;
+  } = {
+    "data:changed": new Set(),
+  };
 
-export function connectAdminSocket(qc: QueryClient) {
-  if (typeof window === "undefined") return () => {};
-  const token = getAccessToken();
-  if (!token) return () => {};
+  getStatus(): AdminSocketStatus {
+    return this.status;
+  }
 
-  if (socket?.connected) {
-    socket.off("data:changed");
-    socket.on("data:changed", (payload: DataChangedPayload) => {
-      invalidateFromDataChanged(qc, payload);
-    });
+  onStatus(handler: (status: AdminSocketStatus) => void): () => void {
+    this.statusListeners.add(handler);
+    handler(this.status);
     return () => {
-      socket?.off("data:changed");
+      this.statusListeners.delete(handler);
     };
   }
 
-  socket?.disconnect();
-  socket = io(resolveSocketOrigin(), {
-    path: "/socket.io",
-    auth: { token },
-    transports: ["websocket", "polling"],
-    reconnection: true,
-    reconnectionDelay: 2000,
-    reconnectionDelayMax: 15000,
-  });
+  on<K extends AdminSocketEventName>(
+    event: K,
+    handler: (payload: AdminSocketEventMap[K]) => void,
+  ): () => void {
+    this.handlers[event].add(handler);
+    return () => {
+      this.handlers[event].delete(handler);
+    };
+  }
 
-  socket.on("data:changed", (payload: DataChangedPayload) => {
+  start() {
+    if (this.started || typeof window === "undefined") return;
+    this.started = true;
+    this.sessionUnsub = subscribeSession(() => this.sync());
+    this.onVisible = () => {
+      if (document.visibilityState === "visible") this.sync();
+    };
+    document.addEventListener("visibilitychange", this.onVisible);
+    this.sync();
+  }
+
+  stop() {
+    this.sessionUnsub?.();
+    this.sessionUnsub = null;
+    if (this.onVisible) {
+      document.removeEventListener("visibilitychange", this.onVisible);
+      this.onVisible = null;
+    }
+    this.started = false;
+    this.disconnect();
+  }
+
+  reconnect() {
+    const token = getAccessToken();
+    if (!token) {
+      this.disconnect();
+      return;
+    }
+    this.connect(token);
+  }
+
+  private sync() {
+    const token = getAccessToken();
+    if (!token) {
+      this.disconnect();
+      return;
+    }
+    if (this.socket?.connected && this.lastToken === token) return;
+    this.connect(token);
+  }
+
+  private connect(token: string) {
+    this.disconnectSocketOnly();
+    this.setStatus("connecting");
+    this.lastToken = token;
+
+    const socket = io(resolveSocketOrigin(), {
+      path: "/socket.io",
+      auth: { token },
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: 12,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 15000,
+    });
+
+    socket.on("connect", () => this.setStatus("connected"));
+    socket.on("disconnect", () => this.setStatus("disconnected"));
+    socket.on("connect_error", () => this.setStatus("error"));
+    socket.on("data:changed", (payload: DataChangedPayload) => {
+      this.emitLocal("data:changed", payload);
+    });
+
+    this.socket = socket;
+  }
+
+  private emitLocal<K extends AdminSocketEventName>(event: K, payload: AdminSocketEventMap[K]) {
+    for (const handler of this.handlers[event]) {
+      try {
+        handler(payload);
+      } catch {
+        /* ignore subscriber errors */
+      }
+    }
+  }
+
+  private setStatus(status: AdminSocketStatus) {
+    this.status = status;
+    for (const listener of this.statusListeners) {
+      try {
+        listener(status);
+      } catch {
+        /* ignore subscriber errors */
+      }
+    }
+  }
+
+  private disconnectSocketOnly() {
+    if (!this.socket) return;
+    this.socket.removeAllListeners();
+    this.socket.disconnect();
+    this.socket = null;
+  }
+
+  disconnect() {
+    this.lastToken = null;
+    this.disconnectSocketOnly();
+    this.setStatus("disconnected");
+  }
+}
+
+export const adminSocket = new AdminSocketManager();
+
+/** @deprecated Screens should use useSocketConnection and useSocketEvent. */
+export function connectAdminSocket(qc: QueryClient) {
+  adminSocket.start();
+  const unsub = adminSocket.on("data:changed", (payload) => {
     invalidateFromDataChanged(qc, payload);
   });
-
   return () => {
-    socket?.off("data:changed");
-    socket?.disconnect();
-    socket = null;
+    unsub();
+    adminSocket.stop();
   };
 }

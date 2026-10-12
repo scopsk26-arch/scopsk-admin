@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { Landmark } from "lucide-react";
-import { fetchAdminOutstanding } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/outstanding")({
@@ -31,14 +30,14 @@ function mapRow(r: any) {
 }
 
 function OutstandingPage() {
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const list = usePagedList({
     queryKey: ["admin", "outstanding"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const list = await fetchAdminOutstanding();
-      return list.map(mapRow);
-    },
+    path: "/admin/outstanding",
+    map: mapRow,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const totalOutstanding = rows.reduce((s, r) => s + r.outstanding, 0);
   const totalPaid = rows.reduce((s, r) => s + r.paid, 0);
@@ -58,6 +57,7 @@ function OutstandingPage() {
         { label: "Invoices", value: String(rows.length) },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       idKey="id"
       searchKeys={["restaurant", "invoiceNumber", "purchaseOrderNumber", "status"]}
       emptyHint={

@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { Star } from "lucide-react";
-import { fetchList, updateRating } from "@/lib/api/resources";
+import { updateRating } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/ratings")({
@@ -26,18 +27,14 @@ function mapRating(r: any) {
 function RatingsPage() {
   const qc = useQueryClient();
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["admin", "ratings"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const list = await fetchList("/ratings");
-      return list.map(mapRating);
-    },
+    path: "/ratings",
+    map: mapRating,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const published = rows.filter((r) => r.status === "published").length;
   const hidden = rows.filter((r) => r.status === "hidden").length;
@@ -55,12 +52,13 @@ function RatingsPage() {
       entityName="Rating"
       hideView={false}
       kpis={[
-        { label: "Total", value: String(rows.length) },
+        { label: "Total", value: String(list.total) },
         { label: "Published", value: String(published), tone: "success" },
         { label: "Hidden", value: String(hidden), tone: "warning" },
         { label: "Pending", value: String(pending), tone: "info" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       idKey="id"
       searchKeys={["fromOrg", "toOrg", "purchaseOrder", "comment", "status"]}
       emptyHint={
