@@ -24,7 +24,7 @@ function NavBody({ onNavigate }: { onNavigate?: () => void }) {
                     className={cn(
                       "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors relative",
                       active
-                        ? "bg-primary/12 text-foreground font-medium shadow-soft"
+                        ? "bg-primary/12 text-foreground font-semibold shadow-soft"
                         : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     )}
                   >

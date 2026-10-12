@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { BookOpen } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
 import { api, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/cms")({
@@ -25,17 +25,14 @@ function mapCms(r: any) {
 
 function CmsPage() {
   const queryClient = useQueryClient();
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["cms"],
-    queryFn: async () => {
-      const list = await fetchList("/cms");
-      return list.map(mapCms);
-    },
+    path: "/cms",
+    map: mapCms,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   return (
     <DataPage
@@ -83,6 +80,7 @@ function CmsPage() {
         },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["id", "title", "slug", "author"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load CMS pages." : "No CMS pages found."
@@ -111,7 +109,7 @@ function CmsPage() {
           slug: data.slug,
           body: data.body || "",
           status: data.status || "draft",
-        });
+        }, { toastOnSuccess: true });
         await queryClient.invalidateQueries({ queryKey: ["cms"] });
         return mapCms(created);
       }}

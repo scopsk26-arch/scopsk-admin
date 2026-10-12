@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { PurchaseOrderDetailView } from "@/components/admin/DetailViews";
 import { ClipboardList } from "lucide-react";
 import {
-  fetchList,
   fetchPurchaseOrderDetail,
   updatePurchaseOrderStatus,
 } from "@/lib/api/resources";
@@ -62,24 +62,15 @@ function PurchaseOrdersPage() {
   const { restaurants, suppliers } = useAdminLookups(["restaurants", "suppliers"]);
   const queryClient = useQueryClient();
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["purchase-orders"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const list = await fetchList("/purchase-orders", {
-        limit: 100,
-        sortBy: "createdAt",
-        sortOrder: "DESC",
-      });
-      return list
-        .map(mapPo)
-        .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
-    },
+    path: "/purchase-orders",
+    query: { sortBy: "createdAt", sortOrder: "DESC" },
+    map: mapPo,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const open = rows.filter(
     (r) => !["delivered", "cancelled", "closed", "completed"].includes(r.status),
@@ -144,6 +135,7 @@ function PurchaseOrdersPage() {
         { label: "GMV", value: AED(gmv) },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["number", "orderNumber", "restaurant", "supplier", "rfq"]}
       emptyHint={
         isLoading

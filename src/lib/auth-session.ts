@@ -16,6 +16,31 @@ function canUseStorage() {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
 }
 
+const sessionListeners = new Set<() => void>();
+let sessionNotifyTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Fires after login, refresh, or logout. Same-tab writes do not emit `storage`. */
+export function subscribeSession(listener: () => void): () => void {
+  sessionListeners.add(listener);
+  return () => {
+    sessionListeners.delete(listener);
+  };
+}
+
+function notifySession() {
+  if (sessionNotifyTimer != null) return;
+  sessionNotifyTimer = setTimeout(() => {
+    sessionNotifyTimer = null;
+    for (const listener of sessionListeners) {
+      try {
+        listener();
+      } catch {
+        /* ignore subscriber errors */
+      }
+    }
+  }, 0);
+}
+
 export function getAccessToken(): string | null {
   if (!canUseStorage()) return null;
   return localStorage.getItem(ACCESS_KEY);
@@ -46,18 +71,21 @@ export function setTokens(accessToken: string, refreshToken: string) {
   if (!canUseStorage()) return;
   localStorage.setItem(ACCESS_KEY, accessToken);
   localStorage.setItem(REFRESH_KEY, refreshToken);
+  notifySession();
 }
 
 export function setOrgId(orgId: string | null) {
   if (!canUseStorage()) return;
   if (orgId) localStorage.setItem(ORG_KEY, orgId);
   else localStorage.removeItem(ORG_KEY);
+  notifySession();
 }
 
 export function setSessionUser(user: SessionUser | null) {
   if (!canUseStorage()) return;
   if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
   else localStorage.removeItem(USER_KEY);
+  notifySession();
 }
 
 export function setSession(input: {
@@ -77,6 +105,7 @@ export function clearSession() {
   localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(ORG_KEY);
   localStorage.removeItem(USER_KEY);
+  notifySession();
 }
 
 export function hasAccessToken(): boolean {

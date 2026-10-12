@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePagedList } from "@/hooks/usePagedList";
 import { Copy, ImagePlus, Images, Loader2, Search, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api, asArray, num, str } from "@/lib/api/client";
-import { fetchList } from "@/lib/api/resources";
+import { api, num, str } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_admin/media")({
@@ -60,22 +60,21 @@ function mapFile(r: any): MediaFile {
 function MediaLibraryPage() {
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [filter, setFilter] = useState("");
   const [uploading, setUploading] = useState(false);
 
-  const { data: files = [], isLoading, isError } = useQuery({
+  const list = usePagedList<MediaFile>({
     queryKey: ["admin", "media-library"],
-    queryFn: async () => {
-      const list = await fetchList("/files", {
-        imagesOnly: true,
-        scope: "media",
-        limit: 100,
-      });
-      const mapped = asArray(list).map(mapFile).filter((f) => f.id && f.url);
+    path: "/files",
+    query: { imagesOnly: true, scope: "media" },
+    prepare: (raw) => {
+      const mapped = raw.map(mapFile).filter((f) => f.id && f.url);
       const scoped = mapped.filter(isPlatformMedia);
       return scoped.length > 0 ? scoped : mapped;
     },
   });
+  const files = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "media-library"] });
 
@@ -87,17 +86,6 @@ function MediaLibraryPage() {
     },
     onError: (err: Error) => toast.error(err.message || "Delete failed"),
   });
-
-  const filtered = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    if (!q) return files;
-    return files.filter(
-      (f) =>
-        f.name.toLowerCase().includes(q) ||
-        f.url.toLowerCase().includes(q) ||
-        f.purpose.toLowerCase().includes(q),
-    );
-  }, [files, filter]);
 
   const onUpload = async (picked: FileList | null) => {
     if (!picked?.length) return;
@@ -216,8 +204,8 @@ function MediaLibraryPage() {
       <div className="relative max-w-xl">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          value={list.search}
+          onChange={(e) => list.setSearch(e.target.value)}
           placeholder="Filter by name or URL…"
           className="pl-9"
         />
@@ -229,7 +217,7 @@ function MediaLibraryPage() {
         <p className="text-sm text-destructive">
           Could not load files. Ensure the API exposes GET /files and you have upload permission.
         </p>
-      ) : filtered.length === 0 ? (
+      ) : files.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
           <ImagePlus className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
           <p className="font-medium">No images in the media library yet</p>
@@ -244,7 +232,7 @@ function MediaLibraryPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filtered.map((file) => (
+          {files.map((file) => (
             <div
               key={file.id}
               className={cn(
@@ -300,6 +288,34 @@ function MediaLibraryPage() {
           ))}
         </div>
       )}
+      {list.total > 0 ? (
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>
+            Showing {(list.page - 1) * list.pageSize + (files.length ? 1 : 0)}–
+            {(list.page - 1) * list.pageSize + files.length} of {list.total}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={list.page <= 1}
+              onClick={() => list.setPage(list.page - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={list.page * list.pageSize >= list.total}
+              onClick={() => list.setPage(list.page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { UtensilsCrossed } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
@@ -68,17 +68,15 @@ function CuisinesPage() {
   const qc = useQueryClient();
   const { categories } = useAdminLookups(["categories"]);
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["cuisines"],
-    queryFn: async () => {
-      const list = await fetchList("/cuisines", { all: "true", limit: 200 });
-      return list.map(mapCuisineRow);
-    },
+    path: "/cuisines",
+    query: { all: "true" },
+    map: mapCuisineRow,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const active = rows.filter((r) => r.status === "active").length;
   const mapped = rows.filter((r) => r.categoryIds).length;
@@ -132,6 +130,7 @@ function CuisinesPage() {
         { label: "Products linked", value: String(rows.reduce((s, r) => s + r.products, 0)) },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["name", "slug", "categories", "id"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load cuisines." : "No cuisines found."
@@ -165,7 +164,7 @@ function CuisinesPage() {
           sortOrder: data.sortOrder != null ? Number(data.sortOrder) : 0,
           status: data.status || "active",
           categoryIds,
-        });
+        }, { toastOnSuccess: true });
         await invalidate();
         return mapCuisineRow(created);
       }}

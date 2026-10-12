@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { Award } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/qualities")({
@@ -32,13 +31,14 @@ function mapQuality(r: any): QualityRow {
 }
 
 function QualitiesPage() {
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const list = usePagedList({
     queryKey: ["catalog", "qualities"],
-    queryFn: async () => {
-      const list = await fetchList("/catalog/qualities");
-      return list.map(mapQuality);
-    },
+    path: "/catalog/qualities",
+    map: mapQuality,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const active = rows.filter((r) => r.status === "active").length;
 
@@ -59,12 +59,13 @@ function QualitiesPage() {
       loadDetail={async (row) => row}
       renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
-        { label: "Total", value: String(rows.length) },
+        { label: "Total", value: String(list.total) },
         { label: "Active", value: String(active), tone: "success" },
         { label: "Inactive", value: String(rows.length - active) },
         { label: "Grades", value: String(rows.length), tone: "info" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["name", "slug", "description", "id"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load qualities." : "No qualities found."}
       columns={[

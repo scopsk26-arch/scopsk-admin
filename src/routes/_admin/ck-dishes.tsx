@@ -597,12 +597,13 @@ function CkDishesPage() {
           };
           let created: any;
           try {
-            created = await api.post<any>("/admin/cloud-kitchen/dishes", payload);
+            created = await api.post<any>("/admin/cloud-kitchen/dishes", payload, { toastOnSuccess: true });
           } catch {
             const { cloudKitchenId: _ck, ...kitchenPayload } = payload;
             created = await api.post<any>(
               `/cloud-kitchen/kitchens/${cloudKitchenId}/dishes`,
               kitchenPayload,
+              { toastOnSuccess: true },
             );
           }
           await invalidate();

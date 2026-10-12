@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { DeliveryDetailView } from "@/components/admin/DetailViews";
 import { PackageCheck } from "lucide-react";
-import { fetchDeliveryDetail, fetchList, updateDeliveryStatus } from "@/lib/api/resources";
+import { fetchDeliveryDetail, updateDeliveryStatus } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -119,24 +120,15 @@ function DeliveriesPage() {
   ]);
   const queryClient = useQueryClient();
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["deliveries"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const list = await fetchList("/deliveries", {
-        limit: 100,
-        sortBy: "createdAt",
-        sortOrder: "DESC",
-      });
-      return list
-        .map(mapDelivery)
-        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-    },
+    path: "/deliveries",
+    query: { sortBy: "createdAt", sortOrder: "DESC" },
+    map: mapDelivery,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const out = rows.filter((r) =>
     ["dispatched", "out_for_delivery", "in_transit", "picked_up"].includes(r.status),
@@ -187,6 +179,7 @@ function DeliveriesPage() {
         { label: "Total", value: String(rows.length), tone: "success" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["number", "po", "restaurant", "supplier", "driver"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load deliveries." : "No deliveries found."

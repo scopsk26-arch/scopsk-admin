@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { BadgeCheck } from "lucide-react";
-import { fetchList, fetchSubscriptionDetail } from "@/lib/api/resources";
+import { fetchSubscriptionDetail } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -34,17 +35,14 @@ function SubscriptionsPage() {
   const { restaurants, suppliers } = useAdminLookups(["restaurants", "suppliers"]);
   const orgs = [...restaurants, ...suppliers];
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["subscriptions"],
-    queryFn: async () => {
-      const list = await fetchList("/subscriptions");
-      return list.map(mapSub);
-    },
+    path: "/subscriptions",
+    map: mapSub,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const active = rows.filter((r) => r.status === "active").length;
   const mrr = rows.filter((r) => r.status === "active").reduce((s, r) => s + r.mrr, 0);
@@ -101,6 +99,7 @@ function SubscriptionsPage() {
         { label: "Total", value: String(rows.length), tone: "warning" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["id", "customer", "plan"]}
       emptyHint={
         isLoading
@@ -134,7 +133,7 @@ function SubscriptionsPage() {
           planCode: data.planCode,
           status: data.status || "active",
           mrr: Number(data.mrr) || 0,
-        });
+        }, { toastOnSuccess: true });
         await queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
         return mapSub(created);
       }}

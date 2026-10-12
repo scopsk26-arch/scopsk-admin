@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Moon, Sun } from "lucide-react";
+import { Eye, EyeOff, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Show last-known marketplace counts (saved after admin dashboard loads).
   const { data: counts } = useQuery({
@@ -73,25 +74,21 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background text-foreground">
-      <div className="relative hidden lg:flex flex-col p-12 overflow-hidden border-r border-border">
-        <div className="absolute inset-0 mesh-bg opacity-90" />
-        <div className="absolute inset-0 grid-bg opacity-40" />
+    <div className="min-h-screen grid bg-[#fff6f3] text-foreground lg:grid-cols-2 dark:bg-background">
+      <div className="relative hidden items-center justify-center overflow-hidden border-r border-black/5 bg-[#ffc4ab] px-16 py-12 lg:flex dark:border-border dark:bg-background">
+        <div className="absolute inset-0 grid-bg" />
 
-        <div className="relative">
-          <BrandLogo className="h-14 max-w-[260px]" />
-        </div>
-
-        <div className="relative mt-auto max-w-md">
-          <h1 className="text-4xl font-display font-semibold tracking-tight leading-tight">
+        <div className="relative w-full max-w-lg">
+          <BrandLogo className="h-12 max-w-[210px]" />
+          <h1 className="mt-10 max-w-md text-[2.5rem] font-display font-semibold leading-[1.12] tracking-[-0.03em]">
             The control surface for <span className="text-gradient">B2B foodservice</span> procurement.
           </h1>
-          <p className="text-sm text-muted-foreground mt-4">
+          <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
             Manage restaurants and suppliers across anonymous RFQ and quotation workflows
             with enterprise-grade admin tools.
           </p>
 
-          <div className="mt-8 grid grid-cols-2 gap-3">
+          <div className="mt-10 grid max-w-md grid-cols-2 gap-3">
             {[
               {
                 v: restaurantCount > 0 ? restaurantCount.toLocaleString() : "—",
@@ -102,37 +99,41 @@ function LoginPage() {
                 l: "Suppliers",
               },
             ].map((s) => (
-              <div key={s.l} className="rounded-xl border border-border bg-card/90 p-3 shadow-soft">
-                <div className="font-display text-xl font-semibold tabular-nums">{s.v}</div>
-                <div className="label-caps mt-1">{s.l}</div>
+              <div key={s.l} className="rounded-2xl border border-black/5 bg-white px-4 py-4 dark:border-border dark:bg-card">
+                <div className="font-display text-[1.65rem] font-semibold leading-none tabular-nums">{s.v}</div>
+                <div className="label-caps mt-2">{s.l}</div>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="relative flex items-center justify-center p-6 lg:p-12">
+      <div className="relative flex items-center justify-center px-6 py-16">
         <Button
           type="button"
           variant="ghost"
           size="icon"
           onClick={toggle}
           aria-label="Toggle theme"
-          className="absolute top-4 right-4"
+          className="absolute top-5 right-5 rounded-full"
         >
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
-        <div className="w-full max-w-sm">
-          <div className="lg:hidden flex items-center gap-2.5 mb-8">
-            <BrandLogo className="h-12 max-w-[200px]" />
+
+        <div className="w-full max-w-[420px] rounded-3xl border border-black/5 bg-card px-8 py-9 shadow-elevated dark:border-border">
+          <div className="mb-8 lg:hidden">
+            <BrandLogo className="h-11 max-w-[190px]" />
           </div>
 
-          <h2 className="text-2xl font-display font-semibold tracking-tight">Sign in to your workspace</h2>
-          <p className="text-sm text-muted-foreground mt-1.5">
+          <p className="text-xs font-semibold text-primary">ScopsK Admin</p>
+          <h2 className="mt-2 text-[1.65rem] font-display font-semibold tracking-[-0.03em]">
+            Sign in to your workspace
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Use your admin credentials to access the ScopsK command center.
           </p>
 
-          <form onSubmit={onSubmit} className="mt-5 space-y-4">
+          <form onSubmit={onSubmit} className="mt-7 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Work email</Label>
               <Input
@@ -141,23 +142,37 @@ function LoginPage() {
                 placeholder="sarah@primeplate.io"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="login-field h-11 bg-white"
+                autoComplete="email"
                 required
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="login-field h-11 bg-white pr-11"
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((open) => !open)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute top-1/2 right-2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5 pt-1">
               <Checkbox id="remember" defaultChecked />
-              <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground">
+              <Label htmlFor="remember" className="cursor-pointer font-normal leading-none text-muted-foreground">
                 Remember me on this device
               </Label>
             </div>
@@ -166,7 +181,7 @@ function LoginPage() {
               <p className="text-sm text-destructive" role="alert">{error}</p>
             )}
 
-            <Button type="submit" className="w-full h-10" disabled={loading}>
+            <Button type="submit" className="mt-2 h-11 w-full rounded-xl text-sm font-semibold" disabled={loading}>
               {loading ? "Signing you in…" : "Sign in"}
             </Button>
           </form>

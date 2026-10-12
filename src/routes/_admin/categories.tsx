@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { DataPage, StatusBadge, FieldLabel } from "@/components/admin/DataPage";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
+import { DataPage, StatusBadge, FieldLabel, formatStatusLabel } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { FolderTree, Plus } from "lucide-react";
-import { fetchCategoryDetail, fetchList } from "@/lib/api/resources";
+import { cn } from "@/lib/utils";
+import { fetchCategoryDetail } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
 import { Button } from "@/components/ui/button";
@@ -97,17 +99,12 @@ function CategoriesPage() {
   const [subStatus, setSubStatus] = useState("active");
   const [subSaving, setSubSaving] = useState(false);
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["catalog", "categories"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const list = await fetchList("/catalog/categories");
-      const byId = new Map(list.map((r: any) => [str(r.id), r]));
-      return list
+    path: "/catalog/categories",
+    prepare: (raw) => {
+      const byId = new Map(raw.map((r: any) => [str(r.id), r]));
+      return raw
         .map((r) => mapCategoryRow(r, byId))
         .sort((a, b) => {
           const ap = a.parent === "—" ? a.name : `${a.parent} / ${a.name}`;
@@ -116,6 +113,9 @@ function CategoriesPage() {
         });
     },
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const parentOptions: SelectOption[] = useMemo(
     () =>
@@ -131,6 +131,14 @@ function CategoriesPage() {
 
   const top = rows.filter((r) => !r.parentId || r.parent === "—" || !r.parent).length;
   const nested = rows.filter((r) => r.depth > 0).length;
+  const childCount = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+      if (!row.parentId) continue;
+      counts.set(row.parentId, (counts.get(row.parentId) ?? 0) + 1);
+    }
+    return counts;
+  }, [rows]);
 
   const invalidate = async () => {
     await qc.invalidateQueries({ queryKey: ["catalog", "categories"] });
@@ -234,42 +242,74 @@ function CategoriesPage() {
           },
         ]}
         rows={rows}
+        serverPagination={pagedListProps(list)}
         searchKeys={["name", "parent", "id"]}
         emptyHint={
           isLoading ? "Loading…" : isError ? "Failed to load categories." : "No categories found."
         }
+        rowClassName={(r) => (r.depth > 0 ? "bg-muted/35" : undefined)}
         columns={[
-          {
-            key: "imageUrl",
-            label: "Image",
-            className: "whitespace-nowrap w-[1%]",
-            render: (r) => (
-              <span className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-border bg-muted/50 flex items-center justify-center">
-                {r.imageUrl ? (
-                  <img src={r.imageUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-[9px] text-muted-foreground">—</span>
-                )}
-              </span>
-            ),
-          },
           {
             key: "name",
             label: "Category",
-            render: (r) => (
-              <span
-                className="font-medium"
-                style={{ paddingLeft: `${Math.min(r.depth, 4) * 12}px` }}
-              >
-                {r.depth > 0 ? "↳ " : ""}
-                {r.name}
-              </span>
-            ),
+            render: (r) => {
+              const nested = r.depth > 0;
+              const children = childCount.get(r.id) ?? 0;
+              return (
+                <div
+                  className="flex min-w-[240px] items-center gap-3"
+                  style={{ paddingLeft: `${Math.min(r.depth, 3) * 28}px` }}
+                >
+                  {nested ? (
+                    <span aria-hidden className="relative h-10 w-4 shrink-0">
+                      <span className="absolute bottom-1/2 left-0 top-0 w-px bg-border" />
+                      <span className="absolute left-0 top-1/2 h-px w-3 bg-border" />
+                    </span>
+                  ) : null}
+                  <span
+                    className={cn(
+                      "flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/50",
+                      nested ? "h-8 w-8" : "h-10 w-10",
+                    )}
+                  >
+                    {r.imageUrl ? (
+                      <img src={r.imageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <FolderTree className={cn("text-muted-foreground", nested ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2">
+                      <span className={cn("truncate", nested ? "font-medium" : "font-semibold")}>{r.name}</span>
+                      {nested ? (
+                        <span className="shrink-0 rounded-md bg-background px-1.5 py-0.5 text-[11px] font-medium leading-4 text-muted-foreground">
+                          Subcategory
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                      {nested
+                        ? `Under ${r.parent}`
+                        : children === 1
+                          ? "1 subcategory"
+                          : children > 1
+                            ? `${children} subcategories`
+                            : "Top level"}
+                    </span>
+                  </span>
+                </div>
+              );
+            },
           },
           {
             key: "parent",
             label: "Parent",
-            render: (r) => (r.parent && r.parent !== "—" ? r.parent : "—"),
+            render: (r) =>
+              r.parent && r.parent !== "—" ? (
+                <span className="font-medium">{r.parent}</span>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              ),
           },
           { key: "products", label: "Products" },
           { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
@@ -280,16 +320,18 @@ function CategoriesPage() {
             render: (r) => (
               <Button
                 size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-xs"
-                onClick={() => {
+                variant="outline"
+                className="h-8 px-2.5 text-[13px] font-medium"
+                title={`Add a subcategory under ${r.name}`}
+                onClick={(event) => {
+                  event.stopPropagation();
                   setSubParent(r);
                   setSubName("");
                   setSubStatus("active");
                 }}
               >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Sub
+                <Plus className="h-3.5 w-3.5" />
+                Add sub
               </Button>
             ),
           },
@@ -297,7 +339,7 @@ function CategoriesPage() {
         onCreate={async (data) => {
           const payload = toCategoryPayload(data);
           if (!payload.name) throw new Error("Category name is required");
-          const created = await api.post<any>("/catalog/categories", payload);
+          const created = await api.post<any>("/catalog/categories", payload, { toastOnSuccess: true });
           await invalidate();
           return mapCategoryRow(created);
         }}
@@ -330,16 +372,20 @@ function CategoriesPage() {
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div>
-              <FieldLabel required>Name</FieldLabel>
+              <FieldLabel required className="text-sm font-medium text-foreground/90">
+                Name
+              </FieldLabel>
               <Input
                 className="mt-1"
                 value={subName}
                 onChange={(e) => setSubName(e.target.value)}
-                placeholder="e.g. Bread"
+                placeholder="e.g. Chicken"
               />
             </div>
             <div>
-              <FieldLabel required>Status</FieldLabel>
+              <FieldLabel required className="text-sm font-medium text-foreground/90">
+                Status
+              </FieldLabel>
               <Select value={subStatus} onValueChange={setSubStatus}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
@@ -347,7 +393,7 @@ function CategoriesPage() {
                 <SelectContent>
                   {["active", "inactive", "draft", "archived"].map((s) => (
                     <SelectItem key={s} value={s}>
-                      {s}
+                      {formatStatusLabel(s)}
                     </SelectItem>
                   ))}
                 </SelectContent>

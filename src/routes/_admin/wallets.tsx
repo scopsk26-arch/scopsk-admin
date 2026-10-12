@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AED, StatusBadge, FieldLabel } from "@/components/admin/DataPage";
 import { SearchableSelect } from "@/components/admin/SearchableSelect";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
+import { usePagedList } from "@/hooks/usePagedList";
 import {
   EMPTY_LIST,
   acceptWalletCreditRequest,
@@ -77,11 +78,54 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone?: "suc
   );
 }
 
+function PageBar({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
+}) {
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+  return (
+    <div className="px-4 py-3 border-t border-border flex items-center justify-between gap-3 text-xs text-muted-foreground">
+      <span>
+        Showing {from}–{to} of {total}
+      </span>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          Previous
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8"
+          disabled={to >= total}
+          onClick={() => onPageChange(page + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" }) {
   const qc = useQueryClient();
   const { restaurants } = useAdminLookups(["restaurants"]);
   const [orgId, setOrgId] = useState("");
-  const [walletQuery, setWalletQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [action, setAction] = useState<"credit" | "debit">("credit");
   const [amount, setAmount] = useState("");
@@ -93,34 +137,36 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
     [restaurants],
   );
 
-  const {
-    data: wallets = EMPTY_LIST as AdminWalletRow[],
-    isLoading: walletsLoading,
-    isError: walletsError,
-  } = useQuery({
-    queryKey: ["admin", "wallets", orgTypeFilter],
-    queryFn: () =>
+  const walletsList = usePagedList<AdminWalletRow>({
+    queryKey: ["admin", "wallets", orgTypeFilter, statusFilter],
+    path: "/admin/wallets",
+    query: {
+      type: orgTypeFilter === "all" ? "all" : "restaurant",
+      walletStatus: statusFilter === "all" ? undefined : statusFilter,
+    },
+    load: ({ page, pageSize, search }) =>
       fetchAdminWallets({
         type: orgTypeFilter === "all" ? "all" : "restaurant",
+        walletStatus: statusFilter === "all" ? undefined : statusFilter,
+        search: search || undefined,
+        page,
+        limit: pageSize,
       }),
   });
+  const wallets = walletsList.rows;
+  const walletsLoading = walletsList.isLoading;
+  const walletsError = walletsList.isError;
 
   const filteredWallets = useMemo(() => {
-    const needle = walletQuery.trim().toLowerCase();
-    return (wallets as AdminWalletRow[]).filter((w) => {
-      if (statusFilter !== "all" && w.status !== statusFilter) return false;
-      if (!needle) return true;
-      return [w.organization, w.publicCode, w.referralCode, w.orgType, w.status].some((v) =>
-        String(v).toLowerCase().includes(needle),
-      );
-    });
-  }, [wallets, walletQuery, statusFilter]);
+    if (statusFilter === "all") return wallets;
+    return wallets.filter((w) => w.status === statusFilter);
+  }, [wallets, statusFilter]);
 
   const totals = useMemo(() => {
     let available = 0;
     let pending = 0;
     let frozen = 0;
-    for (const w of wallets as AdminWalletRow[]) {
+    for (const w of wallets) {
       available += num(w.availableBalance);
       pending += num(w.pendingBalance ?? w.heldBalance);
       if (w.status !== "active") frozen += 1;
@@ -182,14 +228,14 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
   });
 
   const clearFilters = () => {
-    setWalletQuery("");
+    walletsList.setSearch("");
     setStatusFilter("all");
   };
 
   return (
     <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi label="Wallets" value={String(wallets.length)} />
+        <Kpi label="Wallets" value={String(walletsList.total)} />
         <Kpi label="Total available" value={AED(totals.available)} tone="success" />
         <Kpi label="Total pending" value={AED(totals.pending)} tone="success" />
         <Kpi label="Not active" value={String(totals.frozen)} tone="warning" />
@@ -200,8 +246,8 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              value={walletQuery}
-              onChange={(e) => setWalletQuery(e.target.value)}
+              value={walletsList.search}
+              onChange={(e) => walletsList.setSearch(e.target.value)}
               placeholder="Search restaurant, code…"
               className="pl-9 h-9 bg-card"
             />
@@ -217,7 +263,7 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
-          {(walletQuery || statusFilter !== "all") && (
+          {(walletsList.search || statusFilter !== "all") && (
             <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" onClick={clearFilters}>
               <FilterX className="h-3.5 w-3.5" />
               Clear filters
@@ -230,7 +276,7 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 {["Organization", "Type", "Code", "Available", "Pending", "Currency", "Status", "Updated"].map((h) => (
-                  <th key={h} className="px-4 py-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap">
+                  <th key={h} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                     {h}
                   </th>
                 ))}
@@ -246,7 +292,7 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
                         ? "Loading wallets…"
                         : walletsError
                           ? "Failed to load wallets."
-                          : walletQuery || statusFilter !== "all"
+                          : walletsList.search || statusFilter !== "all"
                             ? "No wallets match your filters."
                             : "Wallets appear once an organization transacts on ScopsK."}
                     </div>
@@ -277,9 +323,12 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
           </table>
         </div>
 
-        <div className="px-4 py-3 border-t border-border text-xs text-muted-foreground">
-          Showing {filteredWallets.length} of {wallets.length} wallets · select a row to view its ledger
-        </div>
+        <PageBar
+          page={walletsList.page}
+          pageSize={walletsList.pageSize}
+          total={walletsList.total}
+          onPageChange={walletsList.setPage}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -405,7 +454,7 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 {["Date", "Type", "Amount", "Balance before", "Balance after", "Order", "Reference", "Description", "Status"].map((h) => (
-                  <th key={h} className="px-4 py-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap">
+                  <th key={h} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                     {h}
                   </th>
                 ))}
@@ -467,25 +516,20 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
 
 function CreditRequestsPanel() {
   const qc = useQueryClient();
-  const [search, setSearch] = useState("");
   const [status, setStatus] = useState("open");
-  const q = useQuery({
+  const list = usePagedList<WalletCreditRequestRow>({
     queryKey: ["admin", "wallet-credit-requests", status],
-    queryFn: () =>
+    path: "/admin/wallets/credit-requests",
+    query: status === "all" ? undefined : { status },
+    load: ({ page, pageSize, search }) =>
       fetchAdminWalletCreditRequests({
         status: status === "all" ? undefined : status,
+        search: search || undefined,
+        page,
+        limit: pageSize,
       }),
   });
-  const rows = useMemo(() => {
-    const list = (q.data ?? EMPTY_LIST) as WalletCreditRequestRow[];
-    const needle = search.trim().toLowerCase();
-    if (!needle) return list;
-    return list.filter((r) =>
-      [r.organization, r.publicCode, r.number, r.subject, r.requester].some((v) =>
-        String(v).toLowerCase().includes(needle),
-      ),
-    );
-  }, [q.data, search]);
+  const rows = list.rows;
 
   const acceptM = useMutation({
     mutationFn: (ticketId: string) => acceptWalletCreditRequest(ticketId),
@@ -522,8 +566,8 @@ function CreditRequestsPanel() {
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={list.search}
+              onChange={(e) => list.setSearch(e.target.value)}
               placeholder="Search ticket, restaurant…"
               className="pl-9 h-9 bg-card"
             />
@@ -546,7 +590,7 @@ function CreditRequestsPanel() {
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 {["Ticket", "Organization", "Amount", "Subject", "Requester", "Status", "Created", "Actions"].map((h) => (
-                  <th key={h} className="px-4 py-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap">
+                  <th key={h} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                     {h}
                   </th>
                 ))}
@@ -556,7 +600,7 @@ function CreditRequestsPanel() {
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-14 text-center text-sm text-muted-foreground">
-                    {q.isLoading ? "Loading…" : q.isError ? "Failed to load credit requests." : "No credit requests."}
+                    {list.isLoading ? "Loading…" : list.isError ? "Failed to load credit requests." : "No credit requests."}
                   </td>
                 </tr>
               ) : (
@@ -605,6 +649,12 @@ function CreditRequestsPanel() {
             </tbody>
           </table>
         </div>
+        <PageBar
+          page={list.page}
+          pageSize={list.pageSize}
+          total={list.total}
+          onPageChange={list.setPage}
+        />
       </div>
     </div>
   );
@@ -612,25 +662,20 @@ function CreditRequestsPanel() {
 
 function WithdrawalsPanel() {
   const qc = useQueryClient();
-  const [search, setSearch] = useState("");
   const [requestStatus, setRequestStatus] = useState("pending");
-  const q = useQuery({
+  const list = usePagedList<WalletWithdrawalRow>({
     queryKey: ["admin", "wallet-withdrawals", requestStatus],
-    queryFn: () =>
+    path: "/admin/wallets/withdrawals",
+    query: requestStatus === "all" ? undefined : { requestStatus },
+    load: ({ page, pageSize, search }) =>
       fetchAdminWalletWithdrawals({
         requestStatus: requestStatus === "all" ? undefined : requestStatus,
+        search: search || undefined,
+        page,
+        limit: pageSize,
       }),
   });
-  const rows = useMemo(() => {
-    const list = (q.data ?? EMPTY_LIST) as WalletWithdrawalRow[];
-    const needle = search.trim().toLowerCase();
-    if (!needle) return list;
-    return list.filter((r) =>
-      [r.organization, r.publicCode, r.description, r.actor, r.bankName, r.bankAccountName].some((v) =>
-        String(v).toLowerCase().includes(needle),
-      ),
-    );
-  }, [q.data, search]);
+  const rows = list.rows;
 
   const pendingTotal = useMemo(
     () =>
@@ -668,7 +713,7 @@ function WithdrawalsPanel() {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Kpi label="Requests" value={String(rows.length)} />
+        <Kpi label="Requests" value={String(list.total)} />
         <Kpi label="Pending amount" value={AED(pendingTotal)} tone="warning" />
       </div>
       <p className="text-sm text-muted-foreground">
@@ -679,8 +724,8 @@ function WithdrawalsPanel() {
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={list.search}
+              onChange={(e) => list.setSearch(e.target.value)}
               placeholder="Search organization, bank…"
               className="pl-9 h-9 bg-card"
             />
@@ -702,7 +747,7 @@ function WithdrawalsPanel() {
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 {["Organization", "Amount", "Bank", "Account", "Requester", "Status", "Date", "Actions"].map((h) => (
-                  <th key={h} className="px-4 py-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap">
+                  <th key={h} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                     {h}
                   </th>
                 ))}
@@ -712,7 +757,7 @@ function WithdrawalsPanel() {
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-14 text-center text-sm text-muted-foreground">
-                    {q.isLoading ? "Loading…" : q.isError ? "Failed to load withdrawals." : "No withdraw requests."}
+                    {list.isLoading ? "Loading…" : list.isError ? "Failed to load withdrawals." : "No withdraw requests."}
                   </td>
                 </tr>
               ) : (
@@ -765,6 +810,12 @@ function WithdrawalsPanel() {
             </tbody>
           </table>
         </div>
+        <PageBar
+          page={list.page}
+          pageSize={list.pageSize}
+          total={list.total}
+          onPageChange={list.setPage}
+        />
       </div>
     </div>
   );
@@ -843,25 +894,25 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as WalletInnerTab)} className="space-y-6">
-        <TabsList className="h-auto flex-wrap justify-start gap-1 p-1">
-          <TabsTrigger value="balances" className="gap-1.5">
-            <List className="h-3.5 w-3.5" />
+        <TabsList>
+          <TabsTrigger value="balances">
+            <List />
             Balances
           </TabsTrigger>
-          <TabsTrigger value="credit-requests" className="gap-1.5">
-            <FileText className="h-3.5 w-3.5" />
+          <TabsTrigger value="credit-requests">
+            <FileText />
             Credit requests
           </TabsTrigger>
-          <TabsTrigger value="withdrawals" className="gap-1.5">
-            <Landmark className="h-3.5 w-3.5" />
+          <TabsTrigger value="withdrawals">
+            <Landmark />
             Withdrawals
           </TabsTrigger>
-          <TabsTrigger value="refunds" className="gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
+          <TabsTrigger value="refunds">
+            <RefreshCw />
             Refunds
           </TabsTrigger>
-          <TabsTrigger value="platform" className="gap-1.5">
-            <Landmark className="h-3.5 w-3.5" />
+          <TabsTrigger value="platform">
+            <Landmark />
             Platform wallet
           </TabsTrigger>
         </TabsList>

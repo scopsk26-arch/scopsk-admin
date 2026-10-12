@@ -10,12 +10,12 @@ import {
 
 export type Theme = "dark" | "light";
 
-const STORAGE_KEY = "ppp-theme";
+const STORAGE_KEY = "scopsk-admin-theme";
 
 function readStoredTheme(): Theme {
-  if (typeof window === "undefined") return "light";
+  if (typeof window === "undefined") return "dark";
   const stored = localStorage.getItem(STORAGE_KEY);
-  return stored === "dark" || stored === "light" ? stored : "light";
+  return stored === "dark" || stored === "light" ? stored : "dark";
 }
 
 function applyThemeClass(theme: Theme) {
@@ -24,7 +24,7 @@ function applyThemeClass(theme: Theme) {
 }
 
 const ThemeCtx = createContext<{ theme: Theme; toggle: () => void; setTheme: (t: Theme) => void }>({
-  theme: "light",
+  theme: "dark",
   toggle: () => {},
   setTheme: () => {},
 });

@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { Gift } from "lucide-react";
-import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
+import { DataPage, StatusBadge, AED, formatStatusLabel } from "@/components/admin/DataPage";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { EMPTY_LIST, fetchAdminRewards } from "@/lib/api/resources";
+import { fetchAdminRewards } from "@/lib/api/resources";
 import { num } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/rewards")({
@@ -21,14 +21,27 @@ function RewardsPage() {
   const [status, setStatus] = useState("all");
   const [type, setType] = useState("all");
 
-  const { data: rows = EMPTY_LIST, isLoading, isError } = useQuery({
+  const list = usePagedList({
     queryKey: ["admin", "rewards", status, type],
-    queryFn: () =>
+    path: "/admin/rewards",
+    query: {
+      status: status === "all" ? undefined : status,
+      type: type === "all" ? undefined : type,
+    },
+    load: ({ page, pageSize, search, sort }) =>
       fetchAdminRewards({
         status: status === "all" ? undefined : status,
         type: type === "all" ? undefined : type,
+        search: search || undefined,
+        page,
+        limit: pageSize,
+        sortBy: "createdAt",
+        sortOrder: sort === "oldest" ? "ASC" : "DESC",
       }),
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const totals = useMemo(() => {
     const sum = (s: string) =>
@@ -47,9 +60,10 @@ function RewardsPage() {
         { label: "Credited", value: AED(totals.credited), tone: "success" },
         { label: "Pending", value: AED(totals.pending), tone: "warning" },
         { label: "Expired", value: AED(totals.expired), tone: "destructive" },
-        { label: "Records", value: String(rows.length) },
+        { label: "Records", value: String(list.total) },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       idKey="id"
       searchKeys={["organization", "orgCode", "type", "source", "reference", "description", "status"]}
       emptyHint={
@@ -70,7 +84,7 @@ function RewardsPage() {
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
               {STATUSES.map((s) => (
-                <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                <SelectItem key={s} value={s}>{formatStatusLabel(s)}</SelectItem>
               ))}
             </SelectContent>
           </Select>

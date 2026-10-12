@@ -5,8 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * ScopsK Admin theme — aligned with res-py-mobile-app theme tokens.
- * Brand orange #FF7A00 + forest #2F5D3A, cream light / deep dark surfaces.
+ * ScopsK Admin theme — same palette as scopsk-app.
+ * Terracotta #ff5722, ink #0a0a0a, wash #FFF6F3.
+ * Type follows Instagram's web stack: the system face (SF Pro on Apple).
  */
 
 @theme inline {
@@ -58,130 +59,130 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 :root {
   --radius: 0.75rem;
 
-  /* Mobile lightColors */
-  --brand: #FF7A00;
-  --sage: #87a878;
-  --clay: #e8a87c;
-  --cream: #f5f0e8;
-  --forest: #2F5D3A;
+  /* scopsk-app colors.ts */
+  --brand: #ff5722;
+  --sage: #696861;
+  --clay: #ff9675;
+  --cream: #fff2ed;
+  --forest: #0a0a0a;
 
-  --background: #f9f5ef;
-  --foreground: #3d3229;
+  --background: #fff6f3;
+  --foreground: #0a0a0a;
   --card: #ffffff;
-  --card-foreground: #3d3229;
+  --card-foreground: #0a0a0a;
   --popover: #ffffff;
-  --popover-foreground: #3d3229;
-  --primary: #FF7A00;
+  --popover-foreground: #0a0a0a;
+  --primary: #ff5722;
   --primary-foreground: #ffffff;
-  --secondary: #ebe4d8;
-  --secondary-foreground: #3d3229;
-  --muted: #ebe4d8;
-  --muted-foreground: #7a6f63;
-  --accent: #e8dfd0;
-  --accent-foreground: #3d3229;
-  --destructive: #c44a3a;
+  --secondary: #f7f7f5;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f7f7f5;
+  --muted-foreground: #696861;
+  --accent: #fff3ee;
+  --accent-foreground: #79260f;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --success: #87a878;
+  --success: #16a34a;
   --success-foreground: #ffffff;
-  --warning: #d4a84b;
-  --warning-foreground: #3d3229;
-  --info: #2F5D3A;
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --info: #383835;
   --info-foreground: #ffffff;
-  --border: #ddd4c5;
-  --input: #ddd4c5;
-  --ring: #FF7A00;
-  --chart-1: #FF7A00;
-  --chart-2: #87a878;
-  --chart-3: #2F5D3A;
-  --chart-4: #e8a87c;
-  --chart-5: #d4a84b;
-  --sidebar: #f5f0e8;
-  --sidebar-foreground: #3d3229;
-  --sidebar-primary: #FF7A00;
+  --border: #e9e8e3;
+  --input: #d2d0c8;
+  --ring: #ff5722;
+  --chart-1: #ff5722;
+  --chart-2: #ff7043;
+  --chart-3: #0a0a0a;
+  --chart-4: #ffeb3b;
+  --chart-5: #16a34a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #ff5722;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ebe4d8;
-  --sidebar-accent-foreground: #3d3229;
-  --sidebar-border: #ddd4c5;
-  --sidebar-ring: #FF7A00;
+  --sidebar-accent: #fff3ee;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #e9e8e3;
+  --sidebar-ring: #ff5722;
 
   --glass-bg: color-mix(in srgb, var(--card) 88%, transparent);
   --glass-border: color-mix(in srgb, var(--border) 85%, transparent);
-  --gradient-primary: linear-gradient(135deg, #FF7A00, #e56e00);
-  --gradient-accent: linear-gradient(135deg, #FF7A00, #2F5D3A);
+  --gradient-primary: linear-gradient(135deg, #ff5722, #e7440f);
+  --gradient-accent: linear-gradient(180deg, #fff2ed, #ffffff);
   --gradient-mesh:
-    radial-gradient(at 16% 10%, color-mix(in srgb, #FF7A00 10%, transparent) 0, transparent 46%),
-    radial-gradient(at 84% 16%, color-mix(in srgb, #2F5D3A 8%, transparent) 0, transparent 50%),
-    radial-gradient(at 50% 90%, color-mix(in srgb, #e8a87c 8%, transparent) 0, transparent 48%);
-  /* Mobile hairline elevation philosophy */
-  --shadow-soft: 0 1px 2px 0 rgb(61 50 41 / 0.06);
-  --shadow-elevated: 0 8px 20px -10px rgb(61 50 41 / 0.12), 0 2px 6px -2px rgb(61 50 41 / 0.06);
-  --shadow-glow: 0 8px 20px -8px rgb(255 122 0 / 0.32);
+    radial-gradient(at 16% 10%, color-mix(in srgb, #ff5722 14%, transparent) 0, transparent 46%),
+    radial-gradient(at 84% 16%, color-mix(in srgb, #fff2ed 80%, transparent) 0, transparent 52%),
+    radial-gradient(at 50% 90%, color-mix(in srgb, #ffc0aa 18%, transparent) 0, transparent 48%);
+  --shadow-soft: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-elevated: 0 6px 16px -8px rgb(10 10 10 / 0.12), 0 1px 3px rgb(0 0 0 / 0.04);
+  --shadow-glow: 0 8px 20px -8px rgb(255 87 34 / 0.32);
 }
 
 .dark {
-  /* Mobile darkColors */
-  --brand: #FF8C2A;
-  --sage: #87a878;
-  --clay: #e8a87c;
-  --cream: #f5f0e8;
-  --forest: #6b8f5e;
+  --brand: #ff7043;
+  --sage: #aaa8a0;
+  --clay: #ff9675;
+  --cream: #fff2ed;
+  --forest: #f7f7f5;
 
-  --background: #1a1614;
-  --foreground: #f9f5ef;
-  --card: #2a2420;
-  --card-foreground: #f9f5ef;
-  --popover: #2a2420;
-  --popover-foreground: #f9f5ef;
-  --primary: #FF8C2A;
+  --background: #0a0a0a;
+  --foreground: #f7f7f5;
+  --card: #232322;
+  --card-foreground: #f7f7f5;
+  --popover: #232322;
+  --popover-foreground: #f7f7f5;
+  --primary: #ff5722;
   --primary-foreground: #ffffff;
-  --secondary: #3a322c;
-  --secondary-foreground: #f9f5ef;
-  --muted: #3a322c;
-  --muted-foreground: #a89e92;
-  --accent: #453c34;
-  --accent-foreground: #f9f5ef;
-  --destructive: #e06b5c;
+  --secondary: #232322;
+  --secondary-foreground: #f7f7f5;
+  --muted: #232322;
+  --muted-foreground: #aaa8a0;
+  --accent: #383835;
+  --accent-foreground: #fff3ee;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --success: #87a878;
-  --success-foreground: #1a1614;
-  --warning: #d4a84b;
-  --warning-foreground: #1a1614;
-  --info: #6b8f5e;
-  --info-foreground: #1a1614;
+  --success: #22c55e;
+  --success-foreground: #0a0a0a;
+  --warning: #fef3c7;
+  --warning-foreground: #0a0a0a;
+  --info: #e9e8e3;
+  --info-foreground: #0a0a0a;
   --border: rgba(255, 255, 255, 0.1);
   --input: rgba(255, 255, 255, 0.12);
-  --ring: #FF8C2A;
-  --chart-1: #FF8C2A;
-  --chart-2: #87a878;
-  --chart-3: #6b8f5e;
-  --chart-4: #e8a87c;
-  --chart-5: #d4a84b;
-  --sidebar: #221e1b;
-  --sidebar-foreground: #f9f5ef;
-  --sidebar-primary: #FF8C2A;
+  --ring: #ff5722;
+  --chart-1: #ff5722;
+  --chart-2: #ff7043;
+  --chart-3: #f7f7f5;
+  --chart-4: #ffeb3b;
+  --chart-5: #22c55e;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #f7f7f5;
+  --sidebar-primary: #ff5722;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #3a322c;
-  --sidebar-accent-foreground: #f9f5ef;
+  --sidebar-accent: #232322;
+  --sidebar-accent-foreground: #f7f7f5;
   --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #FF8C2A;
+  --sidebar-ring: #ff5722;
 
   --glass-bg: color-mix(in srgb, var(--card) 82%, transparent);
   --glass-border: color-mix(in srgb, var(--border) 70%, transparent);
+  --gradient-primary: linear-gradient(135deg, #ff5722, #e7440f);
+  --gradient-accent: linear-gradient(180deg, #232322, #0a0a0a);
   --gradient-mesh:
-    radial-gradient(at 16% 10%, color-mix(in srgb, #FF8C2A 14%, transparent) 0, transparent 46%),
-    radial-gradient(at 84% 16%, color-mix(in srgb, #6b8f5e 10%, transparent) 0, transparent 50%),
-    radial-gradient(at 50% 90%, color-mix(in srgb, #e8a87c 8%, transparent) 0, transparent 48%);
+    radial-gradient(at 16% 10%, color-mix(in srgb, #ff5722 18%, transparent) 0, transparent 46%),
+    radial-gradient(at 84% 16%, color-mix(in srgb, #ff7043 8%, transparent) 0, transparent 50%),
+    radial-gradient(at 50% 90%, color-mix(in srgb, #ffc0aa 8%, transparent) 0, transparent 48%);
   --shadow-soft: 0 1px 2px 0 rgb(0 0 0 / 0.35);
   --shadow-elevated: 0 10px 24px -12px rgb(0 0 0 / 0.45);
-  --shadow-glow: 0 8px 24px -8px rgb(255 140 42 / 0.35);
+  --shadow-glow: 0 8px 24px -8px rgb(255 87 34 / 0.35);
 }
 
 @layer base {
@@ -192,12 +193,24 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv11";
+    font-weight: 400;
+    line-height: 1.35;
+    letter-spacing: -0.011em;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    font-size: 14px;
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);
+    font-weight: 600;
     letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  button, input, textarea, select {
+    font-family: inherit;
+    letter-spacing: -0.011em;
   }
   :focus-visible {
     outline: 2px solid var(--ring);
@@ -228,7 +241,7 @@
     background: var(--gradient-accent);
   }
   .text-gradient {
-    background: linear-gradient(135deg, #FF7A00, #2F5D3A);
+    background: linear-gradient(135deg, #ff5722, #bd3308);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -238,38 +251,40 @@
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .grid-bg {
     background-image:
-      linear-gradient(to right, color-mix(in srgb, var(--foreground) 3.5%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 3.5%, transparent) 1px, transparent 1px);
+      linear-gradient(to right, rgb(10 10 10 / 0.06) 0.5px, transparent 0.5px),
+      linear-gradient(to bottom, rgb(10 10 10 / 0.06) 0.5px, transparent 0.5px);
     background-size: 32px 32px;
+  }
+  .login-field:-webkit-autofill,
+  .login-field:-webkit-autofill:hover,
+  .login-field:-webkit-autofill:focus {
+    -webkit-text-fill-color: #0a0a0a;
+    caret-color: #0a0a0a;
+    box-shadow: 0 0 0 1000px #ffffff inset;
+    transition: background-color 9999s ease-out;
+  }
+  .dark .login-field:-webkit-autofill,
+  .dark .login-field:-webkit-autofill:hover,
+  .dark .login-field:-webkit-autofill:focus {
+    -webkit-text-fill-color: #f7f7f5;
+    caret-color: #f7f7f5;
+    box-shadow: 0 0 0 1000px #232322 inset;
   }
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
-  /* Mobile smallcaps label pattern */
+  /* Section and metric labels: 12px semibold, sentence case. */
   .label-caps {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    text-transform: none;
     color: var(--muted-foreground);
   }
 }
 
-@font-face {
-  font-family: "DM Sans";
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url("https://fonts.gstatic.com/s/dmsans/v15/rP2tp2ywxg089UriI5-g4vlH9VoD8Cmcqbu6-K6z9mXgjU0.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Space Grotesk";
-  font-style: normal;
-  font-weight: 300 700;
-  font-display: swap;
-  src: url("https://fonts.gstatic.com/s/spacegrotesk/v16/V8mDoQDjQSkFtoMM3T6r8E7mF71Q-gOoraIAEj62.woff2") format("woff2");
-}
 @font-face {
   font-family: "JetBrains Mono";
   font-style: normal;

@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { Megaphone } from "lucide-react";
-import { fetchList } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/marketing")({
@@ -30,17 +30,14 @@ function mapCampaign(r: any) {
 
 function MarketingPage() {
   const queryClient = useQueryClient();
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["marketing"],
-    queryFn: async () => {
-      const list = await fetchList("/marketing");
-      return list.map(mapCampaign);
-    },
+    path: "/marketing",
+    map: mapCampaign,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const active = rows.filter((r) => r.status === "active").length;
 
@@ -89,6 +86,7 @@ function MarketingPage() {
         },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["id", "name", "channel", "audience"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load campaigns." : "No campaigns found."
@@ -119,7 +117,7 @@ function MarketingPage() {
           name: data.name,
           channel: data.channel,
           status: data.status || "draft",
-        });
+        }, { toastOnSuccess: true });
         await queryClient.invalidateQueries({ queryKey: ["marketing"] });
         return mapCampaign(created);
       }}

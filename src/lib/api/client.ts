@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import {
   clearSession,
   getAccessToken,
@@ -26,7 +27,7 @@ export class ApiError extends Error {
 }
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "")
-  || "https://api.scopsk.ae/api/v1";
+  || "https://scopsk-apis-c2f3bfd4da40.herokuapp.com/api/v1";
 
 type RequestOptions = {
   method?: string;
@@ -38,7 +39,26 @@ type RequestOptions = {
   _retried?: boolean;
   /** Abort after this many ms (default 25s — Heroku router limit is 30s). */
   timeoutMs?: number;
+  /** Show the API success message for this POST. */
+  toastOnSuccess?: boolean;
 };
+
+let mutationToastShown = false;
+
+/** True once per POST that already displayed its success message. */
+export function takeMutationToast() {
+  const shown = mutationToastShown;
+  mutationToastShown = false;
+  return shown;
+}
+
+function toastPostSuccess(payload: unknown, enabled?: boolean) {
+  if (!enabled || !payload || typeof payload !== "object" || !("message" in payload)) return;
+  const message = String((payload as { message?: string }).message || "").trim();
+  if (!message || message.toUpperCase() === "OK") return;
+  toast.success(message);
+  mutationToastShown = true;
+}
 
 function buildUrl(path: string, query?: RequestOptions["query"]) {
   const url = new URL(path.startsWith("http") ? path : `${BASE_URL}${path.startsWith("/") ? path : `/${path}`}`);
@@ -112,7 +132,7 @@ async function tryRefresh(): Promise<boolean> {
 }
 
 export async function apiRequest<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = "GET", body, headers = {}, auth = true, query, _retried, timeoutMs = 25_000 } = options;
+  const { method = "GET", body, headers = {}, auth = true, query, _retried, timeoutMs = 25_000, toastOnSuccess } = options;
   const reqHeaders: Record<string, string> = {
     Accept: "application/json",
     ...headers,
@@ -169,6 +189,8 @@ export async function apiRequest<T = unknown>(path: string, options: RequestOpti
         : `Request failed (${res.status})`;
     throw new ApiError(message, res.status, payload);
   }
+
+  if (method === "POST") toastPostSuccess(payload, toastOnSuccess);
 
   return unwrap<T>(payload);
 }

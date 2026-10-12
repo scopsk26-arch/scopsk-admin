@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { UsersRound } from "lucide-react";
-import { fetchList, fetchRoleDetail } from "@/lib/api/resources";
+import { fetchRoleDetail } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/roles")({
@@ -12,21 +12,22 @@ export const Route = createFileRoute("/_admin/roles")({
 });
 
 function RolesPage() {
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const list = usePagedList({
     queryKey: ["admin", "roles"],
-    queryFn: async () => {
-      const list = await fetchList("/admin/roles");
-      return list.map((r: any) => ({
-        id: str(r.id),
-        name: str(r.name ?? r.displayName, "—"),
-        scope: str(r.scope ?? r.description, "—"),
-        users: num(r.usersCount ?? r.userCount),
-        builtin: Boolean(r.isSystem ?? r.builtin ?? r.isBuiltin),
-        status: str(r.status, "active"),
-        permissions: Array.isArray(r.permissions) ? r.permissions.length : 0,
-      }));
-    },
+    path: "/admin/roles",
+    map: (r: any) => ({
+      id: str(r.id),
+      name: str(r.name ?? r.displayName, "—"),
+      scope: str(r.scope ?? r.description, "—"),
+      users: num(r.usersCount ?? r.userCount),
+      builtin: Boolean(r.isSystem ?? r.builtin ?? r.isBuiltin),
+      status: str(r.status, "active"),
+      permissions: Array.isArray(r.permissions) ? r.permissions.length : 0,
+    }),
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const custom = rows.filter((r) => !r.builtin).length;
   const perms = rows.reduce((s, r) => s + r.permissions, 0);
@@ -60,6 +61,7 @@ function RolesPage() {
         { label: "Permissions", value: String(perms) },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["id", "name", "scope"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load roles." : "No roles found."}
       columns={[

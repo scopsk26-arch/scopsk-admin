@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { ScrollText } from "lucide-react";
-import { fetchAuditLogDetail, fetchList } from "@/lib/api/resources";
+import { fetchAuditLogDetail } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/audit-logs")({
@@ -12,20 +12,21 @@ export const Route = createFileRoute("/_admin/audit-logs")({
 });
 
 function AuditLogsPage() {
-  const { data: rows = [], isLoading, isError } = useQuery({
+  const list = usePagedList({
     queryKey: ["admin", "audit-logs"],
-    queryFn: async () => {
-      const list = await fetchList("/admin/audit-logs");
-      return list.map((r: any) => ({
-        id: str(r.id),
-        time: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 19) : "—",
-        actor: str(r.actor?.email ?? r.actorId, "system"),
-        action: str(r.action, "—"),
-        target: str(r.entityType ? `${r.entityType}:${r.entityId ?? ""}` : r.target ?? r.resource, "—"),
-        ip: str(r.ip ?? r.ipAddress, "—"),
-      }));
-    },
+    path: "/admin/audit-logs",
+    map: (r: any) => ({
+      id: str(r.id),
+      time: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 19) : "—",
+      actor: str(r.actor?.email ?? r.actorId, "system"),
+      action: str(r.action, "—"),
+      target: str(r.entityType ? `${r.entityType}:${r.entityId ?? ""}` : r.target ?? r.resource, "—"),
+      ip: str(r.ip ?? r.ipAddress, "—"),
+    }),
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   return (
     <DataPage
@@ -55,6 +56,7 @@ function AuditLogsPage() {
         { label: "With IP", value: String(rows.filter((r) => r.ip && r.ip !== "—").length), tone: "info" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["id", "actor", "action", "target"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load audit logs." : "No audit logs found."}
       columns={[

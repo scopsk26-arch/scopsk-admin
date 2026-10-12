@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { ProductDetailView } from "@/components/admin/DetailViews";
 import { Boxes } from "lucide-react";
@@ -112,18 +113,15 @@ function CatalogPage() {
   const qc = useQueryClient();
   const { categories, suppliers } = useAdminLookups(["categories", "suppliers"]);
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["catalog", "products"],
-    queryFn: async () => {
-      // Active only — archived/image-less seed leftovers clutter the picture column
-      const list = await fetchList("/catalog/products", { status: "active", limit: 500 });
-      return list.map(mapProductRow);
-    },
+    path: "/catalog/products",
+    query: { status: "active" },
+    map: mapProductRow,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const { data: unitOptions = [] } = useQuery({
     queryKey: ["catalog", "units"],
@@ -269,6 +267,7 @@ function CatalogPage() {
         { label: "Categories", value: String(categories.length || "—") },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["sku", "name", "category", "supplier"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load catalog." : "No products found."
@@ -324,7 +323,7 @@ function CatalogPage() {
       onCreate={async (data) => {
         const payload = toProductPayload(data);
         if (!payload.name) throw new Error("Product name is required");
-        const created = await api.post<any>("/catalog/products", payload);
+        const created = await api.post<any>("/catalog/products", payload, { toastOnSuccess: true });
         await invalidate();
         return mapProductRow(created);
       }}

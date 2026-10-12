@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView, ProductDetailView } from "@/components/admin/DetailViews";
 import { Warehouse } from "lucide-react";
-import { fetchProductDetail, fetchRestaurantInventory } from "@/lib/api/resources";
+import { fetchProductDetail } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import {
@@ -55,14 +55,16 @@ function InventoryPage() {
     [restaurants, orgId],
   );
 
-  const { data: rows = [], isLoading, isError } = useQuery({
-    queryKey: ["restaurant-inventory", orgId],
+  const list = usePagedList({
+    queryKey: ["restaurant-inventory", orgId, selectedLabel],
+    path: "/restaurant-inventory",
+    headers: orgId ? { "X-Organization-Id": orgId } : undefined,
     enabled: Boolean(orgId),
-    queryFn: async () => {
-      const list = await fetchRestaurantInventory(orgId);
-      return list.map((r) => mapInventory(r, selectedLabel, orgId));
-    },
+    map: (r) => mapInventory(r, selectedLabel, orgId),
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const lowStock = rows.filter((r) => r.quantity <= 0).length;
   const totalQty = rows.reduce((s, r) => s + r.quantity, 0);
@@ -123,6 +125,7 @@ function InventoryPage() {
         { label: "Restaurant", value: orgId ? selectedLabel.slice(0, 18) : "—" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["name", "sku", "itemCode", "product", "restaurant"]}
       emptyHint={
         !orgId

@@ -1,5 +1,9 @@
-import { AED, DetailSection, DetailTable } from "@/components/admin/DataPage";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { AED, DetailSection, DetailTable, StatusBadge, formatStatusLabel } from "@/components/admin/DataPage";
+import { Button } from "@/components/ui/button";
 import { num, str } from "@/lib/api/client";
+import { reviewKycDocument } from "@/lib/api/resources";
 import { computeQuotationAiScore, extractFinanceBreakdown } from "@/lib/admin-export";
 
 function iso(v: unknown) {
@@ -9,6 +13,12 @@ function iso(v: unknown) {
 
 function money(v: unknown) {
   return AED(num(v));
+}
+
+function statusCell(value: unknown) {
+  const label = str(value, "—");
+  if (!label || label === "—") return "—";
+  return <StatusBadge status={label} />;
 }
 
 /** Admin-only financial summary: actual value, VAT %, VAT amount, commission, grand total. */
@@ -161,7 +171,78 @@ function formatCkTimelineEvent(raw: unknown): string {
   if (ev === "cloud_kitchen_served") {
     return "Served by admin";
   }
-  return ev;
+  return formatStatusLabel(ev);
+}
+
+function timelineDetail(row: any, kind: "rfq" | "delivery" | "kyc"): string | null {
+  const parts: string[] = [];
+  const note = row.note ?? row.notes ?? row.message ?? row.comment;
+  if (note) parts.push(String(note));
+  if (kind === "rfq") {
+    const event = String(row.event ?? row.action ?? row.type ?? "");
+    if (event === "suppliers_matched" || event === "cloud_kitchen_queued") {
+      parts.push("Shown on admin CK queue only");
+    }
+    const meta = row.meta || row.metadata || {};
+    if (meta.poNumber) parts.push(`PO ${meta.poNumber}`);
+    if (meta.awardedQty != null) parts.push(`Awarded ${meta.awardedQty}`);
+    if (meta.remainingBefore != null) parts.push(`Remaining before ${meta.remainingBefore}`);
+    if (meta.remainingAfter != null) parts.push(`Remaining after ${meta.remainingAfter}`);
+  }
+  const actor = row.actor?.email ?? row.user?.email ?? row.reviewer?.email;
+  if (actor) parts.push(String(actor));
+  const unique = [...new Set(parts.map((part) => part.trim()).filter(Boolean))];
+  return unique.length ? unique.join(" · ") : null;
+}
+
+/** Vertical event rail used by RFQ, delivery, and KYC detail. */
+export function EventTimeline({
+  rows,
+  kind = "delivery",
+}: {
+  rows: any[];
+  kind?: "rfq" | "delivery" | "kyc";
+}) {
+  const ordered = [...rows].sort((a, b) => {
+    const left = new Date(a?.createdAt || 0).getTime();
+    const right = new Date(b?.createdAt || 0).getTime();
+    return (Number.isNaN(left) ? 0 : left) - (Number.isNaN(right) ? 0 : right);
+  });
+
+  return (
+    <ol className="m-0 list-none p-0">
+      {ordered.map((row, index) => {
+        const current = index === ordered.length - 1;
+        const raw = row.event ?? row.action ?? row.type ?? row.status;
+        const title =
+          kind === "rfq"
+            ? formatCkTimelineEvent(raw)
+            : formatStatusLabel(str(raw, "Update"));
+        const detail = timelineDetail(row, kind);
+        return (
+          <li key={String(row.id ?? index)} className="flex gap-3">
+            <div className="flex w-4 shrink-0 flex-col items-center">
+              <span
+                className={
+                  current
+                    ? "mt-1 h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-primary/15"
+                    : "mt-1.5 h-2 w-2 rounded-full bg-muted-foreground/40"
+                }
+              />
+              {current ? null : <span className="mt-1 w-px flex-1 bg-border" />}
+            </div>
+            <div className={current ? "min-w-0 flex-1" : "min-w-0 flex-1 pb-4"}>
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-sm font-semibold leading-5">{title}</p>
+                <time className="shrink-0 text-xs text-muted-foreground">{iso(row.createdAt)}</time>
+              </div>
+              {detail ? <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{detail}</p> : null}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
 
 export function RfqDetailView({
@@ -268,7 +349,7 @@ export function RfqDetailView({
             columns={[
               { key: "number", label: "PO", render: (r) => str(r.number, "—") },
               { key: "qty", label: "Qty", render: (r) => str(r.quantity, "—") },
-              { key: "status", label: "Status", render: (r) => str(r.status, "—") },
+              { key: "status", label: "Status", render: (r) => statusCell(r.status) },
               { key: "total", label: "Total", render: (r) => money(r.total) },
               { key: "created", label: "Created", render: (r) => iso(r.createdAt) },
             ]}
@@ -281,7 +362,7 @@ export function RfqDetailView({
             rows={invitations}
             columns={[
               { key: "supplier", label: "Supplier", render: (r) => str(r.supplierOrg?.name ?? r.organization?.name, "—") },
-              { key: "status", label: "Status", render: (r) => str(r.status, "—") },
+              { key: "status", label: "Status", render: (r) => statusCell(r.status) },
             ]}
           />
         </DetailSection>
@@ -308,42 +389,7 @@ export function RfqDetailView({
       )}
       {timeline.length > 0 && (
         <DetailSection title="Timeline">
-          <DetailTable
-            rows={timeline}
-            columns={[
-              { key: "at", label: "When", render: (r) => iso(r.createdAt) },
-              {
-                key: "event",
-                label: "Event",
-                render: (r) =>
-                  isCk
-                    ? formatCkTimelineEvent(r.event ?? r.action ?? r.type)
-                    : str(r.event ?? r.action ?? r.type, "—"),
-              },
-              {
-                key: "meta",
-                label: isCk ? "Note" : "Award / PO",
-                render: (r) => {
-                  if (isCk) {
-                    const ev = String(r.event ?? r.action ?? r.type ?? "");
-                    if (ev === "suppliers_matched" || ev === "cloud_kitchen_queued") {
-                      return "Shown on admin CK queue only";
-                    }
-                    return "—";
-                  }
-                  const m = r.meta || r.metadata || {};
-                  const bits = [
-                    m.poNumber ? `PO ${m.poNumber}` : null,
-                    m.awardedQty != null ? `Awarded ${m.awardedQty}` : null,
-                    m.remainingBefore != null ? `Rem before ${m.remainingBefore}` : null,
-                    m.remainingAfter != null ? `Rem after ${m.remainingAfter}` : null,
-                  ].filter(Boolean);
-                  return bits.length ? bits.join(" · ") : "—";
-                },
-              },
-              { key: "actor", label: "Actor", render: (r) => str(r.actor?.email ?? r.user?.email, "—") },
-            ]}
-          />
+          <EventTimeline rows={timeline} kind="rfq" />
         </DetailSection>
       )}
     </>
@@ -367,7 +413,7 @@ export function QuotationDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">RFQ: </span>{str(detail.rfq?.number ?? detail.rfqId, "—")}</div>
           <div><span className="text-muted-foreground">Supplier: </span>{str(detail.supplierOrg?.name, "—")}</div>
           <div><span className="text-muted-foreground">Buyer: </span>{str(detail.rfq?.organization?.name, "—")}</div>
-          <div><span className="text-muted-foreground">Status: </span>{str(detail.displayStatus ?? detail.status, "—")}</div>
+          <div><span className="text-muted-foreground">Status: </span>{statusCell(detail.displayStatus ?? detail.status)}</div>
           <div><span className="text-muted-foreground">Total: </span>{money(detail.total ?? detail.subtotal)}</div>
           <div><span className="text-muted-foreground">AI score: </span>{computeQuotationAiScore(detail)}</div>
           <div><span className="text-muted-foreground">Valid until: </span>{iso(detail.validUntil ?? detail.validityDate)}</div>
@@ -378,7 +424,7 @@ export function QuotationDetailView({ detail }: { detail: any }) {
       {approval ? (
         <DetailSection title="Quote approval workflow">
           <div className="grid gap-3 sm:grid-cols-2 text-sm mb-3">
-            <div><span className="text-muted-foreground">Approval status: </span>{str(approval.status, "—")}</div>
+            <div><span className="text-muted-foreground">Approval status: </span>{statusCell(approval.status)}</div>
             <div>
               <span className="text-muted-foreground">Progress: </span>
               {`${currentLevel} / ${num(approval.requiredLevels)}`}
@@ -506,7 +552,7 @@ export function PurchaseOrderDetailView({ detail }: { detail: any }) {
             columns={[
               { key: "number", label: "Delivery", render: (r) => str(r.number, "—") },
               { key: "hop", label: "Hop", render: (r) => hopLabel(r) },
-              { key: "status", label: "Status", render: (r) => str(r.status, "—") },
+              { key: "status", label: "Status", render: (r) => statusCell(r.status) },
               { key: "eta", label: "ETA", render: (r) => iso(r.etaAt ?? r.scheduledAt) },
             ]}
           />
@@ -521,7 +567,7 @@ export function PurchaseOrderDetailView({ detail }: { detail: any }) {
               { key: "subtotal", label: "Subtotal", render: (r) => money(r.subtotal) },
               { key: "vat", label: "VAT", render: (r) => money(r.tax ?? r.vat) },
               { key: "total", label: "Total", render: (r) => money(r.total ?? r.subtotal) },
-              { key: "status", label: "Status", render: (r) => str(r.status, "—") },
+              { key: "status", label: "Status", render: (r) => statusCell(r.status) },
             ]}
           />
         </DetailSection>
@@ -545,7 +591,7 @@ export function DeliveryDetailView({ detail }: { detail: any }) {
       <DetailSection title="Summary">
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
           <div><span className="text-muted-foreground">Delivery: </span>{str(detail.number, "—")}</div>
-          <div><span className="text-muted-foreground">Status: </span>{str(detail.status, "—")}</div>
+          <div><span className="text-muted-foreground">Status: </span>{statusCell(detail.status)}</div>
           <div><span className="text-muted-foreground">PO: </span>{str(po?.number ?? detail.purchaseOrderId, "—")}</div>
           <div><span className="text-muted-foreground">Buyer: </span>{str(po?.buyerOrg?.name, "—")}</div>
           <div><span className="text-muted-foreground">Supplier: </span>{str(po?.supplierOrg?.name, "—")}</div>
@@ -576,20 +622,13 @@ export function DeliveryDetailView({ detail }: { detail: any }) {
           columns={[
             { key: "product", label: "Product", render: (r) => productName(r.poItem ?? r) },
             { key: "qty", label: "Qty", render: (r) => deliveryItemQty(r) },
-            { key: "status", label: "Status", render: (r) => deliveryItemStatus(r, detail.status) },
+            { key: "status", label: "Status", render: (r) => statusCell(deliveryItemStatus(r, detail.status)) },
           ]}
         />
       </DetailSection>
       {timeline.length > 0 && (
         <DetailSection title="Timeline">
-          <DetailTable
-            rows={timeline}
-            columns={[
-              { key: "at", label: "When", render: (r) => iso(r.createdAt) },
-              { key: "event", label: "Event", render: (r) => str(r.event ?? r.status ?? r.action, "—") },
-              { key: "actor", label: "Actor", render: (r) => str(r.actor?.email, "—") },
-            ]}
-          />
+          <EventTimeline rows={timeline} kind="delivery" />
         </DetailSection>
       )}
     </>
@@ -630,7 +669,7 @@ export function InvoiceDetailView({ detail }: { detail: any }) {
               { key: "amount", label: "Amount", render: (r) => money(r.amount) },
               { key: "method", label: "Method", render: (r) => str(r.method, "—") },
               { key: "at", label: "When", render: (r) => iso(r.paidAt ?? r.createdAt) },
-              { key: "status", label: "Status", render: (r) => str(r.status, "—") },
+              { key: "status", label: "Status", render: (r) => statusCell(r.status) },
             ]}
           />
         </DetailSection>
@@ -677,7 +716,7 @@ export function PaymentDetailView({ detail }: { detail: any }) {
           ) : null}
           <div><span className="text-muted-foreground">Organization: </span>{str(detail.organization, "—")}</div>
           <div><span className="text-muted-foreground">Paid at: </span>{str(detail.paidAt, "—")}</div>
-          <div><span className="text-muted-foreground">Status: </span>{str(detail.status, "—")}</div>
+          <div><span className="text-muted-foreground">Status: </span>{statusCell(detail.status)}</div>
         </div>
       </DetailSection>
       <FinanceBreakdownSection detail={financeSource} title="Linked invoice pricing (VAT & commission)" />
@@ -760,7 +799,7 @@ export function ApprovalDetailView({ detail }: { detail: any }) {
           empty="No actions yet"
           columns={[
             { key: "at", label: "When", render: (r) => iso(r.createdAt) },
-            { key: "decision", label: "Decision", render: (r) => str(r.decision ?? r.action ?? r.status, "—") },
+            { key: "decision", label: "Decision", render: (r) => statusCell(r.decision ?? r.action ?? r.status) },
             { key: "actor", label: "Actor", render: (r) => str(r.actor?.email ?? r.user?.email, "—") },
             { key: "notes", label: "Notes", render: (r) => str(r.notes ?? r.reason, "—") },
           ]}
@@ -770,119 +809,235 @@ export function ApprovalDetailView({ detail }: { detail: any }) {
   );
 }
 
-export function OrganizationDetailView({ detail }: { detail: any }) {
+function namesOf(value: unknown): string {
+  if (Array.isArray(value)) {
+    const names = value
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          const row = item as { name?: string; cuisineType?: { name?: string }; label?: string };
+          return row.cuisineType?.name || row.name || row.label || "";
+        }
+        return "";
+      })
+      .map((name) => name.trim())
+      .filter((name) => name && name !== "—");
+    return names.length ? [...new Set(names)].join(", ") : "—";
+  }
+  if (typeof value === "string" && value.trim() && value.trim() !== "—") return value.trim();
+  return "—";
+}
+
+function OrgDocumentsTable({ documents }: { documents: any[] }) {
+  const [docs, setDocs] = useState(documents);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDocs(documents);
+  }, [documents]);
+
+  const review = async (id: string, status: "approved" | "rejected") => {
+    let notes: string | undefined;
+    if (status === "rejected") {
+      const reason = window.prompt("Reason for rejecting this document");
+      if (reason == null) return;
+      notes = reason.trim();
+      if (!notes) {
+        toast.error("A reason is required to reject a document");
+        return;
+      }
+    }
+    setBusyId(id);
+    try {
+      await reviewKycDocument(id, status, notes);
+      setDocs((current) => current.map((doc) => (String(doc.id) === id ? { ...doc, status } : doc)));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update the document");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <DetailTable
+      rows={docs}
+      empty="No documents"
+      columns={[
+        {
+          key: "type",
+          label: "Type",
+          render: (r) => formatStatusLabel(str(r.documentType ?? r.type, "—")),
+        },
+        { key: "name", label: "File", render: (r) => str(r.fileName ?? r.file?.originalName, "—") },
+        { key: "status", label: "Status", render: (r) => statusCell(r.status || "pending") },
+        {
+          key: "url",
+          label: "Link",
+          render: (r) => {
+            const url = r.url ?? r.file?.cdnUrl ?? r.file?.url;
+            return url ? (
+              <a href={String(url)} target="_blank" rel="noreferrer" className="text-primary hover:underline text-xs">Open</a>
+            ) : "—";
+          },
+        },
+        {
+          key: "review",
+          label: "Review",
+          render: (r) => {
+            const id = str(r.id, "");
+            const status = String(r.status || "pending").toLowerCase();
+            if (!id || status !== "pending") return <span className="text-xs text-muted-foreground">—</span>;
+            const busy = busyId === id;
+            return (
+              <div className="flex gap-1.5">
+                <Button type="button" size="sm" className="h-7 px-2" disabled={busy} onClick={() => review(id, "approved")}>
+                  Approve
+                </Button>
+                <Button type="button" size="sm" variant="outline" className="h-7 px-2" disabled={busy} onClick={() => review(id, "rejected")}>
+                  Reject
+                </Button>
+              </div>
+            );
+          },
+        },
+      ]}
+    />
+  );
+}
+
+function feeLabel(mode: unknown, value: unknown) {
+  const kind = String(mode || "none");
+  if (kind === "percent") return `${num(value)}%`;
+  if (kind === "fixed") return money(value);
+  return "None";
+}
+
+export function OrganizationDetailView({ detail, row }: { detail: any; row?: any }) {
   const docs = Array.isArray(detail?.documents) ? detail.documents : [];
   const members = Array.isArray(detail?.members) ? detail.members : [];
+  const branches = Array.isArray(detail?.branches) ? detail.branches : [];
   const addresses = Array.isArray(detail?.addresses)
     ? detail.addresses
     : [detail?.profile?.businessAddress, detail?.profile?.receivingAddress, detail?.profile?.warehouseAddress]
         .filter(Boolean);
   const profile = detail?.profile ?? {};
   const settings = detail?.settings ?? detail?.orgSettings ?? {};
+  const type = String(detail?.type || row?.type || "");
+  const isSupplier = type === "supplier";
+  const cuisines = namesOf(detail?.cuisines ?? detail?.cuisineNames ?? row?.cuisines);
+  const categories = namesOf(detail?.metadata?.categories ?? row?.categories);
+  const deliveryOptions = namesOf(settings.deliveryOptions);
+  const rating = num(detail?.rating ?? detail?.metadata?.rating ?? row?.rating);
+  const anonymous = settings.anonymousMarketplace !== false;
 
   return (
     <>
-      <DetailSection title="Profile & settings">
-        <div className="grid gap-3 sm:grid-cols-2 text-sm">
-          <div><span className="text-muted-foreground">Legal name: </span>{str(detail.legalName, "—")}</div>
-          <div><span className="text-muted-foreground">Email: </span>{str(detail.email, "—")}</div>
-          <div><span className="text-muted-foreground">Phone: </span>{str(detail.phone, "—")}</div>
-          <div><span className="text-muted-foreground">Location: </span>{[detail.city, detail.country].filter(Boolean).join(", ") || "—"}</div>
-          <div>
-            <span className="text-muted-foreground">Cuisines: </span>
-            {str(
-              Array.isArray(detail.cuisines)
-                ? detail.cuisines.map((c: any) => c?.name ?? c).filter(Boolean).join(", ")
-                : detail.cuisineNames?.join?.(", ") ?? detail.cuisines,
-              "—",
-            )}
-          </div>
-          <div><span className="text-muted-foreground">Owner: </span>{str(profile.ownerName ?? detail.ownerName, "—")}</div>
-          <div><span className="text-muted-foreground">Trade license: </span>{str(profile.tradeLicenseNumber ?? detail.tradeLicenseNumber, "—")}</div>
-          <div><span className="text-muted-foreground">VAT: </span>{str(profile.vatRegistrationNumber ?? detail.vatRegistrationNumber, "—")}</div>
-          <div><span className="text-muted-foreground">Food license: </span>{str(profile.foodLicenseNumber ?? detail.foodLicenseNumber, "—")}</div>
-          <div>
-            <span className="text-muted-foreground">Rating: </span>
-            {(() => {
-              const r = num(detail.rating ?? detail.metadata?.rating);
-              return r > 0 ? `${r} / 5` : "—";
-            })()}
-          </div>
-          <div><span className="text-muted-foreground">PO approval levels: </span>{str(settings.poApprovalLevels, "—")}</div>
-          <div><span className="text-muted-foreground">Min RFQ (AED): </span>{str(settings.minRfqValueAed, "—")}</div>
-          <div><span className="text-muted-foreground">Delivery fee: </span>{str(settings.deliveryFeeMode, "none")} · {money(settings.deliveryFeeValue)}</div>
-          <div><span className="text-muted-foreground">Credit limit: </span>{money(settings.creditLimit)}</div>
-          <div><span className="text-muted-foreground">Payment terms (days): </span>{str(settings.paymentTermsDays, "—")}</div>
-          <div><span className="text-muted-foreground">Discount: </span>{str(settings.discountMode, "none")} · {money(settings.discountValue)}</div>
-          <div><span className="text-muted-foreground">RFQ intake: </span>{str(settings.rfqIntakeMode, "manual")}</div>
-          <div><span className="text-muted-foreground">Verification: </span>{str(detail.verificationStatus, "—")}</div>
-          <div><span className="text-muted-foreground">KYC: </span>{str(detail.kycApplication?.status, "—")}</div>
+      <DetailSection title="Operations">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(isSupplier
+            ? [
+                ["Categories", categories],
+                ["RFQ intake", str(settings.rfqIntakeMode ?? row?.rfqIntakeMode, "manual")],
+                ["PO approval levels", str(settings.poApprovalLevels ?? row?.poApprovalLevels, "0")],
+                ["Minimum RFQ", money(settings.minRfqValueAed ?? row?.minRfqValueAed)],
+                ["Stock match minimum", `${num(settings.matchingMinStockPct)}%`],
+                ["Delivery options", deliveryOptions],
+                ["Anonymous marketplace", anonymous ? "On" : "Off"],
+                ["Win rate", row?.winRate != null ? `${num(row.winRate)}%` : "—"],
+                ["Revenue (90d)", row?.revenue != null ? money(row.revenue) : "—"],
+              ]
+            : [
+                ["Cuisines", cuisines],
+                ["PO approval levels", str(settings.poApprovalLevels ?? row?.poApprovalLevels, "0")],
+                ["Minimum RFQ", money(settings.minRfqValueAed ?? row?.minRfqValueAed)],
+                ["Delivery fee", feeLabel(settings.deliveryFeeMode ?? row?.deliveryFeeMode, settings.deliveryFeeValue ?? row?.deliveryFeeValue)],
+                ["Credit limit", money(settings.creditLimit ?? row?.creditLimit)],
+                ["Payment terms", `${num(settings.paymentTermsDays ?? row?.paymentTermsDays)} days`],
+                ["Discount", feeLabel(settings.discountMode ?? row?.discountMode, settings.discountValue ?? row?.discountValue)],
+                ["Anonymous marketplace", anonymous ? "On" : "Off"],
+                ["Rating", rating > 0 ? `${rating} / 5` : "—"],
+                ["Branches", String(branches.length)],
+              ]
+          ).map(([label, value]) => (
+            <div key={label} className="rounded-xl border border-border bg-muted/40 px-3 py-2.5">
+              <div className="text-xs font-medium text-muted-foreground">{label}</div>
+              <div className="mt-1 text-sm font-medium capitalize break-words">{value}</div>
+            </div>
+          ))}
         </div>
       </DetailSection>
-      {members.length > 0 && (
-        <DetailSection title="Members">
-          <DetailTable
-            rows={members}
-            columns={[
-              {
-                key: "user",
-                label: "User",
-                render: (r) =>
-                  str(
-                    r.user?.email
-                      ?? [r.user?.firstName, r.user?.lastName].filter(Boolean).join(" ")
-                      ?? r.email,
-                    "—",
-                  ),
-              },
-              { key: "role", label: "Role", render: (r) => str(r.role?.name ?? r.role ?? r.title, "—") },
-              { key: "status", label: "Status", render: (r) => str(r.status, "—") },
-            ]}
-          />
-        </DetailSection>
-      )}
-      {addresses.length > 0 && (
-        <DetailSection title="Address">
-          <DetailTable
-            rows={addresses.map((a: any, i: number) => (typeof a === "object" ? { ...a, _i: i } : { label: a, _i: i }))}
-            columns={[
-              { key: "label", label: "Label", render: (r) => str(r.label ?? r.type ?? r.name, "—") },
-              {
-                key: "line",
-                label: "Address",
-                render: (r) =>
-                  str(
-                    r.line1
-                      ?? r.addressLine1
-                      ?? [r.street, r.city, r.state, r.emirate, r.country].filter(Boolean).join(", "),
-                    "—",
-                  ),
-              },
-            ]}
-          />
-        </DetailSection>
-      )}
-      {docs.length > 0 && (
-        <DetailSection title="Documents">
-          <DetailTable
-            rows={docs}
-            columns={[
-              { key: "type", label: "Type", render: (r) => str(r.documentType ?? r.type, "—") },
-              { key: "name", label: "File", render: (r) => str(r.fileName ?? r.file?.originalName, "—") },
-              {
-                key: "url",
-                label: "Link",
-                render: (r) => {
-                  const url = r.url ?? r.file?.cdnUrl ?? r.file?.url;
-                  return url ? (
-                    <a href={String(url)} target="_blank" rel="noreferrer" className="text-primary hover:underline text-xs">Open</a>
-                  ) : "—";
-                },
-              },
-            ]}
-          />
-        </DetailSection>
-      )}
+
+      <DetailSection title="Compliance">
+        <div className="grid gap-3 sm:grid-cols-2 text-sm">
+          <div><span className="text-muted-foreground">Owner: </span>{str(profile.ownerName ?? detail.ownerName ?? row?.ownerName, "—")}</div>
+          <div><span className="text-muted-foreground">Trade license: </span>{str(profile.tradeLicenseNumber ?? detail.tradeLicenseNumber ?? row?.tradeLicenseNumber, "—")}</div>
+          <div><span className="text-muted-foreground">VAT: </span>{str(profile.vatRegistrationNumber ?? detail.vatRegistrationNumber ?? row?.vatRegistrationNumber, "—")}</div>
+          {!isSupplier ? (
+            <div><span className="text-muted-foreground">Food license: </span>{str(profile.foodLicenseNumber ?? detail.foodLicenseNumber ?? row?.foodLicenseNumber, "—")}</div>
+          ) : null}
+          <div><span className="text-muted-foreground">Verification: </span>{statusCell(detail.verificationStatus ?? row?.verificationStatus)}</div>
+          <div><span className="text-muted-foreground">KYC: </span>{statusCell(detail.kycApplication?.status)}</div>
+        </div>
+      </DetailSection>
+
+      <DetailSection title="Branches">
+        <DetailTable
+          rows={branches}
+          empty="No branches"
+          columns={[
+            { key: "name", label: "Name", render: (r) => str(r.name, "—") },
+            { key: "code", label: "Code", render: (r) => str(r.code, "—") },
+            { key: "city", label: "City", render: (r) => str(r.city, "—") },
+            { key: "status", label: "Status", render: (r) => statusCell(r.status) },
+          ]}
+        />
+      </DetailSection>
+
+      <DetailSection title="Members">
+        <DetailTable
+          rows={members}
+          empty="No members"
+          columns={[
+            {
+              key: "user",
+              label: "User",
+              render: (r) =>
+                str(
+                  r.user?.email
+                    ?? [r.user?.firstName, r.user?.lastName].filter(Boolean).join(" ")
+                    ?? r.email,
+                  "—",
+                ),
+            },
+            { key: "role", label: "Role", render: (r) => str(r.role?.name ?? r.role ?? r.title, "—") },
+            { key: "status", label: "Status", render: (r) => statusCell(r.status) },
+          ]}
+        />
+      </DetailSection>
+
+      <DetailSection title="Addresses">
+        <DetailTable
+          rows={addresses.map((a: any, i: number) => (typeof a === "object" ? { ...a, _i: i } : { label: a, _i: i }))}
+          empty="No addresses"
+          columns={[
+            { key: "label", label: "Label", render: (r) => str(r.label ?? r.type ?? r.name, "—") },
+            {
+              key: "line",
+              label: "Address",
+              render: (r) =>
+                str(
+                  [r.line1, r.line2, r.city, r.state, r.country, r.postalCode].filter(Boolean).join(", ")
+                    || r.addressLine1,
+                  "—",
+                ),
+            },
+          ]}
+        />
+      </DetailSection>
+
+      <DetailSection title="Documents">
+        <OrgDocumentsTable documents={docs} />
+      </DetailSection>
     </>
   );
 }
@@ -933,14 +1088,7 @@ export function KycDetailView({ detail }: { detail: any }) {
       </DetailSection>
       {timeline.length > 0 && (
         <DetailSection title="Timeline">
-          <DetailTable
-            rows={timeline}
-            columns={[
-              { key: "at", label: "When", render: (r) => iso(r.createdAt) },
-              { key: "event", label: "Event", render: (r) => str(r.event ?? r.action, "—") },
-              { key: "actor", label: "Actor", render: (r) => str(r.actor?.email, "—") },
-            ]}
-          />
+          <EventTimeline rows={timeline} kind="kyc" />
         </DetailSection>
       )}
     </>

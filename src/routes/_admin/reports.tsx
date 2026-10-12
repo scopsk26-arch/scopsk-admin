@@ -5,7 +5,7 @@ import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { BarChart3, Download, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, asArray, num, str } from "@/lib/api/client";
-import { buildDetailedCsv, downloadCsv, flattenForExport } from "@/lib/admin-export";
+import { flattenForExport } from "@/lib/admin-export";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/reports")({
@@ -120,9 +120,24 @@ function ReportsPage() {
         toast.error("No detailed data to export");
         return;
       }
-      const csv = buildDetailedCsv(detailRows);
-      downloadCsv(`${row.id.toLowerCase()}-detailed.csv`, csv);
-      toast.success("Detailed report exported", { description: `${detailRows.length} rows · ${row.name}` });
+      const sample = detailRows[0];
+      const columns = Object.keys(sample).map((key) => ({
+        key,
+        label: key
+          .replace(/[._]/g, " ")
+          .replace(/([a-z])([A-Z])/g, "$1 $2")
+          .replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      }));
+      const { downloadTablePdf } = await import("@/lib/pdf-export");
+      downloadTablePdf({
+        title: row.name,
+        description: `${row.category} report · ${row.schedule} · Owner ${row.owner}`,
+        filename: `${row.id.toLowerCase()}.pdf`,
+        columns,
+        rows: detailRows,
+        meta: [`${detailRows.length} rows`, row.lastRun ? `Last run ${row.lastRun}` : ""].filter(Boolean),
+      });
+      toast.success("PDF exported", { description: `${detailRows.length} rows · ${row.name}` });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Export failed");
     }
@@ -131,7 +146,7 @@ function ReportsPage() {
   return (
     <DataPage
       title="Reports & Business Intelligence"
-      description="Scheduled and ad-hoc reports across finance, marketplace and risk. Export downloads the full detailed dataset for that report."
+      description="Scheduled and ad-hoc reports across finance, marketplace and risk. Export downloads that report as a PDF."
       icon={<BarChart3 className="h-5 w-5 text-primary" />}
       disableCrud
       hideExport

@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { InvoiceDetailView } from "@/components/admin/DetailViews";
 import { Receipt, Wallet } from "lucide-react";
-import { fetchInvoiceDetail, fetchList, markInvoicePaid } from "@/lib/api/resources";
+import { fetchInvoiceDetail, markInvoicePaid } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -60,18 +61,14 @@ function InvoicesList() {
   ]);
   const queryClient = useQueryClient();
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["invoices"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const list = await fetchList("/invoices");
-      return list.map(mapInvoice);
-    },
+    path: "/invoices",
+    map: mapInvoice,
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const outstanding = rows
     .filter((r) => !["paid", "cancelled"].includes(r.status))
@@ -128,6 +125,7 @@ function InvoicesList() {
         { label: "VAT collected", value: AED(vat), tone: "info" },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["number", "po", "party", "issuer"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load invoices." : "No invoices found."
@@ -198,12 +196,12 @@ function InvoicesPage() {
       <div className="px-6 lg:px-8 pt-6 lg:pt-8">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
-            <TabsTrigger value="invoices" className="gap-1.5">
-              <Receipt className="h-3.5 w-3.5" />
+            <TabsTrigger value="invoices">
+              <Receipt />
               Invoices
             </TabsTrigger>
-            <TabsTrigger value="wallets" className="gap-1.5">
-              <Wallet className="h-3.5 w-3.5" />
+            <TabsTrigger value="wallets">
+              <Wallet />
               Wallets
             </TabsTrigger>
           </TabsList>

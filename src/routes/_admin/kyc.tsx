@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { KycDetailView } from "@/components/admin/DetailViews";
 import { ExternalLink, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { approveKyc, fetchKycDetail, fetchList, rejectKyc } from "@/lib/api/resources";
+import { approveKyc, fetchKycDetail, rejectKyc } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/kyc")({
@@ -21,15 +22,10 @@ type KycDoc = {
 function KycPage() {
   const queryClient = useQueryClient();
 
-  const {
-    data: rows = [],
-    isLoading,
-    isError,
-  } = useQuery({
+  const list = usePagedList({
     queryKey: ["kyc", "applications"],
-    queryFn: async () => {
-      const list = await fetchList("/kyc/applications");
-      return list.map((r: any) => {
+    path: "/kyc/applications",
+    map: (r: any) => {
         const documents: KycDoc[] = (r.documents || []).map((d: any) => ({
           type: str(d.documentType ?? d.type, "document"),
           name: str(d.file?.originalName ?? d.file?.fileName, "File"),
@@ -56,9 +52,11 @@ function KycPage() {
           documents,
           notes: "",
         };
-      });
     },
   });
+  const rows = list.rows;
+  const isLoading = list.isLoading;
+  const isError = list.isError;
 
   const pending = rows.filter((r) =>
     ["pending", "review", "submitted", "under_review"].includes(r.status),
@@ -109,6 +107,7 @@ function KycPage() {
         },
       ]}
       rows={rows}
+      serverPagination={pagedListProps(list)}
       searchKeys={["id", "entity", "reviewer"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load KYC." : "No KYC applications."}
       columns={[
