@@ -255,20 +255,27 @@
       linear-gradient(to bottom, rgb(10 10 10 / 0.06) 0.5px, transparent 0.5px);
     background-size: 32px 32px;
   }
+  .login-field,
+  .dark .login-field {
+    color: #0a0a0a;
+    -webkit-text-fill-color: #0a0a0a;
+    caret-color: #0a0a0a;
+  }
+  .login-field::placeholder,
+  .dark .login-field::placeholder {
+    color: #737373;
+    -webkit-text-fill-color: #737373;
+  }
   .login-field:-webkit-autofill,
   .login-field:-webkit-autofill:hover,
-  .login-field:-webkit-autofill:focus {
+  .login-field:-webkit-autofill:focus,
+  .dark .login-field:-webkit-autofill,
+  .dark .login-field:-webkit-autofill:hover,
+  .dark .login-field:-webkit-autofill:focus {
     -webkit-text-fill-color: #0a0a0a;
     caret-color: #0a0a0a;
     box-shadow: 0 0 0 1000px #ffffff inset;
     transition: background-color 9999s ease-out;
-  }
-  .dark .login-field:-webkit-autofill,
-  .dark .login-field:-webkit-autofill:hover,
-  .dark .login-field:-webkit-autofill:focus {
-    -webkit-text-fill-color: #f7f7f5;
-    caret-color: #f7f7f5;
-    box-shadow: 0 0 0 1000px #232322 inset;
   }
   .scrollbar-thin {
     scrollbar-width: thin;

@@ -84,7 +84,7 @@ function notificationListPath(row: NotificationRow): AdminListPath | null {
   if (payloadId(data, "kycApplicationId") || payloadId(data, "documentId")) return "/kyc";
   if (payloadId(data, "inventoryItemId")) return "/inventory";
   if (payloadId(data, "rewardId")) return "/rewards";
-  if (payloadId(data, "productRequestId")) return "/catalog";
+  if (payloadId(data, "productRequestId")) return "/product-requests";
   if (payloadId(data, "ticketId") || payloadId(data, "supportTicketId")) return "/support";
   if (payloadId(data, "walletId") || payloadId(data, "withdrawalId")) return "/wallets";
   if (payloadId(data, "referralId")) return "/referrals";
@@ -99,7 +99,8 @@ function notificationListPath(row: NotificationRow): AdminListPath | null {
   if (/inventory|low stock|out of stock/.test(text)) return "/inventory";
   if (/kyc|trade license/.test(text)) return "/kyc";
   if (/report/.test(text)) return "/org-reports";
-  if (/product request|catalog/.test(text)) return "/catalog";
+  if (/product request/.test(text)) return "/product-requests";
+  if (/catalog/.test(text)) return "/catalog";
   if (/support|ticket/.test(text)) return "/support";
   if (/wallet|withdraw/.test(text)) return "/wallets";
   if (/reward/.test(text)) return "/rewards";

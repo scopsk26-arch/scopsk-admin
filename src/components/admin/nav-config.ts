@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Store, Truck, FileText, Quote, ClipboardList,
-  PackageCheck, Receipt, CreditCard, Percent, Boxes, FolderTree,
-  Landmark, LifeBuoy, ScrollText, UsersRound, Settings, UtensilsCrossed,
+  PackageCheck, Receipt, CreditCard, Percent, Boxes, FolderTree, PackagePlus,
+  Landmark, LifeBuoy, Scale, ScrollText, UsersRound, Settings, UtensilsCrossed,
   Warehouse, Search, Share2, Megaphone, Images, Wallet,
 } from "lucide-react";
 
@@ -36,6 +36,7 @@ export const navItems: NavItem[] = [
   { group: "Finance", title: "Referrals", to: "/referrals", icon: Share2 },
 
   { group: "Catalog", title: "Product Catalog", to: "/catalog", icon: Boxes },
+  { group: "Catalog", title: "Missing products", to: "/product-requests", icon: PackagePlus },
   { group: "Catalog", title: "Categories", to: "/categories", icon: FolderTree },
   { group: "Catalog", title: "Cuisines", to: "/cuisines", icon: UtensilsCrossed },
   { group: "Catalog", title: "Restaurant Inventory", to: "/inventory", icon: Warehouse },
@@ -47,6 +48,7 @@ export const navItems: NavItem[] = [
   // { group: "Cloud Kitchen", title: "CK Production", to: "/ck-production", icon: ChefHat },
 
   { group: "Engagement", title: "Support", to: "/support", icon: LifeBuoy },
+  { group: "Engagement", title: "Disputes", to: "/disputes", icon: Scale },
   { group: "Engagement", title: "Banners", to: "/banners", icon: Megaphone },
 
   { group: "System", title: "Code Lookup", to: "/lookup", icon: Search },

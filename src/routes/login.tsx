@@ -142,7 +142,7 @@ function LoginPage() {
                 placeholder="sarah@primeplate.io"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="login-field h-11 bg-white"
+                className="login-field h-11 bg-white text-neutral-950 caret-neutral-950 placeholder:text-neutral-500"
                 autoComplete="email"
                 required
               />
@@ -156,7 +156,7 @@ function LoginPage() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="login-field h-11 bg-white pr-11"
+                  className="login-field h-11 bg-white pr-11 text-neutral-950 caret-neutral-950 placeholder:text-neutral-500"
                   autoComplete="current-password"
                   required
                 />

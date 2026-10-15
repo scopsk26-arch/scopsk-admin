@@ -9,278 +9,114 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminWalletsRouteImport } from './routes/_admin/wallets'
-import { Route as AdminSupportRouteImport } from './routes/_admin/support'
-import { Route as AdminSuppliersRouteImport } from './routes/_admin/suppliers'
-import { Route as AdminSupplierApprovalsRouteImport } from './routes/_admin/supplier-approvals'
-import { Route as AdminSubscriptionsRouteImport } from './routes/_admin/subscriptions'
-import { Route as AdminSettingsRouteImport } from './routes/_admin/settings'
-import { Route as AdminRolesRouteImport } from './routes/_admin/roles'
-import { Route as AdminRfqsRouteImport } from './routes/_admin/rfqs'
-import { Route as AdminRewardsRouteImport } from './routes/_admin/rewards'
-import { Route as AdminRestaurantsRouteImport } from './routes/_admin/restaurants'
-import { Route as AdminRestaurantApprovalsRouteImport } from './routes/_admin/restaurant-approvals'
-import { Route as AdminReportsRouteImport } from './routes/_admin/reports'
-import { Route as AdminReferralsRouteImport } from './routes/_admin/referrals'
-import { Route as AdminReferralSettingsRouteImport } from './routes/_admin/referral-settings'
-import { Route as AdminRatingsRouteImport } from './routes/_admin/ratings'
-import { Route as AdminQuotationsRouteImport } from './routes/_admin/quotations'
-import { Route as AdminQualitiesRouteImport } from './routes/_admin/qualities'
-import { Route as AdminPurchaseOrdersRouteImport } from './routes/_admin/purchase-orders'
-import { Route as AdminPaymentsRouteImport } from './routes/_admin/payments'
-import { Route as AdminOutstandingRouteImport } from './routes/_admin/outstanding'
-import { Route as AdminOrgReportsRouteImport } from './routes/_admin/org-reports'
-import { Route as AdminNotificationsRouteImport } from './routes/_admin/notifications'
-import { Route as AdminMediaRouteImport } from './routes/_admin/media'
-import { Route as AdminMarketingRouteImport } from './routes/_admin/marketing'
-import { Route as AdminLookupRouteImport } from './routes/_admin/lookup'
-import { Route as AdminKycRouteImport } from './routes/_admin/kyc'
-import { Route as AdminInvoicesRouteImport } from './routes/_admin/invoices'
-import { Route as AdminInventoryRouteImport } from './routes/_admin/inventory'
-import { Route as AdminFraudRouteImport } from './routes/_admin/fraud'
-import { Route as AdminFilesRouteImport } from './routes/_admin/files'
-import { Route as AdminDeliveriesRouteImport } from './routes/_admin/deliveries'
-import { Route as AdminDashboardRouteImport } from './routes/_admin/dashboard'
-import { Route as AdminCuisinesRouteImport } from './routes/_admin/cuisines'
-import { Route as AdminCommunicationsRouteImport } from './routes/_admin/communications'
-import { Route as AdminCommissionsRouteImport } from './routes/_admin/commissions'
-import { Route as AdminCmsRouteImport } from './routes/_admin/cms'
-import { Route as AdminCkRequestsRouteImport } from './routes/_admin/ck-requests'
-import { Route as AdminCkProductionRouteImport } from './routes/_admin/ck-production'
-import { Route as AdminCkOrdersRouteImport } from './routes/_admin/ck-orders'
-import { Route as AdminCkImportRouteImport } from './routes/_admin/ck-import'
-import { Route as AdminCkDishesRouteImport } from './routes/_admin/ck-dishes'
-import { Route as AdminCategoryCommissionsRouteImport } from './routes/_admin/category-commissions'
-import { Route as AdminCategoriesRouteImport } from './routes/_admin/categories'
-import { Route as AdminCatalogRouteImport } from './routes/_admin/catalog'
-import { Route as AdminBannersRouteImport } from './routes/_admin/banners'
-import { Route as AdminAuditLogsRouteImport } from './routes/_admin/audit-logs'
-import { Route as AdminApprovalsRouteImport } from './routes/_admin/approvals'
-import { Route as AdminApiRouteImport } from './routes/_admin/api'
-import { Route as AdminAiCenterRouteImport } from './routes/_admin/ai-center'
+import { Route as AdminRouteImport } from './routes/_admin'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminActivityRouteImport } from './routes/_admin/activity'
+import { Route as AdminAiCenterRouteImport } from './routes/_admin/ai-center'
+import { Route as AdminApiRouteImport } from './routes/_admin/api'
+import { Route as AdminApprovalsRouteImport } from './routes/_admin/approvals'
+import { Route as AdminAuditLogsRouteImport } from './routes/_admin/audit-logs'
+import { Route as AdminBannersRouteImport } from './routes/_admin/banners'
+import { Route as AdminCatalogRouteImport } from './routes/_admin/catalog'
+import { Route as AdminCategoriesRouteImport } from './routes/_admin/categories'
+import { Route as AdminCategoryCommissionsRouteImport } from './routes/_admin/category-commissions'
+import { Route as AdminCkDishesRouteImport } from './routes/_admin/ck-dishes'
+import { Route as AdminCkImportRouteImport } from './routes/_admin/ck-import'
+import { Route as AdminCkOrdersRouteImport } from './routes/_admin/ck-orders'
+import { Route as AdminCkProductionRouteImport } from './routes/_admin/ck-production'
+import { Route as AdminCkRequestsRouteImport } from './routes/_admin/ck-requests'
+import { Route as AdminCmsRouteImport } from './routes/_admin/cms'
+import { Route as AdminCommissionsRouteImport } from './routes/_admin/commissions'
+import { Route as AdminCommunicationsRouteImport } from './routes/_admin/communications'
+import { Route as AdminCuisinesRouteImport } from './routes/_admin/cuisines'
+import { Route as AdminDashboardRouteImport } from './routes/_admin/dashboard'
+import { Route as AdminDeliveriesRouteImport } from './routes/_admin/deliveries'
+import { Route as AdminDisputesRouteImport } from './routes/_admin/disputes'
+import { Route as AdminFilesRouteImport } from './routes/_admin/files'
+import { Route as AdminFraudRouteImport } from './routes/_admin/fraud'
+import { Route as AdminInventoryRouteImport } from './routes/_admin/inventory'
+import { Route as AdminInvoicesRouteImport } from './routes/_admin/invoices'
+import { Route as AdminKycRouteImport } from './routes/_admin/kyc'
+import { Route as AdminLookupRouteImport } from './routes/_admin/lookup'
+import { Route as AdminMarketingRouteImport } from './routes/_admin/marketing'
+import { Route as AdminMediaRouteImport } from './routes/_admin/media'
+import { Route as AdminNotificationsRouteImport } from './routes/_admin/notifications'
+import { Route as AdminOrgReportsRouteImport } from './routes/_admin/org-reports'
+import { Route as AdminOutstandingRouteImport } from './routes/_admin/outstanding'
+import { Route as AdminPaymentsRouteImport } from './routes/_admin/payments'
+import { Route as AdminProductRequestsRouteImport } from './routes/_admin/product-requests'
+import { Route as AdminPurchaseOrdersRouteImport } from './routes/_admin/purchase-orders'
+import { Route as AdminQualitiesRouteImport } from './routes/_admin/qualities'
+import { Route as AdminQuotationsRouteImport } from './routes/_admin/quotations'
+import { Route as AdminRatingsRouteImport } from './routes/_admin/ratings'
+import { Route as AdminReferralSettingsRouteImport } from './routes/_admin/referral-settings'
+import { Route as AdminReferralsRouteImport } from './routes/_admin/referrals'
+import { Route as AdminReportsRouteImport } from './routes/_admin/reports'
+import { Route as AdminRestaurantApprovalsRouteImport } from './routes/_admin/restaurant-approvals'
+import { Route as AdminRestaurantsRouteImport } from './routes/_admin/restaurants'
+import { Route as AdminRewardsRouteImport } from './routes/_admin/rewards'
+import { Route as AdminRfqsRouteImport } from './routes/_admin/rfqs'
+import { Route as AdminRolesRouteImport } from './routes/_admin/roles'
+import { Route as AdminSettingsRouteImport } from './routes/_admin/settings'
+import { Route as AdminSubscriptionsRouteImport } from './routes/_admin/subscriptions'
+import { Route as AdminSupplierApprovalsRouteImport } from './routes/_admin/supplier-approvals'
+import { Route as AdminSuppliersRouteImport } from './routes/_admin/suppliers'
+import { Route as AdminSupportRouteImport } from './routes/_admin/support'
+import { Route as AdminWalletsRouteImport } from './routes/_admin/wallets'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/_admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminWalletsRoute = AdminWalletsRouteImport.update({
-  id: '/wallets',
-  path: '/wallets',
+const AdminActivityRoute = AdminActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminSupportRoute = AdminSupportRouteImport.update({
-  id: '/support',
-  path: '/support',
+const AdminAiCenterRoute = AdminAiCenterRouteImport.update({
+  id: '/ai-center',
+  path: '/ai-center',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminSuppliersRoute = AdminSuppliersRouteImport.update({
-  id: '/suppliers',
-  path: '/suppliers',
+const AdminApiRoute = AdminApiRouteImport.update({
+  id: '/api',
+  path: '/api',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminSupplierApprovalsRoute = AdminSupplierApprovalsRouteImport.update({
-  id: '/supplier-approvals',
-  path: '/supplier-approvals',
+const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
+const AdminAuditLogsRoute = AdminAuditLogsRouteImport.update({
+  id: '/audit-logs',
+  path: '/audit-logs',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const AdminBannersRoute = AdminBannersRouteImport.update({
+  id: '/banners',
+  path: '/banners',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminRolesRoute = AdminRolesRouteImport.update({
-  id: '/roles',
-  path: '/roles',
+const AdminCatalogRoute = AdminCatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminRfqsRoute = AdminRfqsRouteImport.update({
-  id: '/rfqs',
-  path: '/rfqs',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminRewardsRoute = AdminRewardsRouteImport.update({
-  id: '/rewards',
-  path: '/rewards',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminRestaurantsRoute = AdminRestaurantsRouteImport.update({
-  id: '/restaurants',
-  path: '/restaurants',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminRestaurantApprovalsRoute =
-  AdminRestaurantApprovalsRouteImport.update({
-    id: '/restaurant-approvals',
-    path: '/restaurant-approvals',
-    getParentRoute: () => AdminRoute,
-  } as any)
-const AdminReportsRoute = AdminReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminReferralsRoute = AdminReferralsRouteImport.update({
-  id: '/referrals',
-  path: '/referrals',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminReferralSettingsRoute = AdminReferralSettingsRouteImport.update({
-  id: '/referral-settings',
-  path: '/referral-settings',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminRatingsRoute = AdminRatingsRouteImport.update({
-  id: '/ratings',
-  path: '/ratings',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminQuotationsRoute = AdminQuotationsRouteImport.update({
-  id: '/quotations',
-  path: '/quotations',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminQualitiesRoute = AdminQualitiesRouteImport.update({
-  id: '/qualities',
-  path: '/qualities',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminPurchaseOrdersRoute = AdminPurchaseOrdersRouteImport.update({
-  id: '/purchase-orders',
-  path: '/purchase-orders',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
-  id: '/payments',
-  path: '/payments',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminOutstandingRoute = AdminOutstandingRouteImport.update({
-  id: '/outstanding',
-  path: '/outstanding',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminOrgReportsRoute = AdminOrgReportsRouteImport.update({
-  id: '/org-reports',
-  path: '/org-reports',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminMediaRoute = AdminMediaRouteImport.update({
-  id: '/media',
-  path: '/media',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminMarketingRoute = AdminMarketingRouteImport.update({
-  id: '/marketing',
-  path: '/marketing',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminLookupRoute = AdminLookupRouteImport.update({
-  id: '/lookup',
-  path: '/lookup',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminKycRoute = AdminKycRouteImport.update({
-  id: '/kyc',
-  path: '/kyc',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
-  id: '/invoices',
-  path: '/invoices',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminInventoryRoute = AdminInventoryRouteImport.update({
-  id: '/inventory',
-  path: '/inventory',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminFraudRoute = AdminFraudRouteImport.update({
-  id: '/fraud',
-  path: '/fraud',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminFilesRoute = AdminFilesRouteImport.update({
-  id: '/files',
-  path: '/files',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminDeliveriesRoute = AdminDeliveriesRouteImport.update({
-  id: '/deliveries',
-  path: '/deliveries',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminDashboardRoute = AdminDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminCuisinesRoute = AdminCuisinesRouteImport.update({
-  id: '/cuisines',
-  path: '/cuisines',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminCommunicationsRoute = AdminCommunicationsRouteImport.update({
-  id: '/communications',
-  path: '/communications',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminCommissionsRoute = AdminCommissionsRouteImport.update({
-  id: '/commissions',
-  path: '/commissions',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminCmsRoute = AdminCmsRouteImport.update({
-  id: '/cms',
-  path: '/cms',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminCkRequestsRoute = AdminCkRequestsRouteImport.update({
-  id: '/ck-requests',
-  path: '/ck-requests',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminCkProductionRoute = AdminCkProductionRouteImport.update({
-  id: '/ck-production',
-  path: '/ck-production',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminCkOrdersRoute = AdminCkOrdersRouteImport.update({
-  id: '/ck-orders',
-  path: '/ck-orders',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminCkImportRoute = AdminCkImportRouteImport.update({
-  id: '/ck-import',
-  path: '/ck-import',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminCkDishesRoute = AdminCkDishesRouteImport.update({
-  id: '/ck-dishes',
-  path: '/ck-dishes',
+const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCategoryCommissionsRoute =
@@ -289,44 +125,220 @@ const AdminCategoryCommissionsRoute =
     path: '/category-commissions',
     getParentRoute: () => AdminRoute,
   } as any)
-const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
-  id: '/categories',
-  path: '/categories',
+const AdminCkDishesRoute = AdminCkDishesRouteImport.update({
+  id: '/ck-dishes',
+  path: '/ck-dishes',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminCatalogRoute = AdminCatalogRouteImport.update({
-  id: '/catalog',
-  path: '/catalog',
+const AdminCkImportRoute = AdminCkImportRouteImport.update({
+  id: '/ck-import',
+  path: '/ck-import',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminBannersRoute = AdminBannersRouteImport.update({
-  id: '/banners',
-  path: '/banners',
+const AdminCkOrdersRoute = AdminCkOrdersRouteImport.update({
+  id: '/ck-orders',
+  path: '/ck-orders',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminAuditLogsRoute = AdminAuditLogsRouteImport.update({
-  id: '/audit-logs',
-  path: '/audit-logs',
+const AdminCkProductionRoute = AdminCkProductionRouteImport.update({
+  id: '/ck-production',
+  path: '/ck-production',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
-  id: '/approvals',
-  path: '/approvals',
+const AdminCkRequestsRoute = AdminCkRequestsRouteImport.update({
+  id: '/ck-requests',
+  path: '/ck-requests',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminApiRoute = AdminApiRouteImport.update({
-  id: '/api',
-  path: '/api',
+const AdminCmsRoute = AdminCmsRouteImport.update({
+  id: '/cms',
+  path: '/cms',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminAiCenterRoute = AdminAiCenterRouteImport.update({
-  id: '/ai-center',
-  path: '/ai-center',
+const AdminCommissionsRoute = AdminCommissionsRouteImport.update({
+  id: '/commissions',
+  path: '/commissions',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminActivityRoute = AdminActivityRouteImport.update({
-  id: '/activity',
-  path: '/activity',
+const AdminCommunicationsRoute = AdminCommunicationsRouteImport.update({
+  id: '/communications',
+  path: '/communications',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCuisinesRoute = AdminCuisinesRouteImport.update({
+  id: '/cuisines',
+  path: '/cuisines',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDeliveriesRoute = AdminDeliveriesRouteImport.update({
+  id: '/deliveries',
+  path: '/deliveries',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDisputesRoute = AdminDisputesRouteImport.update({
+  id: '/disputes',
+  path: '/disputes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFilesRoute = AdminFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFraudRoute = AdminFraudRouteImport.update({
+  id: '/fraud',
+  path: '/fraud',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInventoryRoute = AdminInventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminKycRoute = AdminKycRouteImport.update({
+  id: '/kyc',
+  path: '/kyc',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLookupRoute = AdminLookupRouteImport.update({
+  id: '/lookup',
+  path: '/lookup',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMarketingRoute = AdminMarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMediaRoute = AdminMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOrgReportsRoute = AdminOrgReportsRouteImport.update({
+  id: '/org-reports',
+  path: '/org-reports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOutstandingRoute = AdminOutstandingRouteImport.update({
+  id: '/outstanding',
+  path: '/outstanding',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminProductRequestsRoute = AdminProductRequestsRouteImport.update({
+  id: '/product-requests',
+  path: '/product-requests',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPurchaseOrdersRoute = AdminPurchaseOrdersRouteImport.update({
+  id: '/purchase-orders',
+  path: '/purchase-orders',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminQualitiesRoute = AdminQualitiesRouteImport.update({
+  id: '/qualities',
+  path: '/qualities',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminQuotationsRoute = AdminQuotationsRouteImport.update({
+  id: '/quotations',
+  path: '/quotations',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRatingsRoute = AdminRatingsRouteImport.update({
+  id: '/ratings',
+  path: '/ratings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReferralSettingsRoute = AdminReferralSettingsRouteImport.update({
+  id: '/referral-settings',
+  path: '/referral-settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReferralsRoute = AdminReferralsRouteImport.update({
+  id: '/referrals',
+  path: '/referrals',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRestaurantApprovalsRoute =
+  AdminRestaurantApprovalsRouteImport.update({
+    id: '/restaurant-approvals',
+    path: '/restaurant-approvals',
+    getParentRoute: () => AdminRoute,
+  } as any)
+const AdminRestaurantsRoute = AdminRestaurantsRouteImport.update({
+  id: '/restaurants',
+  path: '/restaurants',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRewardsRoute = AdminRewardsRouteImport.update({
+  id: '/rewards',
+  path: '/rewards',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRfqsRoute = AdminRfqsRouteImport.update({
+  id: '/rfqs',
+  path: '/rfqs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRolesRoute = AdminRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSupplierApprovalsRoute = AdminSupplierApprovalsRouteImport.update({
+  id: '/supplier-approvals',
+  path: '/supplier-approvals',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSuppliersRoute = AdminSuppliersRouteImport.update({
+  id: '/suppliers',
+  path: '/suppliers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminWalletsRoute = AdminWalletsRouteImport.update({
+  id: '/wallets',
+  path: '/wallets',
   getParentRoute: () => AdminRoute,
 } as any)
 
@@ -353,6 +365,7 @@ export interface FileRoutesByFullPath {
   '/cuisines': typeof AdminCuisinesRoute
   '/dashboard': typeof AdminDashboardRoute
   '/deliveries': typeof AdminDeliveriesRoute
+  '/disputes': typeof AdminDisputesRoute
   '/files': typeof AdminFilesRoute
   '/fraud': typeof AdminFraudRoute
   '/inventory': typeof AdminInventoryRoute
@@ -365,6 +378,7 @@ export interface FileRoutesByFullPath {
   '/org-reports': typeof AdminOrgReportsRoute
   '/outstanding': typeof AdminOutstandingRoute
   '/payments': typeof AdminPaymentsRoute
+  '/product-requests': typeof AdminProductRequestsRoute
   '/purchase-orders': typeof AdminPurchaseOrdersRoute
   '/qualities': typeof AdminQualitiesRoute
   '/quotations': typeof AdminQuotationsRoute
@@ -407,6 +421,7 @@ export interface FileRoutesByTo {
   '/cuisines': typeof AdminCuisinesRoute
   '/dashboard': typeof AdminDashboardRoute
   '/deliveries': typeof AdminDeliveriesRoute
+  '/disputes': typeof AdminDisputesRoute
   '/files': typeof AdminFilesRoute
   '/fraud': typeof AdminFraudRoute
   '/inventory': typeof AdminInventoryRoute
@@ -419,6 +434,7 @@ export interface FileRoutesByTo {
   '/org-reports': typeof AdminOrgReportsRoute
   '/outstanding': typeof AdminOutstandingRoute
   '/payments': typeof AdminPaymentsRoute
+  '/product-requests': typeof AdminProductRequestsRoute
   '/purchase-orders': typeof AdminPurchaseOrdersRoute
   '/qualities': typeof AdminQualitiesRoute
   '/quotations': typeof AdminQuotationsRoute
@@ -463,6 +479,7 @@ export interface FileRoutesById {
   '/_admin/cuisines': typeof AdminCuisinesRoute
   '/_admin/dashboard': typeof AdminDashboardRoute
   '/_admin/deliveries': typeof AdminDeliveriesRoute
+  '/_admin/disputes': typeof AdminDisputesRoute
   '/_admin/files': typeof AdminFilesRoute
   '/_admin/fraud': typeof AdminFraudRoute
   '/_admin/inventory': typeof AdminInventoryRoute
@@ -475,6 +492,7 @@ export interface FileRoutesById {
   '/_admin/org-reports': typeof AdminOrgReportsRoute
   '/_admin/outstanding': typeof AdminOutstandingRoute
   '/_admin/payments': typeof AdminPaymentsRoute
+  '/_admin/product-requests': typeof AdminProductRequestsRoute
   '/_admin/purchase-orders': typeof AdminPurchaseOrdersRoute
   '/_admin/qualities': typeof AdminQualitiesRoute
   '/_admin/quotations': typeof AdminQuotationsRoute
@@ -519,6 +537,7 @@ export interface FileRouteTypes {
     | '/cuisines'
     | '/dashboard'
     | '/deliveries'
+    | '/disputes'
     | '/files'
     | '/fraud'
     | '/inventory'
@@ -531,6 +550,7 @@ export interface FileRouteTypes {
     | '/org-reports'
     | '/outstanding'
     | '/payments'
+    | '/product-requests'
     | '/purchase-orders'
     | '/qualities'
     | '/quotations'
@@ -573,6 +593,7 @@ export interface FileRouteTypes {
     | '/cuisines'
     | '/dashboard'
     | '/deliveries'
+    | '/disputes'
     | '/files'
     | '/fraud'
     | '/inventory'
@@ -585,6 +606,7 @@ export interface FileRouteTypes {
     | '/org-reports'
     | '/outstanding'
     | '/payments'
+    | '/product-requests'
     | '/purchase-orders'
     | '/qualities'
     | '/quotations'
@@ -628,6 +650,7 @@ export interface FileRouteTypes {
     | '/_admin/cuisines'
     | '/_admin/dashboard'
     | '/_admin/deliveries'
+    | '/_admin/disputes'
     | '/_admin/files'
     | '/_admin/fraud'
     | '/_admin/inventory'
@@ -640,6 +663,7 @@ export interface FileRouteTypes {
     | '/_admin/org-reports'
     | '/_admin/outstanding'
     | '/_admin/payments'
+    | '/_admin/product-requests'
     | '/_admin/purchase-orders'
     | '/_admin/qualities'
     | '/_admin/quotations'
@@ -668,11 +692,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_admin': {
@@ -682,347 +706,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_admin/wallets': {
-      id: '/_admin/wallets'
-      path: '/wallets'
-      fullPath: '/wallets'
-      preLoaderRoute: typeof AdminWalletsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/support': {
-      id: '/_admin/support'
-      path: '/support'
-      fullPath: '/support'
-      preLoaderRoute: typeof AdminSupportRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/suppliers': {
-      id: '/_admin/suppliers'
-      path: '/suppliers'
-      fullPath: '/suppliers'
-      preLoaderRoute: typeof AdminSuppliersRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/supplier-approvals': {
-      id: '/_admin/supplier-approvals'
-      path: '/supplier-approvals'
-      fullPath: '/supplier-approvals'
-      preLoaderRoute: typeof AdminSupplierApprovalsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/subscriptions': {
-      id: '/_admin/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/subscriptions'
-      preLoaderRoute: typeof AdminSubscriptionsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/settings': {
-      id: '/_admin/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/roles': {
-      id: '/_admin/roles'
-      path: '/roles'
-      fullPath: '/roles'
-      preLoaderRoute: typeof AdminRolesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/rfqs': {
-      id: '/_admin/rfqs'
-      path: '/rfqs'
-      fullPath: '/rfqs'
-      preLoaderRoute: typeof AdminRfqsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/rewards': {
-      id: '/_admin/rewards'
-      path: '/rewards'
-      fullPath: '/rewards'
-      preLoaderRoute: typeof AdminRewardsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/restaurants': {
-      id: '/_admin/restaurants'
-      path: '/restaurants'
-      fullPath: '/restaurants'
-      preLoaderRoute: typeof AdminRestaurantsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/restaurant-approvals': {
-      id: '/_admin/restaurant-approvals'
-      path: '/restaurant-approvals'
-      fullPath: '/restaurant-approvals'
-      preLoaderRoute: typeof AdminRestaurantApprovalsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/reports': {
-      id: '/_admin/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof AdminReportsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/referrals': {
-      id: '/_admin/referrals'
-      path: '/referrals'
-      fullPath: '/referrals'
-      preLoaderRoute: typeof AdminReferralsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/referral-settings': {
-      id: '/_admin/referral-settings'
-      path: '/referral-settings'
-      fullPath: '/referral-settings'
-      preLoaderRoute: typeof AdminReferralSettingsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/ratings': {
-      id: '/_admin/ratings'
-      path: '/ratings'
-      fullPath: '/ratings'
-      preLoaderRoute: typeof AdminRatingsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/quotations': {
-      id: '/_admin/quotations'
-      path: '/quotations'
-      fullPath: '/quotations'
-      preLoaderRoute: typeof AdminQuotationsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/qualities': {
-      id: '/_admin/qualities'
-      path: '/qualities'
-      fullPath: '/qualities'
-      preLoaderRoute: typeof AdminQualitiesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/purchase-orders': {
-      id: '/_admin/purchase-orders'
-      path: '/purchase-orders'
-      fullPath: '/purchase-orders'
-      preLoaderRoute: typeof AdminPurchaseOrdersRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/payments': {
-      id: '/_admin/payments'
-      path: '/payments'
-      fullPath: '/payments'
-      preLoaderRoute: typeof AdminPaymentsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/outstanding': {
-      id: '/_admin/outstanding'
-      path: '/outstanding'
-      fullPath: '/outstanding'
-      preLoaderRoute: typeof AdminOutstandingRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/org-reports': {
-      id: '/_admin/org-reports'
-      path: '/org-reports'
-      fullPath: '/org-reports'
-      preLoaderRoute: typeof AdminOrgReportsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/notifications': {
-      id: '/_admin/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof AdminNotificationsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/media': {
-      id: '/_admin/media'
-      path: '/media'
-      fullPath: '/media'
-      preLoaderRoute: typeof AdminMediaRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/marketing': {
-      id: '/_admin/marketing'
-      path: '/marketing'
-      fullPath: '/marketing'
-      preLoaderRoute: typeof AdminMarketingRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/lookup': {
-      id: '/_admin/lookup'
-      path: '/lookup'
-      fullPath: '/lookup'
-      preLoaderRoute: typeof AdminLookupRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/kyc': {
-      id: '/_admin/kyc'
-      path: '/kyc'
-      fullPath: '/kyc'
-      preLoaderRoute: typeof AdminKycRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/invoices': {
-      id: '/_admin/invoices'
-      path: '/invoices'
-      fullPath: '/invoices'
-      preLoaderRoute: typeof AdminInvoicesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/inventory': {
-      id: '/_admin/inventory'
-      path: '/inventory'
-      fullPath: '/inventory'
-      preLoaderRoute: typeof AdminInventoryRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/fraud': {
-      id: '/_admin/fraud'
-      path: '/fraud'
-      fullPath: '/fraud'
-      preLoaderRoute: typeof AdminFraudRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/files': {
-      id: '/_admin/files'
-      path: '/files'
-      fullPath: '/files'
-      preLoaderRoute: typeof AdminFilesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/deliveries': {
-      id: '/_admin/deliveries'
-      path: '/deliveries'
-      fullPath: '/deliveries'
-      preLoaderRoute: typeof AdminDeliveriesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/dashboard': {
-      id: '/_admin/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AdminDashboardRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/cuisines': {
-      id: '/_admin/cuisines'
-      path: '/cuisines'
-      fullPath: '/cuisines'
-      preLoaderRoute: typeof AdminCuisinesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/communications': {
-      id: '/_admin/communications'
-      path: '/communications'
-      fullPath: '/communications'
-      preLoaderRoute: typeof AdminCommunicationsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/commissions': {
-      id: '/_admin/commissions'
-      path: '/commissions'
-      fullPath: '/commissions'
-      preLoaderRoute: typeof AdminCommissionsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/cms': {
-      id: '/_admin/cms'
-      path: '/cms'
-      fullPath: '/cms'
-      preLoaderRoute: typeof AdminCmsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/ck-requests': {
-      id: '/_admin/ck-requests'
-      path: '/ck-requests'
-      fullPath: '/ck-requests'
-      preLoaderRoute: typeof AdminCkRequestsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/ck-production': {
-      id: '/_admin/ck-production'
-      path: '/ck-production'
-      fullPath: '/ck-production'
-      preLoaderRoute: typeof AdminCkProductionRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/ck-orders': {
-      id: '/_admin/ck-orders'
-      path: '/ck-orders'
-      fullPath: '/ck-orders'
-      preLoaderRoute: typeof AdminCkOrdersRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/ck-import': {
-      id: '/_admin/ck-import'
-      path: '/ck-import'
-      fullPath: '/ck-import'
-      preLoaderRoute: typeof AdminCkImportRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/ck-dishes': {
-      id: '/_admin/ck-dishes'
-      path: '/ck-dishes'
-      fullPath: '/ck-dishes'
-      preLoaderRoute: typeof AdminCkDishesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/category-commissions': {
-      id: '/_admin/category-commissions'
-      path: '/category-commissions'
-      fullPath: '/category-commissions'
-      preLoaderRoute: typeof AdminCategoryCommissionsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/categories': {
-      id: '/_admin/categories'
-      path: '/categories'
-      fullPath: '/categories'
-      preLoaderRoute: typeof AdminCategoriesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/catalog': {
-      id: '/_admin/catalog'
-      path: '/catalog'
-      fullPath: '/catalog'
-      preLoaderRoute: typeof AdminCatalogRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/banners': {
-      id: '/_admin/banners'
-      path: '/banners'
-      fullPath: '/banners'
-      preLoaderRoute: typeof AdminBannersRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/audit-logs': {
-      id: '/_admin/audit-logs'
-      path: '/audit-logs'
-      fullPath: '/audit-logs'
-      preLoaderRoute: typeof AdminAuditLogsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/approvals': {
-      id: '/_admin/approvals'
-      path: '/approvals'
-      fullPath: '/approvals'
-      preLoaderRoute: typeof AdminApprovalsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/api': {
-      id: '/_admin/api'
-      path: '/api'
-      fullPath: '/api'
-      preLoaderRoute: typeof AdminApiRouteImport
+    '/_admin/activity': {
+      id: '/_admin/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof AdminActivityRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_admin/ai-center': {
@@ -1032,11 +727,354 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAiCenterRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/_admin/activity': {
-      id: '/_admin/activity'
-      path: '/activity'
-      fullPath: '/activity'
-      preLoaderRoute: typeof AdminActivityRouteImport
+    '/_admin/api': {
+      id: '/_admin/api'
+      path: '/api'
+      fullPath: '/api'
+      preLoaderRoute: typeof AdminApiRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/approvals': {
+      id: '/_admin/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof AdminApprovalsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/audit-logs': {
+      id: '/_admin/audit-logs'
+      path: '/audit-logs'
+      fullPath: '/audit-logs'
+      preLoaderRoute: typeof AdminAuditLogsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/banners': {
+      id: '/_admin/banners'
+      path: '/banners'
+      fullPath: '/banners'
+      preLoaderRoute: typeof AdminBannersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/catalog': {
+      id: '/_admin/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof AdminCatalogRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/categories': {
+      id: '/_admin/categories'
+      path: '/categories'
+      fullPath: '/categories'
+      preLoaderRoute: typeof AdminCategoriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/category-commissions': {
+      id: '/_admin/category-commissions'
+      path: '/category-commissions'
+      fullPath: '/category-commissions'
+      preLoaderRoute: typeof AdminCategoryCommissionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/ck-dishes': {
+      id: '/_admin/ck-dishes'
+      path: '/ck-dishes'
+      fullPath: '/ck-dishes'
+      preLoaderRoute: typeof AdminCkDishesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/ck-import': {
+      id: '/_admin/ck-import'
+      path: '/ck-import'
+      fullPath: '/ck-import'
+      preLoaderRoute: typeof AdminCkImportRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/ck-orders': {
+      id: '/_admin/ck-orders'
+      path: '/ck-orders'
+      fullPath: '/ck-orders'
+      preLoaderRoute: typeof AdminCkOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/ck-production': {
+      id: '/_admin/ck-production'
+      path: '/ck-production'
+      fullPath: '/ck-production'
+      preLoaderRoute: typeof AdminCkProductionRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/ck-requests': {
+      id: '/_admin/ck-requests'
+      path: '/ck-requests'
+      fullPath: '/ck-requests'
+      preLoaderRoute: typeof AdminCkRequestsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/cms': {
+      id: '/_admin/cms'
+      path: '/cms'
+      fullPath: '/cms'
+      preLoaderRoute: typeof AdminCmsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/commissions': {
+      id: '/_admin/commissions'
+      path: '/commissions'
+      fullPath: '/commissions'
+      preLoaderRoute: typeof AdminCommissionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/communications': {
+      id: '/_admin/communications'
+      path: '/communications'
+      fullPath: '/communications'
+      preLoaderRoute: typeof AdminCommunicationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/cuisines': {
+      id: '/_admin/cuisines'
+      path: '/cuisines'
+      fullPath: '/cuisines'
+      preLoaderRoute: typeof AdminCuisinesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/dashboard': {
+      id: '/_admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/deliveries': {
+      id: '/_admin/deliveries'
+      path: '/deliveries'
+      fullPath: '/deliveries'
+      preLoaderRoute: typeof AdminDeliveriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/disputes': {
+      id: '/_admin/disputes'
+      path: '/disputes'
+      fullPath: '/disputes'
+      preLoaderRoute: typeof AdminDisputesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/files': {
+      id: '/_admin/files'
+      path: '/files'
+      fullPath: '/files'
+      preLoaderRoute: typeof AdminFilesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/fraud': {
+      id: '/_admin/fraud'
+      path: '/fraud'
+      fullPath: '/fraud'
+      preLoaderRoute: typeof AdminFraudRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/inventory': {
+      id: '/_admin/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof AdminInventoryRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/invoices': {
+      id: '/_admin/invoices'
+      path: '/invoices'
+      fullPath: '/invoices'
+      preLoaderRoute: typeof AdminInvoicesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/kyc': {
+      id: '/_admin/kyc'
+      path: '/kyc'
+      fullPath: '/kyc'
+      preLoaderRoute: typeof AdminKycRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/lookup': {
+      id: '/_admin/lookup'
+      path: '/lookup'
+      fullPath: '/lookup'
+      preLoaderRoute: typeof AdminLookupRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/marketing': {
+      id: '/_admin/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof AdminMarketingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/media': {
+      id: '/_admin/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof AdminMediaRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/notifications': {
+      id: '/_admin/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AdminNotificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/org-reports': {
+      id: '/_admin/org-reports'
+      path: '/org-reports'
+      fullPath: '/org-reports'
+      preLoaderRoute: typeof AdminOrgReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/outstanding': {
+      id: '/_admin/outstanding'
+      path: '/outstanding'
+      fullPath: '/outstanding'
+      preLoaderRoute: typeof AdminOutstandingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/payments': {
+      id: '/_admin/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/product-requests': {
+      id: '/_admin/product-requests'
+      path: '/product-requests'
+      fullPath: '/product-requests'
+      preLoaderRoute: typeof AdminProductRequestsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/purchase-orders': {
+      id: '/_admin/purchase-orders'
+      path: '/purchase-orders'
+      fullPath: '/purchase-orders'
+      preLoaderRoute: typeof AdminPurchaseOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/qualities': {
+      id: '/_admin/qualities'
+      path: '/qualities'
+      fullPath: '/qualities'
+      preLoaderRoute: typeof AdminQualitiesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/quotations': {
+      id: '/_admin/quotations'
+      path: '/quotations'
+      fullPath: '/quotations'
+      preLoaderRoute: typeof AdminQuotationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/ratings': {
+      id: '/_admin/ratings'
+      path: '/ratings'
+      fullPath: '/ratings'
+      preLoaderRoute: typeof AdminRatingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/referral-settings': {
+      id: '/_admin/referral-settings'
+      path: '/referral-settings'
+      fullPath: '/referral-settings'
+      preLoaderRoute: typeof AdminReferralSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/referrals': {
+      id: '/_admin/referrals'
+      path: '/referrals'
+      fullPath: '/referrals'
+      preLoaderRoute: typeof AdminReferralsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/reports': {
+      id: '/_admin/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/restaurant-approvals': {
+      id: '/_admin/restaurant-approvals'
+      path: '/restaurant-approvals'
+      fullPath: '/restaurant-approvals'
+      preLoaderRoute: typeof AdminRestaurantApprovalsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/restaurants': {
+      id: '/_admin/restaurants'
+      path: '/restaurants'
+      fullPath: '/restaurants'
+      preLoaderRoute: typeof AdminRestaurantsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/rewards': {
+      id: '/_admin/rewards'
+      path: '/rewards'
+      fullPath: '/rewards'
+      preLoaderRoute: typeof AdminRewardsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/rfqs': {
+      id: '/_admin/rfqs'
+      path: '/rfqs'
+      fullPath: '/rfqs'
+      preLoaderRoute: typeof AdminRfqsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/roles': {
+      id: '/_admin/roles'
+      path: '/roles'
+      fullPath: '/roles'
+      preLoaderRoute: typeof AdminRolesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/settings': {
+      id: '/_admin/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/subscriptions': {
+      id: '/_admin/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/subscriptions'
+      preLoaderRoute: typeof AdminSubscriptionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/supplier-approvals': {
+      id: '/_admin/supplier-approvals'
+      path: '/supplier-approvals'
+      fullPath: '/supplier-approvals'
+      preLoaderRoute: typeof AdminSupplierApprovalsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/suppliers': {
+      id: '/_admin/suppliers'
+      path: '/suppliers'
+      fullPath: '/suppliers'
+      preLoaderRoute: typeof AdminSuppliersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/support': {
+      id: '/_admin/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/wallets': {
+      id: '/_admin/wallets'
+      path: '/wallets'
+      fullPath: '/wallets'
+      preLoaderRoute: typeof AdminWalletsRouteImport
       parentRoute: typeof AdminRoute
     }
   }
@@ -1063,6 +1101,7 @@ interface AdminRouteChildren {
   AdminCuisinesRoute: typeof AdminCuisinesRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
+  AdminDisputesRoute: typeof AdminDisputesRoute
   AdminFilesRoute: typeof AdminFilesRoute
   AdminFraudRoute: typeof AdminFraudRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
@@ -1075,6 +1114,7 @@ interface AdminRouteChildren {
   AdminOrgReportsRoute: typeof AdminOrgReportsRoute
   AdminOutstandingRoute: typeof AdminOutstandingRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
+  AdminProductRequestsRoute: typeof AdminProductRequestsRoute
   AdminPurchaseOrdersRoute: typeof AdminPurchaseOrdersRoute
   AdminQualitiesRoute: typeof AdminQualitiesRoute
   AdminQuotationsRoute: typeof AdminQuotationsRoute
@@ -1116,6 +1156,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCuisinesRoute: AdminCuisinesRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminDeliveriesRoute: AdminDeliveriesRoute,
+  AdminDisputesRoute: AdminDisputesRoute,
   AdminFilesRoute: AdminFilesRoute,
   AdminFraudRoute: AdminFraudRoute,
   AdminInventoryRoute: AdminInventoryRoute,
@@ -1128,6 +1169,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminOrgReportsRoute: AdminOrgReportsRoute,
   AdminOutstandingRoute: AdminOutstandingRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
+  AdminProductRequestsRoute: AdminProductRequestsRoute,
   AdminPurchaseOrdersRoute: AdminPurchaseOrdersRoute,
   AdminQualitiesRoute: AdminQualitiesRoute,
   AdminQuotationsRoute: AdminQuotationsRoute,
