@@ -80,7 +80,7 @@ function QuotationsPage() {
           label: "Decision",
           required: true,
           type: "select",
-          options: ["approved", "rejected", "submitted", "draft", "pending"],
+          options: ["accepted", "rejected"],
         },
       ]}
       viewFields={[
@@ -144,12 +144,12 @@ function QuotationsPage() {
         const status = String(data.status || "");
         const buyerOrgId = String(row.buyerOrgId || "");
         if (!buyerOrgId) throw new Error("Missing buyer organization for this quotation");
-        if (status === "approved") {
+        if (status === "accepted" || status === "approved") {
           await approveQuotation(id, buyerOrgId);
         } else if (status === "rejected") {
           await rejectQuotation(id, buyerOrgId);
         } else {
-          throw new Error("Set status to approved or rejected to persist");
+          throw new Error("Choose Accepted or Rejected. Other statuses are set in the app.");
         }
         await queryClient.invalidateQueries({ queryKey: ["quotations"] });
         await queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
