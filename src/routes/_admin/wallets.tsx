@@ -942,7 +942,9 @@ function CreditFacilityPanel() {
                     {list.isLoading
                       ? "Loading…"
                       : list.isError
-                        ? "Failed to load credit facilities."
+                        ? list.error instanceof Error
+                          ? list.error.message || "Failed to load credit facilities."
+                          : "Failed to load credit facilities. Deploy the API credit-facilities endpoints if this persists."
                         : "No credit facilities yet. Accept a credit request to start."}
                   </td>
                 </tr>

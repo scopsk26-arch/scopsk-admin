@@ -80,6 +80,7 @@ export function usePagedList<T>(options: {
     isLoading: result.isLoading,
     isFetching: result.isFetching,
     isError: result.isError,
+    error: result.error,
     refetch: result.refetch,
   };
 }
