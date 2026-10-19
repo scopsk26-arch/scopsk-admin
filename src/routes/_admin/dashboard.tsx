@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { KpiCard } from "@/components/admin/KpiCard";
 import {
   Store, Truck, FileText, Quote, ClipboardList, Star,
+  ShieldCheck, Building2, PackagePlus, Wallet, LifeBuoy, Scale, ChevronRight,
 } from "lucide-react";
 import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -12,7 +13,7 @@ import { StatusBadge } from "@/components/admin/DataPage";
 import { cn } from "@/lib/utils";
 import { api, asArray, num, str } from "@/lib/api/client";
 import { EMPTY_LIST, fetchAdminDashboard } from "@/lib/api/resources";
-import { getSessionUser } from "@/lib/auth-session";
+import { getSessionUser, subscribeSession } from "@/lib/auth-session";
 
 export const Route = createFileRoute("/_admin/dashboard")({
   head: () => ({ meta: [{ title: "Command Center — ScopsK" }] }),
@@ -35,13 +36,31 @@ function monthLabel(m: string) {
   return m;
 }
 
-function Dashboard() {
-  const user = getSessionUser();
-  const firstName = user?.firstName || "Admin";
+function greetingFor(date: Date) {
+  const hour = date.getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
-  const { data: dash } = useQuery({
+function useClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return now;
+}
+
+function Dashboard() {
+  const now = useClock();
+  const user = useSyncExternalStore(subscribeSession, getSessionUser, () => null);
+  const firstName = user?.firstName?.trim() || user?.email?.split("@")[0] || "there";
+
+  const { data: dash, isError, isLoading } = useQuery({
     queryKey: ["admin", "dashboard"],
     queryFn: fetchAdminDashboard,
+    refetchOnWindowFocus: true,
   });
 
   const { data: recentRfqs = EMPTY_LIST } = useQuery({
@@ -54,13 +73,67 @@ function Dashboard() {
 
   const totalRestaurants = num(d.restaurants ?? d.restaurantCount);
   const totalSuppliers = num(d.suppliers ?? d.supplierCount);
+  const hasLive = d.activeRfqs !== undefined || d.openQuotations !== undefined;
   const kpis = {
     totalRestaurants,
     totalSuppliers,
-    activeRfqs: num(d.rfqs),
-    activeQuotations: num(d.quotations),
-    approvedPOs: num(d.purchaseOrders),
+    activeRfqs: num(hasLive ? d.activeRfqs : d.rfqs),
+    activeQuotations: num(hasLive ? d.openQuotations : d.quotations),
+    approvedPOs: num(hasLive ? d.openPurchaseOrders : d.purchaseOrders),
   };
+  const pending = (d.pendingActions ?? {}) as Record<string, unknown>;
+  const pendingRows = [
+    {
+      key: "kyc",
+      label: "KYC / verification",
+      count: num(pending.kyc ?? d.kycPending),
+      to: "/kyc" as const,
+      icon: ShieldCheck,
+    },
+    {
+      key: "orgs",
+      label: "Org approvals",
+      count: num(pending.orgApprovals ?? d.orgsPendingApproval),
+      to: "/restaurant-approvals" as const,
+      icon: Building2,
+    },
+    {
+      key: "products",
+      label: "Product requests",
+      count: num(pending.productRequests ?? d.productRequestsPending),
+      to: "/product-requests" as const,
+      icon: PackagePlus,
+    },
+    {
+      key: "wallet",
+      label: "Credit & wallet requests",
+      count: num(pending.walletCredit ?? d.walletCreditPending),
+      to: "/wallets" as const,
+      icon: Wallet,
+    },
+    {
+      key: "support",
+      label: "Support tickets",
+      count: num(pending.support ?? d.openSupportTickets),
+      to: "/support" as const,
+      icon: LifeBuoy,
+    },
+    {
+      key: "disputes",
+      label: "Disputes",
+      count: num(pending.disputes ?? d.openDisputes),
+      to: "/disputes" as const,
+      icon: Scale,
+    },
+  ];
+  const waiting = pendingRows.reduce((sum, row) => sum + row.count, 0);
+  const statusLabel = isLoading
+    ? "Checking marketplace"
+    : isError
+      ? "Live status unavailable"
+      : waiting > 0
+        ? `Needs attention · ${waiting} waiting`
+        : "Marketplace operating normally";
 
   useEffect(() => {
     try {
@@ -122,14 +195,19 @@ function Dashboard() {
         <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full glass text-[11px] mb-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              Marketplace operating normally
+              <span className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                isError ? "bg-destructive" : waiting > 0 ? "bg-warning" : "bg-success animate-pulse",
+              )} />
+              {statusLabel}
             </div>
             <h1 className="text-2xl lg:text-3xl font-display font-semibold tracking-tight">
-              Good morning, {firstName}
+              {greetingFor(now)}, {firstName}
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">
-              Live KPIs · {kpis.activeRfqs} RFQs · {kpis.activeQuotations} quotations · {kpis.approvedPOs} POs
+              {hasLive
+                ? `Live · ${kpis.activeRfqs} open requests · ${kpis.activeQuotations} open quotes · ${kpis.approvedPOs} open orders`
+                : `Live · ${kpis.activeRfqs} requests · ${kpis.activeQuotations} quotes · ${kpis.approvedPOs} orders`}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -149,12 +227,59 @@ function Dashboard() {
         </div>
       </div>
 
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 className="font-display font-semibold text-lg">Pending Actions</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Clear the ops queue — approvals, reviews, tickets, and disputes.
+            </p>
+          </div>
+          <div className="text-sm font-medium tabular-nums text-muted-foreground">
+            {waiting} open
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+          {pendingRows.map((row) => {
+            const Icon = row.icon;
+            return (
+              <Link
+                key={row.key}
+                to={row.to}
+                className="flex items-center gap-3 rounded-xl border border-border bg-background/60 px-3 py-3 hover:bg-muted/60 transition-colors"
+              >
+                <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{row.label}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {row.count === 0 ? "All clear" : `${row.count} waiting`}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span
+                    className={cn(
+                      "text-sm font-semibold tabular-nums",
+                      row.count > 0 ? "text-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {row.count}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
         <KpiCard label="Total Restaurants" value={kpis.totalRestaurants.toLocaleString()} delta={0} icon={<Store className="h-5 w-5" />} to="/restaurants" accent="primary" />
         <KpiCard label="Total Suppliers" value={kpis.totalSuppliers.toLocaleString()} delta={0} icon={<Truck className="h-5 w-5" />} to="/suppliers" accent="accent" />
-        <KpiCard label="Active RFQs" value={kpis.activeRfqs.toString()} delta={0} icon={<FileText className="h-5 w-5" />} to="/rfqs" accent="info" />
-        <KpiCard label="Active Quotations" value={kpis.activeQuotations.toLocaleString()} delta={0} icon={<Quote className="h-5 w-5" />} to="/quotations" accent="warning" />
-        <KpiCard label="Approved POs" value={kpis.approvedPOs.toString()} delta={0} icon={<ClipboardList className="h-5 w-5" />} to="/purchase-orders" accent="success" />
+        <KpiCard label={hasLive ? "Open requests" : "RFQs"} value={kpis.activeRfqs.toString()} delta={0} icon={<FileText className="h-5 w-5" />} to="/rfqs" accent="info" />
+        <KpiCard label={hasLive ? "Open quotes" : "Quotations"} value={kpis.activeQuotations.toLocaleString()} delta={0} icon={<Quote className="h-5 w-5" />} to="/quotations" accent="warning" />
+        <KpiCard label={hasLive ? "Open orders" : "Orders"} value={kpis.approvedPOs.toString()} delta={0} icon={<ClipboardList className="h-5 w-5" />} to="/purchase-orders" accent="success" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">

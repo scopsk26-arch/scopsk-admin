@@ -27,6 +27,8 @@ type AdminListPath =
   | "/catalog"
   | "/inventory"
   | "/support"
+  | "/disputes"
+  | "/product-requests"
   | "/kyc"
   | "/org-reports"
   | "/approvals"
@@ -85,6 +87,7 @@ function notificationListPath(row: NotificationRow): AdminListPath | null {
   if (payloadId(data, "inventoryItemId")) return "/inventory";
   if (payloadId(data, "rewardId")) return "/rewards";
   if (payloadId(data, "productRequestId")) return "/product-requests";
+  if (payloadId(data, "disputeId")) return "/disputes";
   if (payloadId(data, "ticketId") || payloadId(data, "supportTicketId")) return "/support";
   if (payloadId(data, "walletId") || payloadId(data, "withdrawalId")) return "/wallets";
   if (payloadId(data, "referralId")) return "/referrals";
@@ -101,6 +104,7 @@ function notificationListPath(row: NotificationRow): AdminListPath | null {
   if (/report/.test(text)) return "/org-reports";
   if (/product request/.test(text)) return "/product-requests";
   if (/catalog/.test(text)) return "/catalog";
+  if (/dispute/.test(text)) return "/disputes";
   if (/support|ticket/.test(text)) return "/support";
   if (/wallet|withdraw/.test(text)) return "/wallets";
   if (/reward/.test(text)) return "/rewards";

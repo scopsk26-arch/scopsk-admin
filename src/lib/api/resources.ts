@@ -174,6 +174,10 @@ function mapOrgCommercial(r: any) {
     deliveryFeeMode: str(s.deliveryFeeMode ?? r.deliveryFeeMode, "none"),
     deliveryFeeValue: num(s.deliveryFeeValue ?? r.deliveryFeeValue),
     creditLimit: num(s.creditLimit ?? r.creditLimit),
+    creditPeriod:
+      s.metadata?.creditPeriod === "week" || s.creditPeriod === "week" || r.creditPeriod === "week"
+        ? "week"
+        : "month",
     paymentTermsDays: num(s.paymentTermsDays ?? r.paymentTermsDays),
     discountMode: str(s.discountMode ?? r.discountMode, "none"),
     discountValue: num(s.discountValue ?? r.discountValue),
@@ -269,6 +273,7 @@ export type OrgSettingsPatch = {
   deliveryFeeMode?: string;
   deliveryFeeValue?: number | string;
   creditLimit?: number | string;
+  creditPeriod?: string;
   paymentTermsDays?: number | string;
   discountMode?: string;
   discountValue?: number | string;
@@ -295,6 +300,9 @@ export async function updateOrgSettings(organizationId: string, data: OrgSetting
   }
   if (data.discountMode != null && String(data.discountMode).trim() !== "") {
     payload.discountMode = String(data.discountMode).trim();
+  }
+  if (data.creditPeriod === "week" || data.creditPeriod === "month") {
+    payload.creditPeriod = data.creditPeriod;
   }
   if (data.rfqIntakeMode != null && String(data.rfqIntakeMode).trim() !== "") {
     payload.rfqIntakeMode = String(data.rfqIntakeMode).trim();
@@ -1363,20 +1371,39 @@ export type WalletCreditRequestRow = {
   publicCode: string;
   subject: string;
   relatedCode: string;
+  kind: "wallet_topup" | "credit_limit";
   amount: number;
   currency: string;
+  period: "week" | "month" | null;
   status: string;
   priority: string;
   createdAt: string;
   requester: string;
 };
 
-function parseTopUpFromTicket(relatedCode: string, subject: string): { amount: number; currency: string } {
+function parseTopUpFromTicket(relatedCode: string, subject: string): {
+  amount: number;
+  currency: string;
+  period: "week" | "month" | null;
+  kind: "wallet_topup" | "credit_limit";
+} {
+  const credit = relatedCode.match(/^CREDIT_LIMIT:([A-Z]{3}):(\d+(?:\.\d+)?)(?::(week|month))?$/i);
+  if (credit) {
+    return {
+      currency: credit[1].toUpperCase(),
+      amount: num(credit[2]),
+      period: credit[3] === "week" || credit[3] === "month" ? (credit[3].toLowerCase() as "week" | "month") : null,
+      kind: "credit_limit",
+    };
+  }
   const m = relatedCode.match(/^TOPUP:([A-Z]{3}):(\d+(?:\.\d+)?)$/i);
-  if (m) return { currency: m[1].toUpperCase(), amount: num(m[2]) };
+  if (m) return { currency: m[1].toUpperCase(), amount: num(m[2]), period: null, kind: "wallet_topup" };
   const sm = subject.match(/([A-Z]{3})\s+(\d+(?:\.\d+)?)/i);
-  if (sm) return { currency: sm[1].toUpperCase(), amount: num(sm[2]) };
-  return { currency: "AED", amount: 0 };
+  if (sm) {
+    const kind = /credit limit/i.test(subject) ? "credit_limit" : "wallet_topup";
+    return { currency: sm[1].toUpperCase(), amount: num(sm[2]), period: null, kind };
+  }
+  return { currency: "AED", amount: 0, period: null, kind: "wallet_topup" };
 }
 
 export async function fetchAdminWalletCreditRequests(query?: {
@@ -1394,6 +1421,7 @@ export async function fetchAdminWalletCreditRequests(query?: {
     const relatedCode = str(r.relatedCode, "");
     const subject = str(r.subject, "—");
     const parsed = parseTopUpFromTicket(relatedCode, subject);
+    const category = str(r.category, parsed.kind);
     return {
       id: str(r.id),
       number: str(r.number, "—"),
@@ -1403,8 +1431,10 @@ export async function fetchAdminWalletCreditRequests(query?: {
       publicCode: str(org.publicCode, "—"),
       subject,
       relatedCode: relatedCode || "—",
+      kind: category === "credit_limit" ? "credit_limit" : "wallet_topup",
       amount: parsed.amount,
       currency: parsed.currency,
+      period: parsed.period,
       status: str(r.status, "open"),
       priority: str(r.priority, "medium"),
       createdAt: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 16) : "—",

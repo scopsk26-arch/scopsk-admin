@@ -74,6 +74,12 @@ export function invalidateFromDataChanged(qc: QueryClient, event: DataChangedPay
   if (resource === "ck_orders" || hasTag("ck_orders")) {
     void qc.invalidateQueries({ queryKey: ["ck-orders"] }).catch(ignore);
   }
+  if (
+    ["rfqs", "quotations", "orders", "purchase_orders", "deliveries", "support", "disputes", "kyc", "organizations", "suppliers"].includes(resource) ||
+    hasTag("rfqs", "quotations", "orders", "support", "disputes", "kyc", "organizations")
+  ) {
+    void qc.invalidateQueries({ queryKey: ["admin", "dashboard"] }).catch(ignore);
+  }
 }
 
 /**
