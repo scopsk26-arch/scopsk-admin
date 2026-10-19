@@ -1400,7 +1400,7 @@ function parseTopUpFromTicket(relatedCode: string, subject: string): {
   if (m) return { currency: m[1].toUpperCase(), amount: num(m[2]), period: null, kind: "wallet_topup" };
   const sm = subject.match(/([A-Z]{3})\s+(\d+(?:\.\d+)?)/i);
   if (sm) {
-    const kind = /credit limit/i.test(subject) ? "credit_limit" : "wallet_topup";
+    const kind = /credit/i.test(subject) ? "credit_limit" : "wallet_topup";
     return { currency: sm[1].toUpperCase(), amount: num(sm[2]), period: null, kind };
   }
   return { currency: "AED", amount: 0, period: null, kind: "wallet_topup" };
@@ -1452,6 +1452,105 @@ export async function rejectWalletCreditRequest(ticketId: string, reason?: strin
   return api.post(`/admin/wallets/credit-requests/${ticketId}/reject`, {
     reason: reason?.trim() || undefined,
   });
+}
+
+export type CreditFacilityRow = {
+  organizationId: string;
+  organization: string;
+  publicCode: string;
+  currency: string;
+  facility: number;
+  invoiced: number;
+  paid: number;
+  remaining: number;
+  openCount: number;
+  overdueCount: number;
+  invoiceCount: number;
+  owingStatus: "clear" | "owing" | "overdue" | "none";
+};
+
+export type CreditFacilityLoanRow = {
+  id: string;
+  number: string;
+  total: number;
+  paid: number;
+  remaining: number;
+  currency: string;
+  status: string;
+  dueDate: string | null;
+  paidAt: string | null;
+  ticketNumber: string | null;
+  createdAt: string;
+};
+
+export async function fetchAdminCreditFacilities(query?: {
+  search?: string;
+  filter?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const page = await fetchPage("/admin/wallets/credit-facilities", {
+    search: query?.search,
+    filter: query?.filter,
+    page: query?.page,
+    limit: query?.limit,
+  });
+  return {
+    total: page.total,
+    rows: page.rows.map((r: any): CreditFacilityRow => ({
+      organizationId: str(r.organizationId),
+      organization: str(r.organization, "—"),
+      publicCode: str(r.publicCode, ""),
+      currency: str(r.currency, "AED"),
+      facility: num(r.facility),
+      invoiced: num(r.invoiced),
+      paid: num(r.paid),
+      remaining: num(r.remaining),
+      openCount: num(r.openCount),
+      overdueCount: num(r.overdueCount),
+      invoiceCount: num(r.invoiceCount),
+      owingStatus:
+        r.owingStatus === "overdue" ||
+        r.owingStatus === "owing" ||
+        r.owingStatus === "clear" ||
+        r.owingStatus === "none"
+          ? r.owingStatus
+          : "none",
+    })),
+  };
+}
+
+export async function fetchAdminCreditFacility(orgId: string) {
+  const data = await api.get<any>(`/admin/wallets/credit-facilities/${orgId}`);
+  const org = data?.organization ?? {};
+  return {
+    organization: {
+      id: str(org.id ?? orgId),
+      name: str(org.name, "—"),
+      publicCode: str(org.publicCode, ""),
+    },
+    facility: num(data?.facility),
+    invoiced: num(data?.invoiced),
+    paid: num(data?.paid),
+    remaining: num(data?.remaining),
+    loans: (Array.isArray(data?.loans) ? data.loans : []).map(
+      (l: any): CreditFacilityLoanRow => ({
+        id: str(l.id),
+        number: str(l.number, "—"),
+        total: num(l.total),
+        paid: num(l.paid),
+        remaining: num(l.remaining),
+        currency: str(l.currency, "AED"),
+        status: str(l.status, "issued"),
+        dueDate: l.dueDate ? String(l.dueDate).slice(0, 10) : null,
+        paidAt: l.paidAt ? String(l.paidAt).replace("T", " ").slice(0, 16) : null,
+        ticketNumber: l.ticketNumber ? String(l.ticketNumber) : null,
+        createdAt: l.createdAt
+          ? String(l.createdAt).replace("T", " ").slice(0, 16)
+          : "—",
+      }),
+    ),
+  };
 }
 
 export async function importCloudKitchenDishes(file: File, cloudKitchenId?: string) {
