@@ -6,7 +6,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { ensurePlatformAdminSession } from "@/lib/admin-session-gate";
 
 export const Route = createFileRoute("/_admin")({
-  beforeLoad: () => ensurePlatformAdminSession(),
+  beforeLoad: async () => {
+    await ensurePlatformAdminSession();
+  },
   component: AdminLayout,
 });
 

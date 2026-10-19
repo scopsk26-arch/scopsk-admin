@@ -19,14 +19,43 @@ const CATEGORY_LABEL: Record<string, string> = {
   other: "Something else",
 };
 
+const STATUS_CODES = [
+  "open",
+  "under_review",
+  "awaiting_response",
+  "investigating",
+  "resolved",
+  "rejected",
+  "closed",
+];
+
 const NEXT_STATUS: Record<string, string> = {
+  open: "open",
+  under_review: "under_review",
+  awaiting_response: "awaiting_response",
+  investigating: "investigating",
+  resolved: "resolved",
+  rejected: "rejected",
+  closed: "closed",
   "Under review": "under_review",
   "Awaiting supplier": "awaiting_response",
+  "Awaiting response": "awaiting_response",
   Investigating: "investigating",
   Resolved: "resolved",
   Rejected: "rejected",
   Closed: "closed",
+  Open: "open",
 };
+
+function statusCode(value: unknown) {
+  const raw = String(value || "").trim();
+  return NEXT_STATUS[raw] || NEXT_STATUS[raw.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())] || "";
+}
+
+function blank(value: unknown) {
+  const text = String(value || "").trim();
+  return !text || text === "—" ? "" : text;
+}
 
 function categoryLabel(value: unknown) {
   const raw = str(value, "");
@@ -49,6 +78,7 @@ function mapDispute(r: any) {
     result: str(r.resolution, "—"),
     priority: str(r.priority, "medium"),
     status: str(r.status, "open"),
+    statusLabel: str(r.status, "open").replace(/[_-]+/g, " "),
     opened: r.createdAt ? String(r.createdAt).slice(0, 10) : "—",
   };
 }
@@ -76,7 +106,7 @@ function DisputesPage() {
           label: "New status",
           required: true,
           type: "select",
-          options: Object.keys(NEXT_STATUS),
+          options: STATUS_CODES.filter((status) => status !== "open"),
         },
         { key: "resolution", label: "Result the restaurant and supplier see", type: "text" },
         { key: "adminNotes", label: "Internal note", type: "text" },
@@ -92,7 +122,7 @@ function DisputesPage() {
         { key: "reply", label: "Supplier reply" },
         { key: "result", label: "Result" },
         { key: "priority", label: "Priority" },
-        { key: "status", label: "Status" },
+        { key: "statusLabel", label: "Status" },
         { key: "opened", label: "Opened" },
       ]}
       loadDetail={async (row) => {
@@ -149,11 +179,11 @@ function DisputesPage() {
         if (["resolved", "rejected", "closed"].includes(row.status)) {
           throw new Error("This dispute is already finished.");
         }
-        const status = NEXT_STATUS[String(data.status || "")];
-        if (!status) throw new Error("Choose a status.");
-        const resolution = String(data.resolution || "").trim();
-        const adminNotes = String(data.adminNotes || "").trim();
-        if ((status === "resolved" || status === "rejected") && !resolution) {
+        const status = statusCode(data.status);
+        if (!status || status === "open") throw new Error("Choose the next step.");
+        const resolution = blank(data.resolution);
+        const adminNotes = blank(data.adminNotes);
+        if ((status === "resolved" || status === "rejected") && resolution.length < 8) {
           throw new Error("Add the result the restaurant and supplier should see.");
         }
         await api.post(`/disputes/${id}/transition`, {

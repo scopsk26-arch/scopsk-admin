@@ -36,12 +36,23 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({
+  error,
+  reset,
+}: {
+  error: unknown;
+  reset: () => void;
+}) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
+
+  const detail =
+    import.meta.env.DEV && error instanceof Error
+      ? error.message
+      : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -52,6 +63,11 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
+        {detail ? (
+          <p className="mt-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-left text-xs text-muted-foreground font-mono break-words">
+            {detail}
+          </p>
+        ) : null}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {

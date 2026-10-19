@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Settings as SettingsIcon, Globe, CreditCard, Bell, Shield, Mail, SlidersHorizontal } from "lucide-react";
+import { Settings as SettingsIcon, Globe, CreditCard, Bell, Shield, Mail, SlidersHorizontal, Clock } from "lucide-react";
 import { FieldLabel } from "@/components/admin/DataPage";
 import { SearchableMultiSelect } from "@/components/admin/SearchableSelect";
 import { Button } from "@/components/ui/button";
@@ -82,6 +82,18 @@ const APPROVAL_LEVELS: SettingOption[] = [
   { value: "3", label: "3 levels" },
 ];
 
+const WEEKDAYS = [
+  { value: "mon", label: "Mon" },
+  { value: "tue", label: "Tue" },
+  { value: "wed", label: "Wed" },
+  { value: "thu", label: "Thu" },
+  { value: "fri", label: "Fri" },
+  { value: "sat", label: "Sat" },
+  { value: "sun", label: "Sun" },
+] as const;
+
+const DEFAULT_BUSINESS_DAYS = ["mon", "tue", "wed", "thu", "fri"];
+
 const SETTING_KEYS = [
   "marketplace_name",
   "default_currency",
@@ -136,6 +148,9 @@ function SettingsPage() {
   const [form, setForm] = useState<Record<string, string>>({});
   const [flagState, setFlagState] = useState<Record<string, boolean>>({});
   const [anonymousDefault, setAnonymousDefault] = useState(true);
+  const [businessDays, setBusinessDays] = useState<string[]>([...DEFAULT_BUSINESS_DAYS]);
+  const [businessOpen, setBusinessOpen] = useState("08:00");
+  const [businessClose, setBusinessClose] = useState("18:00");
 
   useEffect(() => {
     const next: Record<string, string> = {};
@@ -166,6 +181,21 @@ function SettingsPage() {
     setAnonymousDefault(anonRaw === "true" || anonRaw === "1" || anonRaw === "yes");
     next.anonymous_marketplace_default = anonRaw === "false" ? "false" : "true";
     setForm(next);
+
+    const hoursRaw = settingMap.business_hours;
+    let hoursObj: { days?: string[]; open?: string; close?: string } | null = null;
+    if (hoursRaw && typeof hoursRaw === "object") {
+      const nested = "value" in (hoursRaw as object) ? (hoursRaw as { value?: unknown }).value : hoursRaw;
+      if (nested && typeof nested === "object") {
+        hoursObj = nested as { days?: string[]; open?: string; close?: string };
+      }
+    }
+    const days = Array.isArray(hoursObj?.days) && hoursObj!.days!.length
+      ? hoursObj!.days!.map((d) => String(d).toLowerCase().slice(0, 3))
+      : [...DEFAULT_BUSINESS_DAYS];
+    setBusinessDays(days);
+    setBusinessOpen(String(hoursObj?.open || "08:00"));
+    setBusinessClose(String(hoursObj?.close || "18:00"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
 
@@ -215,6 +245,19 @@ function SettingsPage() {
           value: { value },
         });
       }
+      if (!businessDays.length) {
+        throw new Error("Select at least one working day");
+      }
+      await api.put("/admin/settings", {
+        key: "business_hours",
+        scope: "platform",
+        value: {
+          days: businessDays,
+          open: businessOpen,
+          close: businessClose,
+          timezone: form.default_timezone || "Asia/Dubai",
+        },
+      });
       for (const [key, enabled] of Object.entries(flagState)) {
         await api.post("/admin/feature-flags", { key, enabled });
       }
@@ -375,6 +418,65 @@ function SettingsPage() {
             </div>
           </div>
         ))}
+
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-soft lg:col-span-2">
+          <div className="flex items-center gap-2.5 mb-1">
+            <Clock className="h-5 w-5 text-primary" />
+            <h2 className="font-display font-semibold">Business hours</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Platform operating days and hours (timezone from General). Default Mon–Fri, 08:00–18:00.
+            After-hours requests are still accepted and processed on the next business day.
+          </p>
+          <div className="space-y-4">
+            <div>
+              <FieldLabel className="text-sm font-medium text-foreground/90">Working days</FieldLabel>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {WEEKDAYS.map((d) => {
+                  const on = businessDays.includes(d.value);
+                  return (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() =>
+                        setBusinessDays((prev) =>
+                          on ? prev.filter((x) => x !== d.value) : [...prev, d.value],
+                        )
+                      }
+                      className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                        on
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-foreground/80 hover:bg-muted"
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 max-w-md">
+              <div>
+                <FieldLabel className="text-sm font-medium text-foreground/90">Opens</FieldLabel>
+                <Input
+                  type="time"
+                  value={businessOpen}
+                  onChange={(e) => setBusinessOpen(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <FieldLabel className="text-sm font-medium text-foreground/90">Closes</FieldLabel>
+                <Input
+                  type="time"
+                  value={businessClose}
+                  onChange={(e) => setBusinessClose(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="rounded-2xl border border-border bg-card p-6 shadow-soft lg:col-span-2">
           <div className="flex items-center gap-2.5 mb-1"><Shield className="h-5 w-5 text-primary" /><h2 className="font-display font-semibold">Platform toggles</h2></div>

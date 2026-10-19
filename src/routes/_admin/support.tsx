@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
-import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { LifeBuoy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchSupportTicketDetail } from "@/lib/api/resources";
@@ -13,23 +12,100 @@ export const Route = createFileRoute("/_admin/support")({
   component: SupportPage,
 });
 
+const STATUS_CODES = ["open", "in_progress", "waiting", "resolved", "closed"];
+
+const CATEGORY_LABEL: Record<string, string> = {
+  order_complaint: "Order complaint",
+  complaint: "Complaint",
+  wallet_topup: "Funds request",
+  credit_limit: "Credit limit request",
+  general: "General",
+};
+
+function categoryLabel(value: unknown) {
+  const raw = str(value, "");
+  if (!raw || raw === "—") return "—";
+  return CATEGORY_LABEL[raw] || raw.replace(/[_-]+/g, " ");
+}
+
+function personName(user: any) {
+  if (!user || typeof user !== "object") return "";
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  return name || str(user.email, "");
+}
+
 function mapTicket(r: any) {
+  const messages = Array.isArray(r.messages) ? r.messages : [];
   return {
     id: str(r.id),
     number: str(r.number ?? r.id),
     subject: str(r.subject ?? r.title, "—"),
-    requester: str(r.requester?.email ?? r.user?.email ?? r.creator?.email ?? r.createdBy, "—"),
+    requester: str(
+      personName(r.creator) || r.requester?.email || r.user?.email || r.createdBy,
+      "—",
+    ),
     organization: str(
       r.organization?.name ?? r.organization?.publicCode ?? r.organizationName,
       "—",
     ),
     relatedCode: str(r.relatedCode ?? r.related_code, "—"),
-    category: str(r.category, "—"),
-    agent: str(r.assignee?.email ?? r.assignedTo, "—"),
+    category: categoryLabel(r.category),
+    agent: str(personName(r.assignee) || r.assignedTo, "—"),
     priority: str(r.priority, "medium"),
     sla: str(r.slaDueAt ? String(r.slaDueAt).slice(0, 16) : r.sla, "—"),
     status: str(r.status, "open"),
+    messages,
   };
+}
+
+function TicketDetail({ detail }: { detail: Record<string, unknown> }) {
+  const messages = Array.isArray(detail.messages) ? detail.messages : [];
+  return (
+    <div className="space-y-4 text-sm">
+      <dl className="grid gap-3 sm:grid-cols-2">
+        {(
+          [
+            ["Ticket", detail.number],
+            ["Subject", detail.subject],
+            ["Organization", detail.organization],
+            ["Requester", detail.requester],
+            ["Order / PO", detail.relatedCode],
+            ["Category", detail.category],
+            ["Priority", detail.priority],
+            ["Status", detail.status],
+          ] as const
+        ).map(([label, value]) => (
+          <div key={label}>
+            <dt className="text-xs text-muted-foreground">{label}</dt>
+            <dd className="mt-0.5">{str(value, "—")}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="space-y-2">
+        <div className="text-xs font-semibold text-muted-foreground">Messages</div>
+        {messages.length === 0 ? (
+          <p className="text-muted-foreground">No messages yet. Write a reply the person can read.</p>
+        ) : (
+          messages.map((message: any, index) => (
+            <div
+              key={str(message.id, String(index))}
+              className={cn(
+                "rounded-md border px-3 py-2",
+                message.isInternal ? "border-dashed bg-muted/40" : "bg-background",
+              )}
+            >
+              <div className="mb-1 text-xs text-muted-foreground">
+                {personName(message.user) || "Message"}
+                {message.isInternal ? " · Internal" : ""}
+                {message.createdAt ? ` · ${String(message.createdAt).slice(0, 16).replace("T", " ")}` : ""}
+              </div>
+              <p className="whitespace-pre-wrap">{str(message.body, "—")}</p>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 }
 
 function SupportPage() {
@@ -44,7 +120,7 @@ function SupportPage() {
   const isError = list.isError;
 
   const open = rows.filter((r) =>
-    ["open", "pending", "review", "in_progress"].includes(r.status),
+    ["open", "in_progress", "waiting"].includes(r.status),
   ).length;
   const complaints = rows.filter(
     (r) =>
@@ -55,7 +131,7 @@ function SupportPage() {
   return (
     <DataPage
       title="Support Center"
-      description="Customer tickets and restaurant order complaints (ORDR / PO tracking codes). Status updates persist to the API."
+      description="Requests from the app, including order complaints and funds requests. Reply on those so the restaurant or supplier can read it in Help. A request you create here stays on your own account."
       icon={<LifeBuoy className="h-5 w-5 text-primary" />}
       formFields={[
         { key: "subject", label: "Subject", required: true, type: "text" },
@@ -71,8 +147,10 @@ function SupportPage() {
           label: "Status",
           required: true,
           type: "select",
-          options: ["open", "in_progress", "waiting", "resolved", "closed"],
+          options: STATUS_CODES,
         },
+        { key: "reply", label: "Reply the person can read", type: "text" },
+        { key: "internalNote", label: "Internal note", type: "text" },
       ]}
       viewFields={[
         { key: "number", label: "Ticket" },
@@ -102,7 +180,7 @@ function SupportPage() {
           return row;
         }
       }}
-      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
+      renderView={(detail) => <TicketDetail detail={detail} />}
       kpis={[
         { label: "Open tickets", value: String(open), tone: "info" },
         { label: "Order complaints", value: String(complaints), tone: "warning" },
@@ -174,20 +252,40 @@ function SupportPage() {
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onCreate={async (data) => {
-        if (!data.subject) throw new Error("Subject is required");
+        const subject = String(data.subject || "").trim();
+        const reply = String(data.reply || "").trim();
+        if (!subject) throw new Error("Subject is required");
+        if (reply.length < 8) throw new Error("Write the message the person should read.");
         const created = await api.post("/support", {
-          subject: data.subject,
+          subject,
           priority: data.priority || "medium",
-          body: data.subject,
+          category: "general",
+          body: reply,
         }, { toastOnSuccess: true });
         await queryClient.invalidateQueries({ queryKey: ["support"] });
         return mapTicket(created);
       }}
-      onUpdate={async (id, data) => {
+      onUpdate={async (id, data, row) => {
+        const reply = String(data.reply || "").trim();
+        const internalNote = String(data.internalNote || "").trim();
+        const status = STATUS_CODES.includes(String(data.status)) ? String(data.status) : row.status;
+        const closing = ["resolved", "closed"].includes(status) && !["resolved", "closed"].includes(row.status);
+        if (closing && reply.length < 8) {
+          throw new Error("Write a reply the person can read before you close this request.");
+        }
+        if (reply && reply.length < 8) {
+          throw new Error("Write a reply the person can read.");
+        }
+        if (reply) {
+          await api.post(`/support/${id}/messages`, { body: reply, isInternal: false });
+        }
+        if (internalNote) {
+          await api.post(`/support/${id}/messages`, { body: internalNote, isInternal: true });
+        }
         const updated = await api.patch(`/support/${id}`, {
           subject: data.subject,
           priority: data.priority,
-          status: data.status,
+          status,
         });
         await queryClient.invalidateQueries({ queryKey: ["support"] });
         return mapTicket(updated);
