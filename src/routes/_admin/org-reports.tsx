@@ -62,7 +62,7 @@ function OrgReportsPage() {
   return (
     <DataPage
       title="Organization reports"
-      description="Peer reports from restaurants and suppliers. Evidence files are stored on DigitalOcean Spaces — open the CDN URL from the report."
+      description="Supplier/buyer reports from the app. Also listed under Support as Org report. Choose Block for reporter to hide them on that restaurant's new RFQs."
       icon={<Flag className="h-5 w-5 text-primary" />}
       entityName="Report"
       hideView={false}
@@ -165,18 +165,27 @@ function OrgReportsPage() {
         },
         { key: "adminNotes", label: "Admin notes", type: "textarea" },
         { key: "resolution", label: "Resolution", type: "textarea" },
+        {
+          key: "blockForReporter",
+          label: "Block for reporter",
+          type: "select",
+          options: ["no", "yes"],
+        },
       ]}
       onUpdate={async (id, data) => {
         const status = String(data.status || "acknowledged");
         if (status === "submitted") {
           throw new Error("Pick a decision status other than submitted");
         }
+        const blockYes = String(data.blockForReporter || "no").toLowerCase() === "yes";
         const updated = await api.post(`/organization-reports/${id}/decide`, {
           status,
           adminNotes: data.adminNotes || undefined,
           resolution: data.resolution || undefined,
+          blockForReporter: blockYes,
         }, { toastOnSuccess: true });
         await qc.invalidateQueries({ queryKey: ["admin", "organization-reports"] });
+        await qc.invalidateQueries({ queryKey: ["support"] });
         return mapReport(updated);
       }}
     />

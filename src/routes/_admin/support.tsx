@@ -19,6 +19,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   complaint: "Complaint",
   wallet_topup: "Funds request",
   credit_limit: "Credit request",
+  org_report: "Org report",
   general: "General",
 };
 
@@ -122,16 +123,18 @@ function SupportPage() {
   const open = rows.filter((r) =>
     ["open", "in_progress", "waiting"].includes(r.status),
   ).length;
-  const complaints = rows.filter(
-    (r) =>
-      ["order_complaint", "complaint"].includes(String(r.category || "").toLowerCase()) ||
-      String(r.relatedCode || "").includes("/"),
-  ).length;
+  const complaints = rows.filter((r) => {
+    const cat = String(r.category || "").toLowerCase();
+    return (
+      ["order_complaint", "complaint", "org report", "org_report"].includes(cat) ||
+      String(r.relatedCode || "").includes("/")
+    );
+  }).length;
 
   return (
     <DataPage
       title="Support Center"
-      description="Requests from the app, including order complaints and funds requests. Reply on those so the restaurant or supplier can read it in Help. A request you create here stays on your own account."
+      description="App requests: order complaints, funds/credit, and org reports (Report a supplier). For org reports, open Org reports to block the supplier for that restaurant so they stay off new RFQs."
       icon={<LifeBuoy className="h-5 w-5 text-primary" />}
       formFields={[
         { key: "subject", label: "Subject", required: true, type: "text" },
