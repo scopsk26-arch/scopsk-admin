@@ -134,8 +134,8 @@ function LoginPage() {
           </p>
 
           <form onSubmit={onSubmit} className="mt-7 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Work email</Label>
+            <div className="space-y-2.5">
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -147,7 +147,7 @@ function LoginPage() {
                 required
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2.5">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input

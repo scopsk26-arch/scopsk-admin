@@ -9,6 +9,8 @@ import {
   Landmark,
   RefreshCw,
   FilterX,
+  CircleDollarSign,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +30,8 @@ import {
   acceptWalletWithdrawRequest,
   creditOrgWallet,
   debitOrgWallet,
+  fetchAdminCreditFacilities,
+  fetchAdminCreditFacility,
   fetchAdminWalletCreditRequests,
   fetchAdminWallets,
   fetchAdminWalletWithdrawals,
@@ -37,6 +41,8 @@ import {
   rejectWalletCreditRequest,
   rejectWalletWithdrawRequest,
   type AdminWalletRow,
+  type CreditFacilityLoanRow,
+  type CreditFacilityRow,
   type WalletCreditRequestRow,
   type WalletTransactionRow,
   type WalletWithdrawalRow,
@@ -60,6 +66,7 @@ const TX_TONES: Record<string, "success" | "destructive" | "warning" | "info"> =
 type WalletInnerTab =
   | "balances"
   | "credit-requests"
+  | "credit-facility"
   | "withdrawals"
   | "refunds"
   | "platform";
@@ -365,32 +372,20 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
                 </div>
               </div>
               <div className="rounded-xl border border-border bg-muted/30 p-3">
-                <div className="text-xs text-muted-foreground">Credit limit</div>
+                <div className="text-xs text-muted-foreground">Credit facility</div>
                 <div className="text-lg font-semibold mt-0.5">{AED(num(wallet?.creditLimit))}</div>
               </div>
               <div className="rounded-xl border border-border bg-muted/30 p-3">
                 <div className="text-xs text-muted-foreground">Available credit</div>
                 <div className="text-lg font-semibold mt-0.5">{AED(num(wallet?.availableCredit))}</div>
               </div>
-              <div className="rounded-xl border border-border bg-muted/30 p-3">
+              <div className="rounded-xl border border-border bg-muted/30 p-3 sm:col-span-2">
                 <div className="text-xs text-muted-foreground">Used credit</div>
                 <div className="text-lg font-semibold mt-0.5">{AED(num(wallet?.usedCredit))}</div>
               </div>
-              <div className="rounded-xl border border-border bg-muted/30 p-3">
-                <div className="text-xs text-muted-foreground">Credit renews</div>
-                <div className="text-lg font-semibold mt-0.5">
-                  {wallet?.creditLabel
-                    ? str(wallet.creditLabel)
-                    : wallet?.creditPeriod === "week"
-                      ? "This week"
-                      : wallet?.creditPeriod === "month"
-                        ? "This month"
-                        : "—"}
-                </div>
-              </div>
               <div className="sm:col-span-2 text-xs text-muted-foreground">
-                Currency {str(wallet?.currency, "AED")} · Status {str(wallet?.status, "—")}. Funds requests from
-                the app appear under Credit requests.
+                Currency {str(wallet?.currency, "AED")} · Status {str(wallet?.status, "—")}. Credit
+                requests stay under the Credit requests tab only (no month expiry, no platform ledger).
               </div>
             </div>
           )}
@@ -587,6 +582,7 @@ function CreditRequestsPanel() {
       // Keep the row — only flip status and drop Accept/Reject.
       patchRequestStatus(ticketId, "resolved");
       await qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
+      await qc.invalidateQueries({ queryKey: ["admin", "credit-facilities"] });
     },
     onError: (err: Error) => toast.error(err.message || "Accept failed"),
   });
@@ -609,8 +605,10 @@ function CreditRequestsPanel() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Funds requests add cash to the restaurant wallet. Credit limit requests set how much credit
-        they can use on awards. Reject notifies the restaurant and leaves balances unchanged.
+        Funds requests add cash to the restaurant wallet (shows under Balances). Credit requests only
+        raise the credit facility and create a repayment invoice — they do not post to Balances or
+        Platform wallet, and have no week/month expiry. After accept, track repayments under{" "}
+        <span className="font-medium text-foreground">Credit facility</span>.
       </p>
       <div className="rounded-xl border border-border bg-card shadow-soft overflow-hidden">
         <div className="p-4 flex flex-wrap gap-2 border-b border-border bg-muted/20">
@@ -662,9 +660,7 @@ function CreditRequestsPanel() {
                     <tr key={r.id} className="border-b border-border last:border-0">
                       <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">{r.number}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-xs">
-                        {r.kind === "credit_limit"
-                          ? `Credit limit${r.period ? ` · ${r.period}` : ""}`
-                          : "Funds"}
+                        {r.kind === "credit_limit" ? "Credit" : "Funds"}
                       </td>
                       <td className="px-4 py-3 font-medium whitespace-nowrap">{r.organization}</td>
                       <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">
@@ -704,6 +700,297 @@ function CreditRequestsPanel() {
                     </tr>
                   );
                 })
+              )}
+            </tbody>
+          </table>
+        </div>
+        <PageBar
+          page={list.page}
+          pageSize={list.pageSize}
+          total={list.total}
+          onPageChange={list.setPage}
+        />
+      </div>
+    </div>
+  );
+}
+
+function owingStatusLabel(status: CreditFacilityRow["owingStatus"]) {
+  switch (status) {
+    case "overdue":
+      return "Overdue";
+    case "owing":
+      return "Owing";
+    case "clear":
+      return "Clear";
+    default:
+      return "—";
+  }
+}
+
+function CreditFacilityPanel() {
+  const [filter, setFilter] = useState("all");
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+
+  const list = usePagedList<CreditFacilityRow>({
+    queryKey: ["admin", "credit-facilities", filter],
+    path: "/admin/wallets/credit-facilities",
+    query: filter === "all" ? undefined : { filter },
+    load: ({ page, pageSize, search }) =>
+      fetchAdminCreditFacilities({
+        filter: filter === "all" ? undefined : filter,
+        search: search || undefined,
+        page,
+        limit: pageSize,
+      }),
+  });
+
+  const detailQ = useQuery({
+    queryKey: ["admin", "credit-facility", selectedOrgId],
+    enabled: Boolean(selectedOrgId),
+    queryFn: () => fetchAdminCreditFacility(selectedOrgId!),
+  });
+
+  const rows = list.rows;
+  const totals = useMemo(() => {
+    return rows.reduce(
+      (acc, r) => ({
+        facility: acc.facility + r.facility,
+        remaining: acc.remaining + r.remaining,
+        paid: acc.paid + r.paid,
+      }),
+      { facility: 0, remaining: 0, paid: 0 },
+    );
+  }, [rows]);
+
+  if (selectedOrgId) {
+    const d = detailQ.data;
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5"
+            onClick={() => setSelectedOrgId(null)}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            All restaurants
+          </Button>
+          <div className="min-w-0">
+            <h2 className="font-display font-semibold truncate">
+              {d?.organization.name || "Credit facility"}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Repayment invoices paid from the restaurant wallet
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Kpi label="Facility" value={AED(d?.facility ?? 0)} />
+          <Kpi label="Invoiced" value={AED(d?.invoiced ?? 0)} />
+          <Kpi label="Paid (wallet)" value={AED(d?.paid ?? 0)} tone="success" />
+          <Kpi
+            label="Remaining"
+            value={AED(d?.remaining ?? 0)}
+            tone={(d?.remaining ?? 0) > 0 ? "warning" : "success"}
+          />
+        </div>
+
+        <div className="rounded-xl border border-border bg-card shadow-soft overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40 text-left">
+                  {[
+                    "Invoice",
+                    "Ticket",
+                    "Amount",
+                    "Paid",
+                    "Remaining",
+                    "Status",
+                    "Due",
+                    "Created",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {detailQ.isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-14 text-center text-sm text-muted-foreground">
+                      Loading…
+                    </td>
+                  </tr>
+                ) : !d?.loans.length ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-14 text-center text-sm text-muted-foreground">
+                      No repayment invoices yet for this restaurant.
+                    </td>
+                  </tr>
+                ) : (
+                  d.loans.map((loan: CreditFacilityLoanRow) => (
+                    <tr key={loan.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">
+                        {loan.number}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs whitespace-nowrap text-muted-foreground">
+                        {loan.ticketNumber || "—"}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">
+                        {AED(loan.total)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap tabular-nums">
+                        {AED(loan.paid)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">
+                        {AED(loan.remaining)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <StatusBadge status={loan.status} />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                        {loan.dueDate || "—"}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                        {loan.createdAt}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        After you accept a credit request, the restaurant owes ScopsK via a repayment invoice. This
+        tab shows facility size, how much they paid from wallet, and what is still remaining.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Kpi label="Facility (page)" value={AED(totals.facility)} />
+        <Kpi label="Paid (page)" value={AED(totals.paid)} tone="success" />
+        <Kpi
+          label="Remaining (page)"
+          value={AED(totals.remaining)}
+          tone={totals.remaining > 0 ? "warning" : undefined}
+        />
+      </div>
+      <div className="rounded-xl border border-border bg-card shadow-soft overflow-hidden">
+        <div className="p-4 flex flex-wrap gap-2 border-b border-border bg-muted/20">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={list.search}
+              onChange={(e) => list.setSearch(e.target.value)}
+              placeholder="Search restaurant…"
+              className="pl-9 h-9 bg-card"
+            />
+          </div>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="h-9 w-[160px] bg-card">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="owing">Owing</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="clear">Clear</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40 text-left">
+                {[
+                  "Restaurant",
+                  "Facility",
+                  "Invoiced",
+                  "Paid (wallet)",
+                  "Remaining",
+                  "Open",
+                  "Status",
+                  "",
+                ].map((h) => (
+                  <th
+                    key={h || "actions"}
+                    className="px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-14 text-center text-sm text-muted-foreground">
+                    {list.isLoading
+                      ? "Loading…"
+                      : list.isError
+                        ? "Failed to load credit facilities."
+                        : "No credit facilities yet. Accept a credit request to start."}
+                  </td>
+                </tr>
+              ) : (
+                rows.map((r) => (
+                  <tr key={r.organizationId} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3">
+                      <div className="font-medium whitespace-nowrap">{r.organization}</div>
+                      {r.publicCode ? (
+                        <div className="text-xs text-muted-foreground font-mono">
+                          {r.publicCode}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">
+                      {AED(r.facility)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap tabular-nums">
+                      {AED(r.invoiced)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap tabular-nums">
+                      {AED(r.paid)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">
+                      {AED(r.remaining)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                      {r.openCount}
+                      {r.overdueCount > 0 ? (
+                        <span className="text-destructive"> · {r.overdueCount} overdue</span>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <StatusBadge status={owingStatusLabel(r.owingStatus)} />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => setSelectedOrgId(r.organizationId)}
+                      >
+                        View
+                      </Button>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -962,6 +1249,10 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
             <FileText />
             Credit requests
           </TabsTrigger>
+          <TabsTrigger value="credit-facility">
+            <CircleDollarSign />
+            Credit facility
+          </TabsTrigger>
           <TabsTrigger value="withdrawals">
             <Landmark />
             Withdrawals
@@ -981,6 +1272,9 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
         </TabsContent>
         <TabsContent value="credit-requests" className="mt-0">
           <CreditRequestsPanel />
+        </TabsContent>
+        <TabsContent value="credit-facility" className="mt-0">
+          <CreditFacilityPanel />
         </TabsContent>
         <TabsContent value="withdrawals" className="mt-0">
           <WithdrawalsPanel />

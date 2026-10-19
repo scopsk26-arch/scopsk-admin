@@ -18,7 +18,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   order_complaint: "Order complaint",
   complaint: "Complaint",
   wallet_topup: "Funds request",
-  credit_limit: "Credit limit request",
+  credit_limit: "Credit request",
   general: "General",
 };
 
