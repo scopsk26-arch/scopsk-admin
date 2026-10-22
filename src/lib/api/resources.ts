@@ -357,10 +357,11 @@ export async function updateOrganization(
     // best-effort merge
   }
 
+  if (Array.isArray(data.cuisineIds)) {
+    payload.cuisineIds = data.cuisineIds.map((id: unknown) => String(id).trim()).filter(Boolean);
+  }
+
   if (type === "restaurant") {
-    if (Array.isArray(data.cuisineIds)) {
-      payload.cuisineIds = data.cuisineIds.map((id: unknown) => String(id).trim()).filter(Boolean);
-    }
     const nextMeta: Record<string, unknown> = { ...currentMeta };
     let metaChanged = false;
     if (data.industry != null) {
@@ -380,17 +381,26 @@ export async function updateOrganization(
     }
   }
 
-  if (type === "supplier" && data.categories != null) {
-    const cats = Array.isArray(data.categories)
-      ? data.categories.map((s) => String(s).trim()).filter(Boolean)
-      : String(data.categories)
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-    payload.metadata = {
-      ...(payload.metadata as Record<string, unknown> | undefined ?? currentMeta),
-      categories: cats,
+  if (type === "supplier") {
+    const nextMeta: Record<string, unknown> = {
+      ...((payload.metadata as Record<string, unknown> | undefined) ?? currentMeta),
     };
+    let metaChanged = false;
+    if (data.industry != null) {
+      nextMeta.industry = String(data.industry);
+      metaChanged = true;
+    }
+    if (data.categories != null) {
+      const cats = Array.isArray(data.categories)
+        ? data.categories.map((s) => String(s).trim()).filter(Boolean)
+        : String(data.categories)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+      nextMeta.categories = cats;
+      metaChanged = true;
+    }
+    if (metaChanged) payload.metadata = nextMeta;
   }
 
   if (data.status != null && String(data.status).trim()) {

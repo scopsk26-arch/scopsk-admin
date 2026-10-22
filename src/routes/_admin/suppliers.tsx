@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, AED } from "@/components/admin/DataPage";
@@ -21,7 +22,8 @@ export const Route = createFileRoute("/_admin/suppliers")({
 });
 
 function SuppliersPage() {
-  const { categories } = useAdminLookups(["categories"]);
+  const { cuisines: cuisineOptions } = useAdminLookups(["cuisines"]);
+  const cuisineLookups = useMemo(() => ({ cuisineIds: cuisineOptions }), [cuisineOptions]);
   const queryClient = useQueryClient();
 
   const list = usePagedList({
@@ -40,18 +42,13 @@ function SuppliersPage() {
     ? Math.round(rows.reduce((s, r) => s + (r.winRate || 0), 0) / rows.length)
     : 0;
 
-  const categoryOptions = categories.map((c) => ({ value: c.label, label: c.label }));
-
   return (
     <DataPage
       title="Suppliers"
-      description="Vetted suppliers with performance, win-rate and category coverage."
+      description="Vetted suppliers with performance, win-rate and cuisine coverage."
       icon={<Truck className="h-5 w-5 text-primary" />}
       entityName="Supplier"
-      lookups={{
-        categories: categoryOptions,
-        category: categoryOptions,
-      }}
+      lookups={cuisineLookups}
       formFields={[
         { key: "name", label: "Supplier", required: true, type: "text" },
         {
@@ -63,11 +60,10 @@ function SuppliersPage() {
         },
         { key: "phone", label: "Phone", type: "text" },
         {
-          key: "categories",
-          label: "Category",
-          type: "searchable",
-          selectOptions: categoryOptions,
-          placeholder: "Search categories…",
+          key: "cuisineIds",
+          label: "Cuisines",
+          type: "multiselect",
+          placeholder: "Select cuisines…",
         },
         { key: "ownerName", label: "Owner name", type: "text" },
         { key: "tradeLicenseNumber", label: "Trade license #", type: "text" },
@@ -97,6 +93,27 @@ function SuppliersPage() {
         { key: "status", label: "Status" },
       ]}
       loadDetail={async (row) => fetchOrganizationDetail(row.id)}
+      loadEdit={async (row) => {
+        const detail = await fetchOrganizationDetail(row.id);
+        const mapped = mapOrgRow(detail, "supplier");
+        let cuisineIds = mapped.cuisineIds;
+        if (!cuisineIds.length && mapped.cuisines && mapped.cuisines !== "—") {
+          const names = String(mapped.cuisines)
+            .split(/[,;|]/)
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean);
+          cuisineIds = cuisineOptions
+            .filter((o) => names.includes(o.label.toLowerCase()))
+            .map((o) => o.value);
+        }
+        return {
+          cuisineIds,
+          cuisines: mapped.cuisines,
+          poApprovalLevels: mapped.poApprovalLevels,
+          minRfqValueAed: mapped.minRfqValueAed,
+          rfqIntakeMode: mapped.rfqIntakeMode,
+        };
+      }}
       renderView={(detail, row) => <OrganizationDetailView detail={detail} row={row} />}
       kpis={[
         { label: "Total suppliers", value: String(list.total) },
@@ -110,7 +127,7 @@ function SuppliersPage() {
         await updateOrganization(id, { status }, "supplier");
         await queryClient.invalidateQueries({ queryKey: ["organizations", "supplier"] });
       }}
-      searchKeys={["name", "id", "email", "status"]}
+      searchKeys={["name", "id", "email", "cuisines", "status"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load suppliers." : "No suppliers found."
       }
@@ -138,10 +155,10 @@ function SuppliersPage() {
             ),
         },
         {
-          key: "categories",
-          label: "Categories",
+          key: "cuisines",
+          label: "Cuisines",
           className: "whitespace-nowrap max-w-[220px]",
-          render: (r) => <TagListDropdown value={r.categories} />,
+          render: (r) => <TagListDropdown value={r.cuisines || r.categories} />,
         },
         { key: "poApprovalLevels", label: "PO levels" },
         { key: "minRfqValueAed", label: "Min RFQ", render: (r) => AED(r.minRfqValueAed) },
@@ -158,13 +175,17 @@ function SuppliersPage() {
       onUpdate={async (id, data) => {
         if (!id || id === "undefined") throw new Error("Missing supplier id");
         if (!data.name?.trim()) throw new Error("Supplier name is required");
+        const cuisineIds = Array.isArray(data.cuisineIds)
+          ? data.cuisineIds.map(String).filter(Boolean)
+          : [];
+        const cuisineLabel = cuisineOptions
+          .filter((o) => cuisineIds.includes(o.value))
+          .map((o) => o.label)
+          .join(", ");
         const payload = {
           ...data,
-          categories: Array.isArray(data.categories)
-            ? data.categories
-            : data.categories
-              ? String(data.categories)
-              : [],
+          cuisineIds,
+          industry: cuisineLabel || data.industry,
         };
         const updated = await updateOrganization(id, payload, "supplier");
         await updateOrgSettings(id, {
@@ -185,6 +206,8 @@ function SuppliersPage() {
           vatRegistrationNumber: String(
             data.vatRegistrationNumber ?? updated.vatRegistrationNumber ?? "",
           ),
+          cuisineIds,
+          cuisines: cuisineLabel || updated.cuisines || "—",
         };
       }}
       onDelete={async (id) => {
