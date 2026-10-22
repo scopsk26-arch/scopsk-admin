@@ -24,7 +24,11 @@ type ProductRow = {
   brand: string;
   unit: string;
   unitId: string;
+  /** Guide / average from suppliers — not an admin list price. */
   price: number;
+  priceMin: number;
+  priceMax: number;
+  priceLabel: string;
   supplier: string;
   organizationId: string;
   stock: number;
@@ -45,7 +49,6 @@ function mapProductRow(r: any): ProductRow {
   const inventoryTotal = Array.isArray(r.inventoryItems)
     ? r.inventoryItems.reduce((s: number, i: any) => s + num(i.stock ?? i.quantity), 0)
     : null;
-  const latestPrice = Array.isArray(r.marketPrices) ? r.marketPrices[0] : null;
   const primaryImage =
     Array.isArray(r.images) && r.images[0]
       ? str(r.images[0]?.file?.cdnUrl ?? r.images[0]?.cdnUrl ?? r.images[0]?.url, "")
@@ -54,6 +57,21 @@ function mapProductRow(r: any): ProductRow {
     Array.isArray(r.images) && r.images[0]
       ? str(r.images[0]?.fileId ?? r.images[0]?.file?.id, "")
       : "";
+  const priceMin = num(r.priceMin ?? attrs.priceMin);
+  const priceMax = num(r.priceMax ?? attrs.priceMax);
+  const priceAvg = num(r.priceAvg ?? attrs.priceAvg ?? r.price ?? attrs.price);
+  const hasMin = Number.isFinite(priceMin) && priceMin > 0;
+  const hasMax = Number.isFinite(priceMax) && priceMax > 0;
+  let priceLabel = "—";
+  if (hasMin && hasMax && Math.abs(priceMax - priceMin) >= 0.005) {
+    priceLabel = `${AED(priceMin)} – ${AED(priceMax)}`;
+  } else if (hasMin) {
+    priceLabel = AED(priceMin);
+  } else if (hasMax) {
+    priceLabel = AED(priceMax);
+  } else if (Number.isFinite(priceAvg) && priceAvg > 0) {
+    priceLabel = AED(priceAvg);
+  }
   return {
     id: str(r.id),
     sku: str(r.sku ?? r.productCode ?? r.id),
@@ -63,7 +81,10 @@ function mapProductRow(r: any): ProductRow {
     brand: str(r.brand?.name ?? attrs.brand, "—"),
     unit: str(r.unit?.name ?? r.unit?.symbol ?? "", "—"),
     unitId: str(r.unitId ?? r.unit?.id, ""),
-    price: num(attrs.price ?? latestPrice?.price ?? r.listPrice ?? r.basePrice ?? r.price),
+    price: Number.isFinite(priceAvg) && priceAvg > 0 ? priceAvg : hasMin ? priceMin : 0,
+    priceMin: hasMin ? priceMin : 0,
+    priceMax: hasMax ? priceMax : 0,
+    priceLabel,
     supplier: str(r.organization?.name ?? r.brand?.name ?? attrs.supplier, "—"),
     organizationId: str(r.organizationId ?? r.organization?.id, ""),
     stock: num(r.stock ?? inventoryTotal ?? attrs.stock),
@@ -96,8 +117,6 @@ function toProductPayload(data: Record<string, any>) {
     ...(organizationId ? { organizationId } : {}),
     ...(unitId ? { unitId } : data.unit && data.unit !== "—" ? { unit: String(data.unit) } : {}),
     status: data.status || "active",
-    price: data.price === "" || data.price == null ? undefined : Number(data.price),
-    stock: data.stock === "" || data.stock == null ? undefined : Number(data.stock),
     exciseApplicable:
       data.exciseApplicable === true ||
       data.exciseApplicable === "true" ||
@@ -206,16 +225,14 @@ function CatalogPage() {
           placeholder: "kg, carton, liter…",
           allowClear: true,
         },
-        { key: "price", label: "Price", required: true, type: "number" },
         {
           key: "organizationId",
-          label: "Supplier",
+          label: "Supplier (optional owner)",
           type: "searchable",
           selectOptions: suppliers,
           placeholder: "Search suppliers…",
           allowClear: true,
         },
-        { key: "stock", label: "Stock", type: "number" },
         {
           key: "exciseApplicable",
           label: "Excise applicable",
@@ -239,9 +256,9 @@ function CatalogPage() {
         { key: "category", label: "Category" },
         { key: "brand", label: "Brand" },
         { key: "unit", label: "Unit" },
-        { key: "price", label: "Price" },
+        { key: "priceLabel", label: "Supplier price range" },
         { key: "supplier", label: "Supplier" },
-        { key: "stock", label: "Stock" },
+        { key: "stock", label: "Supplier stock" },
         { key: "exciseApplicable", label: "Excise applicable" },
         { key: "vatRate", label: "VAT % override" },
         { key: "description", label: "Description" },
@@ -300,7 +317,13 @@ function CatalogPage() {
           label: "Unit",
           render: (r) => fallbackUnitOptions.find((u) => u.value === r.unitId)?.label ?? r.unit,
         },
-        { key: "price", label: "Price", render: (r) => AED(r.price) },
+        {
+          key: "priceLabel",
+          label: "Price range",
+          render: (r) => (
+            <span className="whitespace-nowrap text-sm">{r.priceLabel || "—"}</span>
+          ),
+        },
         {
           key: "supplier",
           label: "Supplier",

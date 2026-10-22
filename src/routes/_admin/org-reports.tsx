@@ -10,19 +10,25 @@ export const Route = createFileRoute("/_admin/org-reports")({
   component: OrgReportsPage,
 });
 
-function evidenceLinks(r: any): { name: string; url: string }[] {
+function isImageEvidence(ev: { name: string; url: string; mime?: string }) {
+  if (ev.mime && ev.mime.startsWith("image/")) return true;
+  return /\.(png|jpe?g|gif|webp|heic)(\?|$)/i.test(ev.url) || /\.(png|jpe?g|gif|webp|heic)$/i.test(ev.name);
+}
+
+function evidenceLinks(r: any): { name: string; url: string; mime?: string }[] {
   const list = Array.isArray(r.evidence) ? r.evidence : [];
   return list
     .map((ev: any) => {
       const file = ev?.file ?? ev;
-      const url = str(file?.cdnUrl, "");
+      const url = str(file?.cdnUrl || file?.url || file?.publicUrl, "");
       if (!url) return null;
       return {
-        name: str(file?.originalName, "Evidence"),
+        name: str(file?.originalName || file?.name, "Evidence"),
         url,
+        mime: str(file?.mimeType || file?.contentType, ""),
       };
     })
-    .filter(Boolean) as { name: string; url: string }[];
+    .filter(Boolean) as { name: string; url: string; mime?: string }[];
 }
 
 function mapReport(r: any) {
@@ -92,14 +98,21 @@ function OrgReportsPage() {
           render: (r) =>
             r.evidence?.length ? (
               <div className="flex flex-col gap-1">
-                {r.evidence.map((ev: { name: string; url: string }) => (
+                {r.evidence.map((ev: { name: string; url: string; mime?: string }) => (
                   <a
                     key={ev.url}
                     href={ev.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-primary text-xs font-medium hover:underline"
+                    className="flex items-center gap-2 text-primary text-xs font-medium hover:underline"
                   >
+                    {isImageEvidence(ev) ? (
+                      <img
+                        src={ev.url}
+                        alt=""
+                        className="h-10 w-10 rounded object-cover border border-border"
+                      />
+                    ) : null}
                     {ev.name}
                   </a>
                 ))}
@@ -140,8 +153,8 @@ function OrgReportsPage() {
                 >
                   {ev.name}
                 </a>
-                {/\.(png|jpe?g|gif|webp)(\?|$)/i.test(ev.url) || /\.(png|jpe?g|gif|webp)$/i.test(ev.name) ? (
-                  <img src={ev.url} alt={ev.name} className="max-h-64 rounded-lg border border-border" />
+                {isImageEvidence(ev) ? (
+                  <img src={ev.url} alt={ev.name} className="max-h-72 w-full rounded-lg border border-border object-contain bg-muted/30" />
                 ) : null}
               </div>
             ))}

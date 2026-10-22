@@ -936,7 +936,7 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
         <div className="grid gap-3 sm:grid-cols-2">
           {(isSupplier
             ? [
-                ["Categories", categories],
+                ["Cuisines", cuisines !== "—" ? cuisines : categories],
                 ["RFQ intake", str(settings.rfqIntakeMode ?? row?.rfqIntakeMode, "manual")],
                 ["PO approval levels", str(settings.poApprovalLevels ?? row?.poApprovalLevels, "0")],
                 ["Minimum RFQ", money(settings.minRfqValueAed ?? row?.minRfqValueAed)],
