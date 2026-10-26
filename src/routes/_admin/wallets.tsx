@@ -12,6 +12,15 @@ import {
   CircleDollarSign,
   ArrowLeft,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -525,6 +534,45 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
   );
 }
 
+function formatDecisionTime(value?: string | Date | null) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return new Date().toLocaleString();
+  return date.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function DecisionResultDialog({
+  result,
+  onClose,
+}: {
+  result: { title: string; message: string; time: string } | null;
+  onClose: () => void;
+}) {
+  return (
+    <AlertDialog open={Boolean(result)} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{result?.title}</AlertDialogTitle>
+          <AlertDialogDescription className="space-y-2">
+            <span className="block">{result?.message}</span>
+            {result?.time ? (
+              <span className="block text-xs text-muted-foreground">{result.time}</span>
+            ) : null}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={onClose}>Done</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 function walletRequestStatusLabel(status: string) {
   switch (String(status || "").toLowerCase()) {
     case "resolved":
@@ -544,6 +592,11 @@ function walletRequestStatusLabel(status: string) {
 function CreditRequestsPanel() {
   const qc = useQueryClient();
   const [status, setStatus] = useState("all");
+  const [decision, setDecision] = useState<{
+    title: string;
+    message: string;
+    time: string;
+  } | null>(null);
   const list = usePagedList<WalletCreditRequestRow>({
     queryKey: ["admin", "wallet-credit-requests", status],
     path: "/admin/wallets/credit-requests",
@@ -576,11 +629,17 @@ function CreditRequestsPanel() {
   };
 
   const acceptM = useMutation({
-    mutationFn: (ticketId: string) => acceptWalletCreditRequest(ticketId),
-    onSuccess: async (_data, ticketId) => {
-      toast.success("Request accepted");
-      // Keep the row — only flip status and drop Accept/Reject.
-      patchRequestStatus(ticketId, "resolved");
+    mutationFn: (row: WalletCreditRequestRow) => acceptWalletCreditRequest(row.id),
+    onSuccess: async (_data, row) => {
+      const time = formatDecisionTime();
+      const kind = row.kind === "credit_limit" ? "Credit" : "Funds";
+      const amount = row.amount > 0 ? AED(row.amount) : "";
+      setDecision({
+        title: `${kind} request accepted`,
+        message: `${row.organization}${amount ? ` · ${amount}` : ""} was approved. The restaurant will see this in Wallet / Credit.`,
+        time,
+      });
+      patchRequestStatus(row.id, "resolved");
       await qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
       await qc.invalidateQueries({ queryKey: ["admin", "credit-facilities"] });
     },
@@ -588,13 +647,20 @@ function CreditRequestsPanel() {
   });
 
   const rejectM = useMutation({
-    mutationFn: (ticketId: string) => {
+    mutationFn: (row: WalletCreditRequestRow) => {
       const reason = window.prompt("Reject reason (optional)") ?? undefined;
-      return rejectWalletCreditRequest(ticketId, reason);
+      return rejectWalletCreditRequest(row.id, reason);
     },
-    onSuccess: async (_data, ticketId) => {
-      toast.success("Request rejected");
-      patchRequestStatus(ticketId, "closed");
+    onSuccess: async (_data, row) => {
+      const time = formatDecisionTime();
+      const kind = row.kind === "credit_limit" ? "Credit" : "Funds";
+      const amount = row.amount > 0 ? AED(row.amount) : "";
+      setDecision({
+        title: `${kind} request rejected`,
+        message: `${row.organization}${amount ? ` · ${amount}` : ""} was not approved.`,
+        time,
+      });
+      patchRequestStatus(row.id, "closed");
       await qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
     },
     onError: (err: Error) => toast.error(err.message || "Reject failed"),
@@ -679,7 +745,7 @@ function CreditRequestsPanel() {
                               size="sm"
                               className="h-8"
                               disabled={busy}
-                              onClick={() => acceptM.mutate(r.id)}
+                              onClick={() => acceptM.mutate(r)}
                             >
                               Accept
                             </Button>
@@ -688,7 +754,7 @@ function CreditRequestsPanel() {
                               variant="outline"
                               className="h-8"
                               disabled={busy}
-                              onClick={() => rejectM.mutate(r.id)}
+                              onClick={() => rejectM.mutate(r)}
                             >
                               Reject
                             </Button>
@@ -711,6 +777,7 @@ function CreditRequestsPanel() {
           onPageChange={list.setPage}
         />
       </div>
+      <DecisionResultDialog result={decision} onClose={() => setDecision(null)} />
     </div>
   );
 }
@@ -1009,6 +1076,11 @@ function CreditFacilityPanel() {
 function WithdrawalsPanel() {
   const qc = useQueryClient();
   const [requestStatus, setRequestStatus] = useState("pending");
+  const [decision, setDecision] = useState<{
+    title: string;
+    message: string;
+    time: string;
+  } | null>(null);
   const list = usePagedList<WalletWithdrawalRow>({
     queryKey: ["admin", "wallet-withdrawals", requestStatus],
     path: "/admin/wallets/withdrawals",
@@ -1032,9 +1104,13 @@ function WithdrawalsPanel() {
   );
 
   const acceptM = useMutation({
-    mutationFn: (requestId: string) => acceptWalletWithdrawRequest(requestId),
-    onSuccess: async () => {
-      toast.success("Withdraw accepted · wallet debited");
+    mutationFn: (row: WalletWithdrawalRow) => acceptWalletWithdrawRequest(row.requestId),
+    onSuccess: async (_data, row) => {
+      setDecision({
+        title: "Withdraw accepted",
+        message: `${row.organization} · ${AED(row.amount)} was debited from the wallet.`,
+        time: formatDecisionTime(),
+      });
       await qc.invalidateQueries({ queryKey: ["admin", "wallet-withdrawals"] });
       await qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
     },
@@ -1042,12 +1118,16 @@ function WithdrawalsPanel() {
   });
 
   const rejectM = useMutation({
-    mutationFn: (requestId: string) => {
+    mutationFn: (row: WalletWithdrawalRow) => {
       const reason = window.prompt("Reject reason (optional)") ?? undefined;
-      return rejectWalletWithdrawRequest(requestId, reason);
+      return rejectWalletWithdrawRequest(row.requestId, reason);
     },
-    onSuccess: async () => {
-      toast.success("Withdraw rejected · hold released");
+    onSuccess: async (_data, row) => {
+      setDecision({
+        title: "Withdraw rejected",
+        message: `${row.organization} · ${AED(row.amount)} hold was released.`,
+        time: formatDecisionTime(),
+      });
       await qc.invalidateQueries({ queryKey: ["admin", "wallet-withdrawals"] });
       await qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
     },
@@ -1131,7 +1211,7 @@ function WithdrawalsPanel() {
                               size="sm"
                               className="h-8"
                               disabled={busy}
-                              onClick={() => acceptM.mutate(r.requestId)}
+                              onClick={() => acceptM.mutate(r)}
                             >
                               Accept
                             </Button>
@@ -1140,7 +1220,7 @@ function WithdrawalsPanel() {
                               variant="outline"
                               className="h-8"
                               disabled={busy}
-                              onClick={() => rejectM.mutate(r.requestId)}
+                              onClick={() => rejectM.mutate(r)}
                             >
                               Reject
                             </Button>
@@ -1163,6 +1243,7 @@ function WithdrawalsPanel() {
           onPageChange={list.setPage}
         />
       </div>
+      <DecisionResultDialog result={decision} onClose={() => setDecision(null)} />
     </div>
   );
 }

@@ -3,16 +3,16 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { KpiCard } from "@/components/admin/KpiCard";
 import {
-  Store, Truck, FileText, Quote, ClipboardList, Star,
+  Store, Truck, FileText, Quote, ClipboardList,
   ShieldCheck, Building2, PackagePlus, Wallet, LifeBuoy, Scale, ChevronRight,
 } from "lucide-react";
 import {
-  AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
+  AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from "recharts";
 import { StatusBadge } from "@/components/admin/DataPage";
 import { cn } from "@/lib/utils";
-import { api, asArray, num, str } from "@/lib/api/client";
-import { EMPTY_LIST, fetchAdminDashboard } from "@/lib/api/resources";
+import { asArray, num, str } from "@/lib/api/client";
+import { fetchAdminDashboard } from "@/lib/api/resources";
 import { getSessionUser, subscribeSession } from "@/lib/auth-session";
 
 export const Route = createFileRoute("/_admin/dashboard")({
@@ -61,11 +61,6 @@ function Dashboard() {
     queryKey: ["admin", "dashboard"],
     queryFn: fetchAdminDashboard,
     refetchOnWindowFocus: true,
-  });
-
-  const { data: recentRfqs = EMPTY_LIST } = useQuery({
-    queryKey: ["rfqs", "dashboard"],
-    queryFn: async () => asArray(await api.get("/rfqs").catch(() => [])),
   });
 
   const d = (dash ?? {}) as Record<string, any>;
@@ -151,40 +146,45 @@ function Dashboard() {
 
   const rfqByMonth = asArray(trends.rfqsByMonth);
   const quotByMonth = asArray(trends.quotationsByMonth);
+  const quotByKey = new Map(quotByMonth.map((q: any) => [str(q.month), num(q.count ?? q.quotations)]));
   const rfqTrend = rfqByMonth.map((r: any) => {
     const month = str(r.month, "");
-    const matchQ = quotByMonth.find((q: any) => str(q.month) === month);
     return {
       month: monthLabel(month),
+      monthKey: month,
       rfqs: num(r.count ?? r.rfqs),
-      quotations: num(matchQ?.count ?? matchQ?.quotations ?? r.quotations),
+      quotations: num(quotByKey.get(month) ?? r.quotations),
     };
   });
+  const trendHasActivity = rfqTrend.some((r) => r.rfqs > 0 || r.quotations > 0);
 
-  const topSuppliersRaw = asArray(d.topSuppliers);
-  const suppliersData = topSuppliersRaw.map((s: any) => ({
+  const suppliersData = asArray(d.topSuppliers).map((s: any) => ({
     id: str(s.id),
     name: str(s.name, "—"),
-    rating: num(s.rating),
-    winRate: num(s.winRate ?? s.orderCount),
+    logoUrl: str(s.logoUrl ?? s.logo_url, ""),
+    city: str(s.city ?? s.region, ""),
+    orderCount: num(s.orderCount ?? s.winRate),
     revenue: num(s.revenue),
   }));
 
   const restaurantsData = asArray(d.topRestaurants).map((r: any) => ({
     id: str(r.id),
     name: str(r.name, "—"),
-    region: str(r.region ?? r.city, "—"),
-    branches: num(r.branches ?? r.orderCount),
+    logoUrl: str(r.logoUrl ?? r.logo_url, ""),
+    city: str(r.city ?? r.region, ""),
+    orderCount: num(r.orderCount ?? r.branches),
     spend: num(r.spend ?? r.revenue),
   }));
 
-  const rfqsData = (recentRfqs.length ? recentRfqs : asArray(d.recentRfqs))
-    .slice(0, 5)
+  const rfqsData = asArray(d.recentRfqs)
+    .slice(0, 6)
     .map((r: any) => ({
-      id: String(r.number ?? r.id ?? "RFQ"),
-      restaurant: String(r.organization?.name ?? r.title ?? "—"),
-      category: String(r.visibility ?? r.category ?? "—"),
-      status: String(r.status ?? "open"),
+      id: str(r.id ?? r.number),
+      number: str(r.number ?? r.id, "RFQ"),
+      title: str(r.title, "Request"),
+      restaurant: str(r.organization?.name ?? r.restaurant, "—"),
+      logoUrl: str(r.organization?.logoUrl ?? r.organization?.logo_url ?? r.logoUrl, ""),
+      status: str(r.status, "published"),
     }));
 
   return (
@@ -275,108 +275,143 @@ function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard label="Total Restaurants" value={kpis.totalRestaurants.toLocaleString()} delta={0} icon={<Store className="h-5 w-5" />} to="/restaurants" accent="primary" />
-        <KpiCard label="Total Suppliers" value={kpis.totalSuppliers.toLocaleString()} delta={0} icon={<Truck className="h-5 w-5" />} to="/suppliers" accent="accent" />
-        <KpiCard label={hasLive ? "Open requests" : "RFQs"} value={kpis.activeRfqs.toString()} delta={0} icon={<FileText className="h-5 w-5" />} to="/rfqs" accent="info" />
-        <KpiCard label={hasLive ? "Open quotes" : "Quotations"} value={kpis.activeQuotations.toLocaleString()} delta={0} icon={<Quote className="h-5 w-5" />} to="/quotations" accent="warning" />
-        <KpiCard label={hasLive ? "Open orders" : "Orders"} value={kpis.approvedPOs.toString()} delta={0} icon={<ClipboardList className="h-5 w-5" />} to="/purchase-orders" accent="success" />
+        <KpiCard label="Total Restaurants" value={kpis.totalRestaurants.toLocaleString()} icon={<Store className="h-5 w-5" />} to="/restaurants" accent="primary" />
+        <KpiCard label="Total Suppliers" value={kpis.totalSuppliers.toLocaleString()} icon={<Truck className="h-5 w-5" />} to="/suppliers" accent="accent" />
+        <KpiCard label={hasLive ? "Open requests" : "RFQs"} value={kpis.activeRfqs.toString()} icon={<FileText className="h-5 w-5" />} to="/rfqs" accent="info" />
+        <KpiCard label={hasLive ? "Open quotes" : "Quotations"} value={kpis.activeQuotations.toLocaleString()} icon={<Quote className="h-5 w-5" />} to="/quotations" accent="warning" />
+        <KpiCard label={hasLive ? "Open orders" : "Orders"} value={kpis.approvedPOs.toString()} icon={<ClipboardList className="h-5 w-5" />} to="/purchase-orders" accent="success" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <ChartCard title="RFQ & Quotation Trend" subtitle="Last months" className="xl:col-span-2">
-          {rfqTrend.length === 0 ? (
+        <ChartCard
+          title="RFQ & Quotation Trend"
+          subtitle="Volume over the last 12 months"
+          className="xl:col-span-2"
+        >
+          {!trendHasActivity ? (
             <EmptyChart />
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={rfqTrend} margin={{ top: 5, right: 8, left: -16, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={rfqTrend} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="rfqs" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.4} />
+                  <linearGradient id="dash-rfqs" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35} />
                     <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id="quots" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.4} />
+                  <linearGradient id="dash-quots" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.35} />
                     <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Area type="monotone" dataKey="quotations" stroke="var(--chart-2)" fill="url(#quots)" strokeWidth={2} />
-                <Area type="monotone" dataKey="rfqs" stroke="var(--chart-1)" fill="url(#rfqs)" strokeWidth={2} />
+                <YAxis
+                  allowDecimals={false}
+                  width={32}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(value, name) => [value, name === "rfqs" ? "RFQs" : "Quotations"]}
+                />
+                <Legend
+                  verticalAlign="top"
+                  align="right"
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: 12, paddingBottom: 8 }}
+                  formatter={(value) => (value === "rfqs" ? "RFQs" : "Quotations")}
+                />
+                <Area type="monotone" dataKey="quotations" name="quotations" stroke="var(--chart-2)" fill="url(#dash-quots)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="rfqs" name="rfqs" stroke="var(--chart-1)" fill="url(#dash-rfqs)" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           )}
         </ChartCard>
 
-        <WidgetCard title="Recent RFQs">
-          <div className="divide-y divide-border">
-            {rfqsData.length === 0 && <p className="text-sm text-muted-foreground py-4">No RFQs yet.</p>}
+        <WidgetCard title="Recent RFQs" href="/rfqs">
+          <div className="divide-y divide-border -mx-1">
+            {rfqsData.length === 0 && (
+              <p className="text-sm text-muted-foreground py-4 px-1">No RFQs yet.</p>
+            )}
             {rfqsData.map((r) => (
-              <div key={r.id} className="flex items-center gap-3 py-2.5">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary grid place-items-center text-[11px] font-mono">
-                  {String(r.id).slice(-4)}
-                </div>
+              <Link
+                key={r.id}
+                to="/rfqs"
+                className="flex items-center gap-3 py-2.5 px-1 rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <OrgAvatar name={r.restaurant} src={r.logoUrl} tone="primary" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{r.restaurant}</div>
-                  <div className="text-xs text-muted-foreground">{r.category}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {r.number} · {r.title}
+                  </div>
                 </div>
                 <StatusPill status={r.status} />
-              </div>
+              </Link>
             ))}
           </div>
         </WidgetCard>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <WidgetCard title="Top Suppliers">
-          <div className="space-y-2.5">
+        <WidgetCard title="Top Suppliers" href="/suppliers">
+          <div className="space-y-1">
             {suppliersData.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4">No supplier data yet.</p>
+              <p className="text-sm text-muted-foreground py-4">No supplier activity yet.</p>
             )}
-            {suppliersData.slice(0, 5).map((s, i) => (
-              <div key={s.id || i} className="flex items-center gap-3">
-                <div className="text-xs font-mono text-muted-foreground w-4">{i + 1}</div>
-                <div className="h-8 w-8 rounded-lg gradient-accent grid place-items-center text-accent-foreground text-xs font-semibold">
-                  {s.name.charAt(0)}
-                </div>
+            {suppliersData.slice(0, 6).map((s, i) => (
+              <Link
+                key={s.id || i}
+                to="/suppliers"
+                className="flex items-center gap-3 rounded-lg px-1 py-2 hover:bg-muted/50 transition-colors"
+              >
+                <div className="text-xs font-mono text-muted-foreground w-4 tabular-nums">{i + 1}</div>
+                <OrgAvatar name={s.name} src={s.logoUrl} tone="accent" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{s.name}</div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Star className="h-3 w-3 fill-warning text-warning" /> {s.rating || "—"} ·{" "}
-                    {s.winRate || "—"} orders
+                  <div className="text-xs text-muted-foreground truncate">
+                    {[s.city, s.orderCount ? `${s.orderCount} invites / orders` : null]
+                      .filter(Boolean)
+                      .join(" · ") || "Supplier"}
                   </div>
                 </div>
-                <div className="text-sm font-medium">{s.revenue ? fmtMoney(s.revenue) : "—"}</div>
-              </div>
+                <div className="text-sm font-medium tabular-nums">
+                  {s.revenue ? fmtMoney(s.revenue) : "—"}
+                </div>
+              </Link>
             ))}
           </div>
         </WidgetCard>
 
-        <WidgetCard title="Top Restaurants">
-          <div className="space-y-2.5">
+        <WidgetCard title="Top Restaurants" href="/restaurants">
+          <div className="space-y-1">
             {restaurantsData.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4">No restaurant data yet.</p>
+              <p className="text-sm text-muted-foreground py-4">No restaurant activity yet.</p>
             )}
-            {[...restaurantsData]
-              .sort((a, b) => b.spend - a.spend)
-              .slice(0, 5)
-              .map((r, i) => (
-                <div key={r.id || i} className="flex items-center gap-3">
-                  <div className="text-xs font-mono text-muted-foreground w-4">{i + 1}</div>
-                  <div className="h-8 w-8 rounded-lg gradient-primary grid place-items-center text-primary-foreground text-xs font-semibold">
-                    {r.name.charAt(0)}
+            {restaurantsData.slice(0, 6).map((r, i) => (
+              <Link
+                key={r.id || i}
+                to="/restaurants"
+                className="flex items-center gap-3 rounded-lg px-1 py-2 hover:bg-muted/50 transition-colors"
+              >
+                <div className="text-xs font-mono text-muted-foreground w-4 tabular-nums">{i + 1}</div>
+                <OrgAvatar name={r.name} src={r.logoUrl} tone="primary" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{r.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {[r.city, r.orderCount ? `${r.orderCount} RFQs` : null]
+                      .filter(Boolean)
+                      .join(" · ") || "Restaurant"}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{r.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {r.region} · {r.branches} orders
-                    </div>
-                  </div>
-                  <div className="text-sm font-medium">{r.spend ? fmtMoney(r.spend) : "—"}</div>
                 </div>
-              ))}
+                <div className="text-sm font-medium tabular-nums">
+                  {r.spend ? fmtMoney(r.spend) : "—"}
+                </div>
+              </Link>
+            ))}
           </div>
         </WidgetCard>
       </div>
@@ -424,11 +459,61 @@ function ChartCard({
   );
 }
 
-function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
+function WidgetCard({
+  title,
+  href,
+  children,
+}: {
+  title: string;
+  href?: "/rfqs" | "/suppliers" | "/restaurants";
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-      <h3 className="font-display font-semibold mb-3">{title}</h3>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <h3 className="font-display font-semibold">{title}</h3>
+        {href ? (
+          <Link to={href} className="text-xs font-medium text-primary hover:underline">
+            View all
+          </Link>
+        ) : null}
+      </div>
       {children}
+    </div>
+  );
+}
+
+function OrgAvatar({
+  name,
+  src,
+  tone = "primary",
+}: {
+  name: string;
+  src?: string | null;
+  tone?: "primary" | "accent";
+}) {
+  const [failed, setFailed] = useState(!src);
+  const letter = (name || "?").replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?";
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt=""
+        className="h-9 w-9 rounded-lg object-cover border border-border shrink-0 bg-muted"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <div
+      className={cn(
+        "h-9 w-9 rounded-lg grid place-items-center text-xs font-semibold shrink-0",
+        tone === "accent"
+          ? "bg-accent text-accent-foreground"
+          : "bg-primary/10 text-primary",
+      )}
+    >
+      {letter}
     </div>
   );
 }

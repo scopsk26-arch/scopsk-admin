@@ -453,8 +453,11 @@ export function DataPage<T extends Record<string, any>>({
 
   const size = Math.max(1, Number(serverPagination?.pageSize ?? pageSize) || 20);
   const totalFiltered = serverPagination ? serverPagination.total : filtered.length;
-  const totalPages = Math.max(1, Math.ceil(totalFiltered / size));
-  const currentPage = Math.min(Math.max(1, serverPagination?.page ?? page), totalPages);
+  const totalPages = Math.max(1, Math.ceil(Math.max(totalFiltered, 0) / size));
+  const requestedPage = Math.max(1, serverPagination?.page ?? page);
+  // Do not clamp the server page down to 1 while a fetch briefly reports total=0 —
+  // that disables Next and can snap the user back to page 1.
+  const currentPage = serverPagination ? requestedPage : Math.min(requestedPage, totalPages);
   const pageRows = useMemo(() => {
     if (serverPagination) return rows;
     const start = (currentPage - 1) * size;
@@ -463,7 +466,7 @@ export function DataPage<T extends Record<string, any>>({
   const rangeFrom = totalFiltered === 0 ? 0 : (currentPage - 1) * size + 1;
   const rangeTo = Math.min(currentPage * size, totalFiltered);
   const canGoPrev = currentPage > 1;
-  const canGoNext = currentPage < totalPages;
+  const canGoNext = currentPage < totalPages || (Boolean(serverPagination) && rows.length >= size && totalFiltered > currentPage * size);
 
   const canCreate = Boolean(onCreate) && !disableCrud;
   const canUpdate = Boolean(onUpdate) && !disableCrud;
@@ -762,9 +765,9 @@ export function DataPage<T extends Record<string, any>>({
               size="sm"
               disabled={!canGoNext}
               onClick={() => {
-                const next = Math.min(totalPages, currentPage + 1);
+                const next = currentPage + 1;
                 if (serverPagination) serverPagination.onPageChange(next);
-                else setPage(next);
+                else setPage(Math.min(totalPages, next));
               }}
             >
               Next

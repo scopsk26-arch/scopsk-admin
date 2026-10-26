@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { fetchPage } from "@/lib/api/resources";
 
 type QueryValue = string | number | boolean | undefined | null;
@@ -44,6 +44,7 @@ export function usePagedList<T>(options: {
   const result = useQuery({
     queryKey: [...options.queryKey, page, pageSize, debouncedSearch, queryKeyExtra, sort, status],
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
     enabled: options.enabled ?? true,
     queryFn: async () => {
       if (options.load) {
