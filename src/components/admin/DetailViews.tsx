@@ -1164,12 +1164,53 @@ export function ProductDetailView({ detail }: { detail: any }) {
         </DetailSection>
       )}
       {inventory.length > 0 && (
-        <DetailSection title="Inventory">
+        <DetailSection title="Supplier stock">
           <DetailTable
-            rows={inventory}
+            rows={[...inventory].sort((a, b) => num(b.stock) - num(a.stock))}
             columns={[
-              { key: "qty", label: "Qty", render: (r) => str(r.quantity ?? r.onHand, "—") },
-              { key: "warehouse", label: "Warehouse", render: (r) => str(r.warehouse?.name ?? r.location, "—") },
+              {
+                key: "org",
+                label: "Organization",
+                render: (r) =>
+                  str(
+                    r.organizationName ??
+                      r.organization?.name ??
+                      r.Organization?.name ??
+                      r.orgName,
+                    "—",
+                  ),
+              },
+              {
+                key: "type",
+                label: "Type",
+                render: (r) => str(r.organization?.type ?? r.Organization?.type, "—"),
+              },
+              {
+                key: "stock",
+                label: "Stock",
+                render: (r) => str(r.stock ?? r.quantity ?? r.onHand, "—"),
+              },
+              {
+                key: "unit",
+                label: "Unit",
+                render: (r) => str(r.unit, "—"),
+              },
+              {
+                key: "unitPrice",
+                label: "Price",
+                render: (r) => money(r.unitPrice),
+              },
+              {
+                key: "warehouse",
+                label: "Warehouse",
+                render: (r) =>
+                  str(r.warehouseName ?? r.warehouse?.name ?? r.location, "—"),
+              },
+              {
+                key: "status",
+                label: "Status",
+                render: (r) => statusCell(r.status),
+              },
             ]}
           />
         </DetailSection>

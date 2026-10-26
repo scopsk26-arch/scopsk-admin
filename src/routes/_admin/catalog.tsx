@@ -135,8 +135,8 @@ function CatalogPage() {
   const list = usePagedList({
     queryKey: ["catalog", "products"],
     path: "/catalog/products",
-    query: { status: "active" },
     map: mapProductRow,
+    pageSize: 10,
   });
   const rows = list.rows;
   const isLoading = list.isLoading;
@@ -278,7 +278,7 @@ function CatalogPage() {
         unitId: fallbackUnitOptions,
       }}
       kpis={[
-        { label: "SKUs", value: String(rows.length) },
+        { label: "SKUs", value: String(list.total) },
         { label: "Active", value: String(active), tone: "success" },
         { label: "Low stock", value: String(low), tone: "warning" },
         { label: "Categories", value: String(categories.length || "—") },
