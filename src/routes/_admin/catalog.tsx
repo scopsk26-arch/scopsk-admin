@@ -11,7 +11,7 @@ import { useAdminLookups } from "@/hooks/useAdminLookups";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
 
 export const Route = createFileRoute("/_admin/catalog")({
-  head: () => ({ meta: [{ title: "Product Catalog — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Products — ScopsK" }] }),
   component: CatalogPage,
 });
 
@@ -182,8 +182,8 @@ function CatalogPage() {
 
   return (
     <DataPage
-      title="Product Catalog"
-      description="Master catalog with templates, units, pricing and stock signals."
+      title="Products"
+      description="The product list used by restaurants and suppliers."
       icon={<Boxes className="h-5 w-5 text-primary" />}
       idKey="id"
       entityName="Product"

@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { LifeBuoy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fetchSupportTicketDetail } from "@/lib/api/resources";
+import { fetchPage, fetchSupportTicketDetail } from "@/lib/api/resources";
 import { api, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/support")({
@@ -109,32 +109,89 @@ function TicketDetail({ detail }: { detail: Record<string, unknown> }) {
   );
 }
 
+const SUPPORT_EXCLUDED = new Set(["wallet_topup", "credit_limit"]);
+
+async function loadSupportTickets(args: {
+  page: number;
+  pageSize: number;
+  search: string;
+  sort: string;
+  status: string;
+}) {
+  const collected: any[] = [];
+  let apiPage = 1;
+  let reportedTotal = 0;
+  do {
+    const fetched = await fetchPage("/support", {
+      page: apiPage,
+      limit: 100,
+      search: args.search || undefined,
+      sortBy: "createdAt",
+      sortOrder: args.sort === "oldest" ? "ASC" : "DESC",
+      excludeCategory: "wallet_topup,credit_limit",
+      ...(args.status !== "all" ? { status: args.status } : {}),
+    });
+    reportedTotal = fetched.total;
+    collected.push(
+      ...fetched.rows.filter((row) => !SUPPORT_EXCLUDED.has(String(row.category || ""))),
+    );
+    if (fetched.rows.length < 100) break;
+    apiPage += 1;
+  } while ((apiPage - 1) * 100 < reportedTotal && apiPage <= 10);
+
+  const start = (args.page - 1) * args.pageSize;
+  return {
+    rows: collected.slice(start, start + args.pageSize).map(mapTicket),
+    total: collected.length,
+    waiting: collected.filter((row) =>
+      ["open", "in_progress", "waiting"].includes(String(row.status || "")),
+    ).length,
+  };
+}
+
 function SupportPage() {
   const queryClient = useQueryClient();
   const list = usePagedList({
     queryKey: ["support"],
     path: "/support",
-    map: mapTicket,
+    load: async (args) => {
+      const loaded = await loadSupportTickets(args);
+      return { rows: loaded.rows, total: loaded.total };
+    },
+  });
+  const waiting = useQuery({
+    queryKey: ["support", "waiting-count"],
+    queryFn: async () => {
+      const loaded = await loadSupportTickets({
+        page: 1,
+        pageSize: 1,
+        search: "",
+        sort: "newest",
+        status: "all",
+      });
+      return loaded.waiting;
+    },
   });
   const rows = list.rows;
   const isLoading = list.isLoading;
   const isError = list.isError;
 
-  const open = rows.filter((r) =>
-    ["open", "in_progress", "waiting"].includes(r.status),
-  ).length;
   const complaints = rows.filter((r) => {
     const cat = String(r.category || "").toLowerCase();
     return (
-      ["order_complaint", "complaint", "org report", "org_report"].includes(cat) ||
+      ["order complaint", "complaint", "org report"].includes(cat) ||
       String(r.relatedCode || "").includes("/")
     );
   }).length;
 
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["support"] });
+  };
+
   return (
     <DataPage
-      title="Support Center"
-      description="App requests: order complaints, funds/credit, and org reports (Report a supplier). For org reports, open Org reports to block the supplier for that restaurant so they stay off new RFQs."
+      title="Support"
+      description="Complaints and reports. Credit and wallet requests are on Wallets."
       icon={<LifeBuoy className="h-5 w-5 text-primary" />}
       formFields={[
         { key: "subject", label: "Subject", required: true, type: "text" },
@@ -185,7 +242,7 @@ function SupportPage() {
       }}
       renderView={(detail) => <TicketDetail detail={detail} />}
       kpis={[
-        { label: "Open tickets", value: String(open), tone: "info" },
+        { label: "Open tickets", value: waiting.isLoading ? "…" : String(waiting.data ?? 0), tone: "info" },
         { label: "Order complaints", value: String(complaints), tone: "warning" },
         {
           label: "High priority",
@@ -265,7 +322,7 @@ function SupportPage() {
           category: "general",
           body: reply,
         }, { toastOnSuccess: true });
-        await queryClient.invalidateQueries({ queryKey: ["support"] });
+        await refresh();
         return mapTicket(created);
       }}
       onUpdate={async (id, data, row) => {
@@ -290,7 +347,7 @@ function SupportPage() {
           priority: data.priority,
           status,
         });
-        await queryClient.invalidateQueries({ queryKey: ["support"] });
+        await refresh();
         return mapTicket(updated);
       }}
     />

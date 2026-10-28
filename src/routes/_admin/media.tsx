@@ -10,7 +10,7 @@ import { api, num, str } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_admin/media")({
-  head: () => ({ meta: [{ title: "Media Library — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Files — ScopsK" }] }),
   component: MediaLibraryPage,
 });
 
@@ -116,12 +116,12 @@ function MediaLibraryPage() {
 
   const copyUrl = async (url: string) => {
     if (!url) {
-      toast.error("No CDN URL on this file");
+      toast.error("No link on this file");
       return;
     }
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("CDN URL copied");
+      toast.success("Link copied");
     } catch {
       toast.error("Could not copy — select the URL manually");
     }
@@ -135,10 +135,9 @@ function MediaLibraryPage() {
             <Images className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-display font-semibold tracking-tight">Media Library</h1>
+            <h1 className="text-2xl font-display font-semibold tracking-tight">Files</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Files go to DigitalOcean Spaces under the platform media root. Copy the
-              CDN URL into dishes, banners, or catalog.
+              Upload images, then copy the link into banners, products, or dishes.
             </p>
           </div>
         </div>
@@ -189,15 +188,11 @@ function MediaLibraryPage() {
             to keep uploads fast.
           </li>
           <li>
-            After upload, use <strong>Copy URL</strong> and paste into CK Dishes / Banners / Catalog.
+            After upload, use <strong>Copy URL</strong> and paste it into banners, products, or dishes.
           </li>
         </ul>
         <p className="text-muted-foreground">
-          Need a dish image? Open{" "}
-          <Link to="/ck-dishes" className="text-primary underline-offset-2 hover:underline">
-            CK Dishes
-          </Link>{" "}
-          and paste the CDN URL in the Image field.
+          Need a dish image? Open dishes and paste the copied link in the Image field.
         </p>
       </div>
 
@@ -212,22 +207,17 @@ function MediaLibraryPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading media…</p>
+        <p className="text-sm text-muted-foreground">Loading files…</p>
       ) : isError ? (
         <p className="text-sm text-destructive">
-          Could not load files. Ensure the API exposes GET /files and you have upload permission.
+          Could not load files. Check your connection or permissions.
         </p>
       ) : files.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
           <ImagePlus className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-          <p className="font-medium">No images in the media library yet</p>
+          <p className="font-medium">No files yet</p>
           <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-            Click Upload — new files go to{" "}
-            <code className="text-xs">
-              …/scopsk/YYYY-MM-DD/…
-            </code>{" "}
-            and their CDN URL will show here. Old <code className="text-xs">uploads/</code> and{" "}
-            <code className="text-xs">seed/</code> files are hidden from this page.
+            Click Upload. New images will show here so you can copy the link.
           </p>
         </div>
       ) : (

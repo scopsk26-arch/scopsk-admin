@@ -50,7 +50,7 @@ function SubscriptionsPage() {
   return (
     <DataPage
       title="Subscriptions"
-      description="Plans, billing cycles and MRR for restaurants and suppliers."
+      description="Plans and billing for restaurants and suppliers."
       icon={<BadgeCheck className="h-5 w-5 text-primary" />}
       formFields={[
         {

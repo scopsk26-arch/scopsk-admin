@@ -27,8 +27,8 @@ function ApiKeysPage() {
 
   return (
     <DataPage
-      title="API Management"
-      description="API keys, scopes, rate limits and live request monitoring."
+      title="API keys"
+      description="Keys, access, and request limits."
       icon={<Code2 className="h-5 w-5 text-primary" />}
       entityName="API Key"
       formFields={[

@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { AED, DetailSection, DetailTable, StatusBadge, formatStatusLabel } from "@/components/admin/DataPage";
 import { Button } from "@/components/ui/button";
 import { num, str } from "@/lib/api/client";
-import { reviewKycDocument } from "@/lib/api/resources";
+import { organizationStreet, reviewKycDocument } from "@/lib/api/resources";
 import { computeQuotationAiScore, extractFinanceBreakdown } from "@/lib/admin-export";
 
 function iso(v: unknown) {
@@ -146,8 +146,8 @@ function deliveryItemStatus(r: any, deliveryStatus?: string) {
 function approvalTypeLabel(type: string) {
   const t = String(type || "").toLowerCase();
   if (t === "purchase_order" || t === "po") return "Purchase Order";
-  if (t === "rfq") return "RFQ";
-  if (t === "quotation" || t === "quote") return "Quotation";
+  if (t === "rfq") return "Request";
+  if (t === "quotation" || t === "quote") return "Request";
   return type || "—";
 }
 
@@ -283,12 +283,11 @@ export function RfqDetailView({
           <div><span className="text-muted-foreground">Org: </span>{str(detail.organization?.name, "—")}</div>
           {isCk ? (
             <div className="sm:col-span-2 text-muted-foreground">
-              Fulfillment: Admin serves this request directly — suppliers are not invited, so quotes and purchase orders stay at 0.
+              Fulfillment: Admin serves this request directly — suppliers are not invited.
             </div>
           ) : (
             <>
-              <div><span className="text-muted-foreground">Quotes: </span>{str(detail.quotationCount, "—")}</div>
-              <div><span className="text-muted-foreground">Purchase orders: </span>{str(detail.purchaseOrderCount ?? purchaseOrders.length, "—")}</div>
+              <div><span className="text-muted-foreground">Orders: </span>{str(detail.purchaseOrderCount ?? purchaseOrders.length, "—")}</div>
             </>
           )}
         </div>
@@ -524,8 +523,7 @@ export function PurchaseOrderDetailView({ detail }: { detail: any }) {
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
           <div><span className="text-muted-foreground">Buyer: </span>{str(detail.buyerOrg?.name, "—")}</div>
           <div><span className="text-muted-foreground">Supplier: </span>{str(detail.supplierOrg?.name, "—")}</div>
-          <div><span className="text-muted-foreground">RFQ: </span>{str(detail.rfq?.number ?? detail.rfqId, "—")}</div>
-          <div><span className="text-muted-foreground">Quotation: </span>{str(detail.quotation?.number ?? detail.quotationId, "—")}</div>
+          <div><span className="text-muted-foreground">Request: </span>{str(detail.rfq?.number ?? detail.rfqId, "—")}</div>
           <div><span className="text-muted-foreground">Currency: </span>{str(detail.currency, "AED")}</div>
           <div><span className="text-muted-foreground">Total (incl. VAT): </span>{money(detail.total)}</div>
         </div>
@@ -866,7 +864,7 @@ function OrgDocumentsTable({ documents }: { documents: any[] }) {
         {
           key: "type",
           label: "Type",
-          render: (r) => formatStatusLabel(str(r.documentType ?? r.type, "—")),
+          render: (r) => kycDocTypeLabel(r.documentType ?? r.type),
         },
         { key: "name", label: "File", render: (r) => str(r.fileName ?? r.file?.originalName, "—") },
         { key: "status", label: "Status", render: (r) => statusCell(r.status || "pending") },
@@ -905,6 +903,38 @@ function OrgDocumentsTable({ documents }: { documents: any[] }) {
   );
 }
 
+function commerceTermsLabel(value: unknown) {
+  const key = String(value || "").toLowerCase();
+  if (key === "cash_only") return "Cash on Delivery";
+  if (key === "credit_only") return "Credit Terms";
+  if (key === "cash_or_credit") return "Both Cash & Credit";
+  return str(value, "—");
+}
+
+function workingHoursLabel(value: unknown) {
+  if (!value || typeof value !== "object") return "—";
+  const hours = value as { days?: unknown; open?: unknown; close?: unknown };
+  const days = Array.isArray(hours.days)
+    ? hours.days.map((d) => String(d)).join(", ")
+    : "";
+  const open = str(hours.open, "");
+  const close = str(hours.close, "");
+  const span = open && close ? `${open}–${close}` : open || close;
+  return [days, span].filter(Boolean).join(" · ") || "—";
+}
+
+function kycDocTypeLabel(value: unknown) {
+  const key = String(value || "").toLowerCase();
+  if (key === "trade_license") return "Trade license";
+  if (key === "food_license") return "Food establishment license";
+  if (key === "food_handling" || key === "food_handling_certificate") {
+    return "Food trading / food safety license";
+  }
+  if (key === "vat_certificate" || key === "vat_registration") return "VAT certificate";
+  if (key === "bank_proof") return "Bank proof";
+  return formatStatusLabel(str(value, "—"));
+}
+
 function feeLabel(mode: unknown, value: unknown) {
   const kind = String(mode || "none");
   if (kind === "percent") return `${num(value)}%`;
@@ -929,14 +959,86 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
   const deliveryOptions = namesOf(settings.deliveryOptions);
   const rating = num(detail?.rating ?? detail?.metadata?.rating ?? row?.rating);
   const anonymous = settings.anonymousMarketplace !== false;
+  const meta = {
+    ...((detail?.metadata && typeof detail.metadata === "object" ? detail.metadata : {}) as Record<string, unknown>),
+    ...((settings.metadata && typeof settings.metadata === "object" ? settings.metadata : {}) as Record<string, unknown>),
+  };
+  const coverage = namesOf(meta.coverageAreas ?? row?.coverageAreas);
+  const area = str(meta.dubaiArea ?? meta.neighborhood ?? row?.dubaiArea, "—");
+  const street = str(organizationStreet(detail) || organizationStreet(row) || row?.address, "—");
+  const purchasingTerms = str(meta.purchasingTerms ?? row?.purchasingTerms, "");
+  const sellingTerms = str(meta.sellingTerms ?? row?.sellingTerms, "");
+  const requestedCredit = num(meta.requestedCreditLimit ?? row?.requestedCreditLimit);
+  const termsDays = num(settings.paymentTermsDays ?? row?.paymentTermsDays);
+  const hours = workingHoursLabel(meta.workingHours ?? row?.workingHours);
+  const branchName = str(
+    branches[0]?.name ?? row?.branchName ?? detail?.branches?.[0]?.name,
+    "—",
+  );
 
   return (
     <>
+      <DetailSection title="Registration">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(isSupplier
+            ? [
+                ["Owner", str(profile.ownerName ?? detail.ownerName ?? row?.ownerName, "—")],
+                ["Phone", str(detail.phone ?? row?.phone, "—")],
+                ["Product categories", categories],
+                ["Area", area],
+                ["Street", street],
+                ["City", str(detail.city ?? row?.city, "—")],
+                ["Country", str(detail.country ?? row?.country, "—")],
+                ["Coverage", coverage],
+                ["Working hours", hours],
+                ["How they get paid", commerceTermsLabel(sellingTerms)],
+                [
+                  "Credit offered",
+                  meta.offersCredit || sellingTerms === "credit_only" || sellingTerms === "cash_or_credit"
+                    ? `${money(requestedCredit)}${termsDays > 0 ? ` · ${termsDays} days` : ""}`
+                    : "No",
+                ],
+                ["Bank", str(profile.bankName ?? detail.bankName ?? row?.bankName, "—")],
+                ["Account holder", str(profile.bankAccountName ?? row?.bankAccountName, "—")],
+                ["Account number", str(profile.bankAccountNumber ?? row?.bankAccountNumber, "—")],
+                ["IBAN", str(profile.bankIban ?? detail.bankIban ?? row?.bankIban, "—")],
+              ]
+            : [
+                ["Owner", str(profile.ownerName ?? detail.ownerName ?? row?.ownerName, "—")],
+                ["Phone", str(detail.phone ?? row?.phone, "—")],
+                ["Branch", branchName],
+                ["Area", area],
+                ["Street", street],
+                ["City", str(detail.city ?? row?.city, "—")],
+                ["Country", str(detail.country ?? row?.country, "—")],
+                ["Cuisines", cuisines],
+                ["How they pay", commerceTermsLabel(purchasingTerms || (termsDays > 0 ? "cash_or_credit" : "cash_only"))],
+                [
+                  "Requested credit",
+                  requestedCredit > 0
+                    ? `${money(requestedCredit)}${termsDays > 0 ? ` · ${termsDays} days` : ""}`
+                    : "Cash only",
+                ],
+                ["Approved credit limit", money(settings.creditLimit ?? row?.creditLimit)],
+                ["Bank", str(profile.bankName ?? detail.bankName ?? row?.bankName, "—")],
+                ["Account holder", str(profile.bankAccountName ?? row?.bankAccountName, "—")],
+                ["Account number", str(profile.bankAccountNumber ?? row?.bankAccountNumber, "—")],
+                ["IBAN", str(profile.bankIban ?? detail.bankIban ?? row?.bankIban, "—")],
+              ]
+          ).map(([label, value]) => (
+            <div key={label} className="rounded-xl border border-border bg-muted/40 px-3 py-2.5">
+              <div className="text-xs font-medium text-muted-foreground">{label}</div>
+              <div className="mt-1 text-sm font-medium break-words">{value}</div>
+            </div>
+          ))}
+        </div>
+      </DetailSection>
+
       <DetailSection title="Operations">
         <div className="grid gap-3 sm:grid-cols-2">
           {(isSupplier
             ? [
-                ["Cuisines", cuisines !== "—" ? cuisines : categories],
+                ["Product categories", categories !== "—" ? categories : cuisines],
                 ["RFQ intake", str(settings.rfqIntakeMode ?? row?.rfqIntakeMode, "manual")],
                 ["PO approval levels", str(settings.poApprovalLevels ?? row?.poApprovalLevels, "0")],
                 ["Minimum RFQ", money(settings.minRfqValueAed ?? row?.minRfqValueAed)],
@@ -970,13 +1072,8 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
       <DetailSection title="Compliance">
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
           <div><span className="text-muted-foreground">Owner: </span>{str(profile.ownerName ?? detail.ownerName ?? row?.ownerName, "—")}</div>
-          <div><span className="text-muted-foreground">Trade license: </span>{str(profile.tradeLicenseNumber ?? detail.tradeLicenseNumber ?? row?.tradeLicenseNumber, "—")}</div>
-          <div><span className="text-muted-foreground">VAT: </span>{str(profile.vatRegistrationNumber ?? detail.vatRegistrationNumber ?? row?.vatRegistrationNumber, "—")}</div>
-          {!isSupplier ? (
-            <div><span className="text-muted-foreground">Food license: </span>{str(profile.foodLicenseNumber ?? detail.foodLicenseNumber ?? row?.foodLicenseNumber, "—")}</div>
-          ) : null}
-          <div><span className="text-muted-foreground">Verification: </span>{statusCell(detail.verificationStatus ?? row?.verificationStatus)}</div>
-          <div><span className="text-muted-foreground">KYC: </span>{statusCell(detail.kycApplication?.status)}</div>
+          <div><span className="text-muted-foreground">KYC: </span>{statusCell(detail.verificationStatus ?? row?.verificationStatus)}</div>
+          <div><span className="text-muted-foreground">KYC application: </span>{statusCell(detail.kycApplication?.status)}</div>
         </div>
       </DetailSection>
 
@@ -1071,7 +1168,7 @@ export function KycDetailView({ detail }: { detail: any }) {
         <DetailTable
           rows={docs}
           columns={[
-            { key: "type", label: "Type", render: (r) => str(r.documentType ?? r.type, "—") },
+            { key: "type", label: "Type", render: (r) => kycDocTypeLabel(r.documentType ?? r.type) },
             { key: "name", label: "File", render: (r) => str(r.fileName ?? r.file?.originalName, "—") },
             {
               key: "url",

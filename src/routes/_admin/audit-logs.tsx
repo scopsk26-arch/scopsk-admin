@@ -7,7 +7,7 @@ import { fetchAuditLogDetail } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/audit-logs")({
-  head: () => ({ meta: [{ title: "Audit Logs — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Activity log — ScopsK" }] }),
   component: AuditLogsPage,
 });
 
@@ -30,8 +30,8 @@ function AuditLogsPage() {
 
   return (
     <DataPage
-      title="Audit Logs"
-      description="Immutable record of every admin action with actor, target and IP."
+      title="Activity log"
+      description="Who changed what, and when."
       icon={<ScrollText className="h-5 w-5 text-primary" />}
       disableCrud
       viewFields={[

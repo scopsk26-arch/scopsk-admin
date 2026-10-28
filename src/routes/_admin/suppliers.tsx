@@ -10,20 +10,38 @@ import {
   deleteOrganization,
   fetchOrganizationDetail,
   mapOrgRow,
+  organizationStreet,
   updateOrganization,
   updateOrgProfile,
   updateOrgSettings,
 } from "@/lib/api/resources";
-import { useAdminLookups } from "@/hooks/useAdminLookups";
+import {
+  PAYMENT_TERM_OPTIONS,
+  WEEKDAY_OPTIONS,
+  areaOptions,
+  categoryOptions,
+} from "@/lib/org-app-fields";
 
 export const Route = createFileRoute("/_admin/suppliers")({
   head: () => ({ meta: [{ title: "Suppliers — ScopsK" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    open: typeof search.open === "string" ? search.open : undefined,
+  }),
   component: SuppliersPage,
 });
 
 function SuppliersPage() {
-  const { cuisines: cuisineOptions } = useAdminLookups(["cuisines"]);
-  const cuisineLookups = useMemo(() => ({ cuisineIds: cuisineOptions }), [cuisineOptions]);
+  const navigate = Route.useNavigate();
+  const { open: openId } = Route.useSearch();
+  const lookups = useMemo(
+    () => ({
+      dubaiArea: areaOptions(),
+      coverageAreas: areaOptions(),
+      categories: categoryOptions(),
+      workingDays: WEEKDAY_OPTIONS,
+    }),
+    [],
+  );
   const queryClient = useQueryClient();
 
   const list = usePagedList({
@@ -45,29 +63,62 @@ function SuppliersPage() {
   return (
     <DataPage
       title="Suppliers"
-      description="Vetted suppliers with performance, win-rate and cuisine coverage."
+      description="Review supplier accounts, categories, coverage, and how they get paid."
       icon={<Truck className="h-5 w-5 text-primary" />}
       entityName="Supplier"
-      lookups={cuisineLookups}
+      lookups={lookups}
       formFields={[
-        { key: "name", label: "Supplier", required: true, type: "text" },
+        { key: "name", label: "Company name", required: true, type: "text" },
+        { key: "ownerName", label: "Owner name", type: "text" },
         {
           key: "email",
-          label: "Email",
+          label: "Business email",
           required: true,
           type: "text",
           placeholder: "ops@supplier.com",
         },
-        { key: "phone", label: "Phone", type: "text" },
+        { key: "phone", label: "Mobile number", type: "text" },
         {
-          key: "cuisineIds",
-          label: "Cuisines",
-          type: "multiselect",
-          placeholder: "Select cuisines…",
+          key: "dubaiArea",
+          label: "Area / neighborhood",
+          type: "searchable",
+          placeholder: "Select area…",
         },
-        { key: "ownerName", label: "Owner name", type: "text" },
-        { key: "tradeLicenseNumber", label: "Trade license #", type: "text" },
-        { key: "vatRegistrationNumber", label: "VAT registration #", type: "text" },
+        { key: "address", label: "Building & street", type: "text" },
+        { key: "city", label: "City / emirate", type: "text" },
+        { key: "country", label: "Country", type: "text" },
+        {
+          key: "coverageAreas",
+          label: "Coverage areas",
+          type: "multiselect",
+          placeholder: "Select coverage…",
+        },
+        {
+          key: "workingDays",
+          label: "Working days",
+          type: "multiselect",
+          placeholder: "Select days…",
+        },
+        { key: "workingOpen", label: "Opening time (HH:mm)", type: "text", placeholder: "08:00" },
+        { key: "workingClose", label: "Closing time (HH:mm)", type: "text", placeholder: "18:00" },
+        {
+          key: "categories",
+          label: "Product categories",
+          type: "multiselect",
+          placeholder: "Select categories…",
+        },
+        {
+          key: "sellingTerms",
+          label: "How they get paid",
+          type: "select",
+          options: PAYMENT_TERM_OPTIONS,
+        },
+        { key: "requestedCreditLimit", label: "Credit offered (AED)", type: "number", min: 0 },
+        { key: "paymentTermsDays", label: "Credit duration (days)", type: "number", min: 0 },
+        { key: "bankName", label: "Bank name", type: "text" },
+        { key: "bankAccountName", label: "Account holder", type: "text" },
+        { key: "bankAccountNumber", label: "Account number", type: "text" },
+        { key: "bankIban", label: "IBAN", type: "text" },
         { key: "poApprovalLevels", label: "PO approval levels", type: "number" },
         { key: "minRfqValueAed", label: "Min RFQ value (AED)", type: "number" },
         {
@@ -86,33 +137,26 @@ function SuppliersPage() {
       ]}
       viewFields={[
         { key: "name", label: "Supplier" },
+        { key: "ownerName", label: "Owner" },
         { key: "email", label: "Email" },
         { key: "phone", label: "Phone" },
-        { key: "legalName", label: "Legal name" },
-        { key: "region", label: "Region" },
+        { key: "dubaiArea", label: "Area" },
+        { key: "address", label: "Street" },
+        { key: "city", label: "City" },
+        { key: "country", label: "Country" },
         { key: "status", label: "Status" },
       ]}
-      loadDetail={async (row) => fetchOrganizationDetail(row.id)}
+      loadDetail={async (row) => {
+        const detail = await fetchOrganizationDetail(row.id);
+        return { ...detail, address: organizationStreet(detail) || row.address || "" };
+      }}
       loadEdit={async (row) => {
         const detail = await fetchOrganizationDetail(row.id);
-        const mapped = mapOrgRow(detail, "supplier");
-        let cuisineIds = mapped.cuisineIds;
-        if (!cuisineIds.length && mapped.cuisines && mapped.cuisines !== "—") {
-          const names = String(mapped.cuisines)
-            .split(/[,;|]/)
-            .map((s) => s.trim().toLowerCase())
-            .filter(Boolean);
-          cuisineIds = cuisineOptions
-            .filter((o) => names.includes(o.label.toLowerCase()))
-            .map((o) => o.value);
-        }
-        return {
-          cuisineIds,
-          cuisines: mapped.cuisines,
-          poApprovalLevels: mapped.poApprovalLevels,
-          minRfqValueAed: mapped.minRfqValueAed,
-          rfqIntakeMode: mapped.rfqIntakeMode,
-        };
+        return mapOrgRow(detail, "supplier");
+      }}
+      autoOpenId={openId}
+      onAutoOpened={() => {
+        if (openId) void navigate({ to: "/suppliers", search: {} });
       }}
       renderView={(detail, row) => <OrganizationDetailView detail={detail} row={row} />}
       kpis={[
@@ -155,10 +199,45 @@ function SuppliersPage() {
             ),
         },
         {
-          key: "cuisines",
-          label: "Cuisines",
+          key: "categories",
+          label: "Categories",
           className: "whitespace-nowrap max-w-[220px]",
-          render: (r) => <TagListDropdown value={r.cuisines || r.categories} />,
+          render: (r) => <TagListDropdown value={r.categories?.length ? r.categories : r.cuisines} />,
+        },
+        {
+          key: "coverageAreas",
+          label: "Coverage",
+          className: "whitespace-nowrap max-w-[180px]",
+          render: (r) => <TagListDropdown value={r.coverageAreas} />,
+        },
+        { key: "phone", label: "Phone" },
+        { key: "dubaiArea", label: "Area" },
+        {
+          key: "sellingTerms",
+          label: "Selling terms",
+          className: "whitespace-nowrap",
+          render: (r) => {
+            const key = String(r.sellingTerms || "").toLowerCase();
+            if (key === "cash_only") return "Cash";
+            if (key === "credit_only") return "Credit";
+            if (key === "cash_or_credit") return "Cash & credit";
+            return "—";
+          },
+        },
+        {
+          key: "requestedCreditLimit",
+          label: "Credit offered",
+          render: (r) =>
+            r.requestedCreditLimit > 0 ? (
+              <span>
+                {AED(r.requestedCreditLimit)}
+                {r.paymentTermsDays > 0 ? (
+                  <span className="text-muted-foreground"> · {r.paymentTermsDays}d</span>
+                ) : null}
+              </span>
+            ) : (
+              "—"
+            ),
         },
         { key: "poApprovalLevels", label: "PO levels" },
         { key: "minRfqValueAed", label: "Min RFQ", render: (r) => AED(r.minRfqValueAed) },
@@ -175,39 +254,26 @@ function SuppliersPage() {
       onUpdate={async (id, data) => {
         if (!id || id === "undefined") throw new Error("Missing supplier id");
         if (!data.name?.trim()) throw new Error("Supplier name is required");
-        const cuisineIds = Array.isArray(data.cuisineIds)
-          ? data.cuisineIds.map(String).filter(Boolean)
-          : [];
-        const cuisineLabel = cuisineOptions
-          .filter((o) => cuisineIds.includes(o.value))
-          .map((o) => o.label)
-          .join(", ");
-        const payload = {
-          ...data,
-          cuisineIds,
-          industry: cuisineLabel || data.industry,
-        };
-        const updated = await updateOrganization(id, payload, "supplier");
+        const updated = await updateOrganization(id, data, "supplier");
         await updateOrgSettings(id, {
           poApprovalLevels: data.poApprovalLevels,
           minRfqValueAed: data.minRfqValueAed,
           rfqIntakeMode: data.rfqIntakeMode,
+          paymentTermsDays: data.paymentTermsDays,
+          metadata: {
+            sellingTerms: data.sellingTerms,
+            offersCredit: String(data.sellingTerms || "") !== "cash_only",
+            requestedCreditLimit: Number(data.requestedCreditLimit) || 0,
+          },
         });
         await updateOrgProfile(id, data);
         await queryClient.invalidateQueries({ queryKey: ["organizations", "supplier"] });
         return {
           ...updated,
+          ...data,
           poApprovalLevels: Number(data.poApprovalLevels ?? updated.poApprovalLevels),
           minRfqValueAed: Number(data.minRfqValueAed ?? updated.minRfqValueAed),
           rfqIntakeMode: String(data.rfqIntakeMode ?? updated.rfqIntakeMode ?? "manual"),
-          email: String(data.email ?? updated.email ?? ""),
-          ownerName: String(data.ownerName ?? updated.ownerName ?? ""),
-          tradeLicenseNumber: String(data.tradeLicenseNumber ?? updated.tradeLicenseNumber ?? ""),
-          vatRegistrationNumber: String(
-            data.vatRegistrationNumber ?? updated.vatRegistrationNumber ?? "",
-          ),
-          cuisineIds,
-          cuisines: cuisineLabel || updated.cuisines || "—",
         };
       }}
       onDelete={async (id) => {

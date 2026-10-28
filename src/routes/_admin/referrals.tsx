@@ -81,7 +81,7 @@ function ReferralsList({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (
     <DataPage
       title="Referrals"
-      description="Restaurant-to-restaurant referrals: who invited whom, qualification progress and reward payouts."
+      description="Who invited whom, and the rewards paid out."
       icon={<Share2 className="h-5 w-5 text-primary" />}
       disableCrud
       entityName="Referral"

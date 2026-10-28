@@ -44,7 +44,7 @@ function MarketingPage() {
   return (
     <DataPage
       title="Marketing"
-      description="Campaigns across email, SMS, push and in-app."
+      description="Email, SMS, push, and in-app campaigns."
       icon={<Megaphone className="h-5 w-5 text-primary" />}
       formFields={[
         { key: "name", label: "Campaign", required: true, type: "text" },

@@ -78,7 +78,7 @@ function CkRequestsPage() {
   return (
     <DataPage
       title="Cloud Kitchen Requests"
-      description="Restaurant Cloud Kitchen orders submitted via the RFQ flow. Suppliers are not invited — update status to serve."
+      description="Cloud kitchen orders from restaurants. Update status as you prepare them."
       icon={<ChefHat className="h-5 w-5 text-primary" />}
       exportExcludeKeys={["budget", "estimatedBudget"]}
       lookups={{

@@ -6,7 +6,7 @@ import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { api, num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/product-requests")({
-  head: () => ({ meta: [{ title: "Missing products — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Product requests — ScopsK" }] }),
   component: ProductRequestsPage,
 });
 
@@ -36,8 +36,8 @@ function ProductRequestsPage() {
 
   return (
     <DataPage
-      title="Missing products"
-      description="Restaurants asked for something that is not in the catalog. Approve to send the request to suppliers, or reject it."
+      title="Product requests"
+      description="A restaurant asked for an item that is not in the product list. Approve to send it to suppliers, or reject it."
       icon={<PackagePlus className="h-5 w-5 text-primary" />}
       formFields={[
         {

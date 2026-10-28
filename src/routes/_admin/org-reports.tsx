@@ -6,7 +6,7 @@ import { Flag } from "lucide-react";
 import { api, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/org-reports")({
-  head: () => ({ meta: [{ title: "Org reports — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Reports — ScopsK" }] }),
   component: OrgReportsPage,
 });
 
@@ -67,8 +67,8 @@ function OrgReportsPage() {
 
   return (
     <DataPage
-      title="Organization reports"
-      description="Supplier/buyer reports from the app. Also listed under Support as Org report. Choose Block for reporter to hide them on that restaurant's new RFQs."
+      title="Reports"
+      description="A restaurant reported a supplier. Block them to hide that supplier on new quote requests."
       icon={<Flag className="h-5 w-5 text-primary" />}
       entityName="Report"
       hideView={false}

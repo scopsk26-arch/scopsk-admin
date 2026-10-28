@@ -3,11 +3,11 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { KpiCard } from "@/components/admin/KpiCard";
 import {
-  Store, Truck, FileText, Quote, ClipboardList,
+  Store, Truck, FileText, ClipboardList,
   ShieldCheck, Building2, PackagePlus, Wallet, LifeBuoy, Scale, ChevronRight,
 } from "lucide-react";
 import {
-  AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
+  AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
 } from "recharts";
 import { StatusBadge } from "@/components/admin/DataPage";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,7 @@ import { fetchAdminDashboard } from "@/lib/api/resources";
 import { getSessionUser, subscribeSession } from "@/lib/auth-session";
 
 export const Route = createFileRoute("/_admin/dashboard")({
-  head: () => ({ meta: [{ title: "Command Center — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — ScopsK" }] }),
   component: Dashboard,
 });
 
@@ -68,26 +68,25 @@ function Dashboard() {
 
   const totalRestaurants = num(d.restaurants ?? d.restaurantCount);
   const totalSuppliers = num(d.suppliers ?? d.supplierCount);
-  const hasLive = d.activeRfqs !== undefined || d.openQuotations !== undefined;
+  const hasLive = d.activeRfqs !== undefined || d.openPurchaseOrders !== undefined;
   const kpis = {
     totalRestaurants,
     totalSuppliers,
     activeRfqs: num(hasLive ? d.activeRfqs : d.rfqs),
-    activeQuotations: num(hasLive ? d.openQuotations : d.quotations),
     approvedPOs: num(hasLive ? d.openPurchaseOrders : d.purchaseOrders),
   };
   const pending = (d.pendingActions ?? {}) as Record<string, unknown>;
   const pendingRows = [
     {
       key: "kyc",
-      label: "KYC / verification",
+      label: "Documents to review",
       count: num(pending.kyc ?? d.kycPending),
       to: "/kyc" as const,
       icon: ShieldCheck,
     },
     {
       key: "orgs",
-      label: "Org approvals",
+      label: "Account review",
       count: num(pending.orgApprovals ?? d.orgsPendingApproval),
       to: "/restaurant-approvals" as const,
       icon: Building2,
@@ -101,7 +100,7 @@ function Dashboard() {
     },
     {
       key: "wallet",
-      label: "Credit & wallet requests",
+      label: "Wallet and credit requests",
       count: num(pending.walletCredit ?? d.walletCreditPending),
       to: "/wallets" as const,
       icon: Wallet,
@@ -121,7 +120,8 @@ function Dashboard() {
       icon: Scale,
     },
   ];
-  const waiting = pendingRows.reduce((sum, row) => sum + row.count, 0);
+  const attentionRows = pendingRows.filter((row) => row.count > 0);
+  const waiting = attentionRows.reduce((sum, row) => sum + row.count, 0);
   const statusLabel = isLoading
     ? "Checking marketplace"
     : isError
@@ -145,18 +145,15 @@ function Dashboard() {
   }, [totalRestaurants, totalSuppliers]);
 
   const rfqByMonth = asArray(trends.rfqsByMonth);
-  const quotByMonth = asArray(trends.quotationsByMonth);
-  const quotByKey = new Map(quotByMonth.map((q: any) => [str(q.month), num(q.count ?? q.quotations)]));
   const rfqTrend = rfqByMonth.map((r: any) => {
     const month = str(r.month, "");
     return {
       month: monthLabel(month),
       monthKey: month,
       rfqs: num(r.count ?? r.rfqs),
-      quotations: num(quotByKey.get(month) ?? r.quotations),
     };
   });
-  const trendHasActivity = rfqTrend.some((r) => r.rfqs > 0 || r.quotations > 0);
+  const trendHasActivity = rfqTrend.some((r) => r.rfqs > 0);
 
   const suppliersData = asArray(d.topSuppliers).map((s: any) => ({
     id: str(s.id),
@@ -206,8 +203,8 @@ function Dashboard() {
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">
               {hasLive
-                ? `Live · ${kpis.activeRfqs} open requests · ${kpis.activeQuotations} open quotes · ${kpis.approvedPOs} open orders`
-                : `Live · ${kpis.activeRfqs} requests · ${kpis.activeQuotations} quotes · ${kpis.approvedPOs} orders`}
+                ? `Live · ${kpis.activeRfqs} open requests · ${kpis.approvedPOs} open orders`
+                : `Live · ${kpis.activeRfqs} requests · ${kpis.approvedPOs} orders`}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -215,7 +212,7 @@ function Dashboard() {
               to="/rfqs"
               className="px-3 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium grid place-items-center hover:opacity-90"
             >
-              View RFQs
+              Quote requests
             </Link>
             <Link
               to="/reports"
@@ -227,12 +224,13 @@ function Dashboard() {
         </div>
       </div>
 
+      {attentionRows.length > 0 ? (
       <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <h2 className="font-display font-semibold text-lg">Pending Actions</h2>
+            <h2 className="font-display font-semibold text-lg">Needs attention</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Clear the ops queue — approvals, reviews, tickets, and disputes.
+              Documents, account reviews, wallet and credit requests, tickets, and disputes waiting on you.
             </p>
           </div>
           <div className="text-sm font-medium tabular-nums text-muted-foreground">
@@ -240,7 +238,7 @@ function Dashboard() {
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-          {pendingRows.map((row) => {
+          {attentionRows.map((row) => {
             const Icon = row.icon;
             return (
               <Link
@@ -252,18 +250,13 @@ function Dashboard() {
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{row.label}</div>
+                  <div className="text-sm font-medium leading-snug">{row.label}</div>
                   <div className="text-xs text-muted-foreground">
-                    {row.count === 0 ? "All clear" : `${row.count} waiting`}
+                    {row.count} waiting
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <span
-                    className={cn(
-                      "text-sm font-semibold tabular-nums",
-                      row.count > 0 ? "text-foreground" : "text-muted-foreground",
-                    )}
-                  >
+                  <span className="text-sm font-semibold tabular-nums text-foreground">
                     {row.count}
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -273,19 +266,19 @@ function Dashboard() {
           })}
         </div>
       </div>
+      ) : null}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard label="Total Restaurants" value={kpis.totalRestaurants.toLocaleString()} icon={<Store className="h-5 w-5" />} to="/restaurants" accent="primary" />
         <KpiCard label="Total Suppliers" value={kpis.totalSuppliers.toLocaleString()} icon={<Truck className="h-5 w-5" />} to="/suppliers" accent="accent" />
-        <KpiCard label={hasLive ? "Open requests" : "RFQs"} value={kpis.activeRfqs.toString()} icon={<FileText className="h-5 w-5" />} to="/rfqs" accent="info" />
-        <KpiCard label={hasLive ? "Open quotes" : "Quotations"} value={kpis.activeQuotations.toLocaleString()} icon={<Quote className="h-5 w-5" />} to="/quotations" accent="warning" />
-        <KpiCard label={hasLive ? "Open orders" : "Orders"} value={kpis.approvedPOs.toString()} icon={<ClipboardList className="h-5 w-5" />} to="/purchase-orders" accent="success" />
+        <KpiCard label="Open requests" value={kpis.activeRfqs.toString()} icon={<FileText className="h-5 w-5" />} to="/rfqs" accent="info" />
+        <KpiCard label="Open orders" value={kpis.approvedPOs.toString()} icon={<ClipboardList className="h-5 w-5" />} to="/purchase-orders" accent="success" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <ChartCard
-          title="RFQ & Quotation Trend"
-          subtitle="Volume over the last 12 months"
+          title="Quote requests"
+          subtitle="Last 12 months"
           className="xl:col-span-2"
         >
           {!trendHasActivity ? (
@@ -297,10 +290,6 @@ function Dashboard() {
                   <linearGradient id="dash-rfqs" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35} />
                     <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="dash-quots" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -314,27 +303,18 @@ function Dashboard() {
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(value, name) => [value, name === "rfqs" ? "RFQs" : "Quotations"]}
+                  formatter={(value) => [value, "Quote requests"]}
                 />
-                <Legend
-                  verticalAlign="top"
-                  align="right"
-                  iconType="circle"
-                  iconSize={8}
-                  wrapperStyle={{ fontSize: 12, paddingBottom: 8 }}
-                  formatter={(value) => (value === "rfqs" ? "RFQs" : "Quotations")}
-                />
-                <Area type="monotone" dataKey="quotations" name="quotations" stroke="var(--chart-2)" fill="url(#dash-quots)" strokeWidth={2} dot={false} />
                 <Area type="monotone" dataKey="rfqs" name="rfqs" stroke="var(--chart-1)" fill="url(#dash-rfqs)" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           )}
         </ChartCard>
 
-        <WidgetCard title="Recent RFQs" href="/rfqs">
+        <WidgetCard title="Recent quote requests" href="/rfqs">
           <div className="divide-y divide-border -mx-1">
             {rfqsData.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4 px-1">No RFQs yet.</p>
+              <p className="text-sm text-muted-foreground py-4 px-1">No quote requests yet.</p>
             )}
             {rfqsData.map((r) => (
               <Link
@@ -402,7 +382,7 @@ function Dashboard() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{r.name}</div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {[r.city, r.orderCount ? `${r.orderCount} RFQs` : null]
+                    {[r.city, r.orderCount ? `${r.orderCount} requests` : null]
                       .filter(Boolean)
                       .join(" · ") || "Restaurant"}
                   </div>

@@ -49,8 +49,8 @@ function CloudKitchenOrdersPage() {
 
   return (
     <DataPage
-      title="Cloud Kitchen Orders"
-      description="Direct restaurant orders across ScopsK Cloud Kitchens."
+      title="Kitchen orders"
+      description="Direct restaurant orders from cloud kitchens."
       icon={<Package className="h-5 w-5 text-primary" />}
       rows={rows}
       searchKeys={["number", "kitchen", "restaurant", "items", "deliveryAddress"]}

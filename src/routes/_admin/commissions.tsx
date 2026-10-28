@@ -65,7 +65,7 @@ function CommissionsLedger() {
   return (
     <DataPage
       title="Commissions"
-      description="Admin-only ledger: commission cut per order (restaurant + supplier). Category rates are under the Category rates tab."
+      description="Your cut on each order. Set rates by category in the other tab."
       icon={<Percent className="h-5 w-5 text-primary" />}
       disableCrud
       entityName="Commission"
@@ -184,11 +184,11 @@ function CommissionsPage() {
           <TabsList>
             <TabsTrigger value="ledger">
               <Percent />
-              Ledger
+              Order fees
             </TabsTrigger>
             <TabsTrigger value="rates">
               <FolderTree />
-              Category rates
+              Rates by category
             </TabsTrigger>
           </TabsList>
         </Tabs>

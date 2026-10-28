@@ -145,8 +145,8 @@ function ReportsPage() {
 
   return (
     <DataPage
-      title="Reports & Business Intelligence"
-      description="Scheduled and ad-hoc reports across finance, marketplace and risk. Export downloads that report as a PDF."
+      title="Business reports"
+      description="Download marketplace and finance reports as PDF."
       icon={<BarChart3 className="h-5 w-5 text-primary" />}
       disableCrud
       hideExport

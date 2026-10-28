@@ -9,7 +9,7 @@ import { approveKyc, fetchKycDetail, rejectKyc } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/kyc")({
-  head: () => ({ meta: [{ title: "KYC Queue — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "KYC Documents — ScopsK" }] }),
   component: KycPage,
 });
 
@@ -18,6 +18,27 @@ type KycDoc = {
   name: string;
   url: string | null;
 };
+
+const KYC_STATUSES = ["pending", "approved", "rejected"] as const;
+
+/** Older records used draft, submitted, and under review. Those are pending. */
+function kycStatus(raw: unknown): (typeof KYC_STATUSES)[number] {
+  const status = String(raw || "pending").toLowerCase();
+  if (status === "approved" || status === "rejected") return status;
+  return "pending";
+}
+
+function kycDocLabel(type: string): string {
+  const key = String(type || "").toLowerCase();
+  if (key === "trade_license") return "Trade license";
+  if (key === "food_license") return "Food establishment license";
+  if (key === "food_handling" || key === "food_handling_certificate") {
+    return "Food trading / food safety license";
+  }
+  if (key === "vat_certificate" || key === "vat_registration") return "VAT certificate";
+  if (key === "bank_proof") return "Bank proof";
+  return key.replace(/_/g, " ") || "Document";
+}
 
 function KycPage() {
   const queryClient = useQueryClient();
@@ -47,7 +68,7 @@ function KycPage() {
             const name = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
             return name || str(u.email, "—");
           })(),
-          status: str(r.status, "pending"),
+          status: kycStatus(r.status),
           docCount: documents.length,
           documents,
           notes: "",
@@ -58,15 +79,13 @@ function KycPage() {
   const isLoading = list.isLoading;
   const isError = list.isError;
 
-  const pending = rows.filter((r) =>
-    ["pending", "review", "submitted", "under_review"].includes(r.status),
-  ).length;
+  const pending = rows.filter((r) => r.status === "pending").length;
   const approved = rows.filter((r) => r.status === "approved").length;
 
   return (
     <DataPage
-      title="KYC Queue"
-      description="Review restaurant/supplier documents (DigitalOcean CDN URLs), then approve or reject."
+      title="KYC Documents"
+      description="Review trade licenses and other KYC documents, then approve or reject."
       icon={<ShieldCheck className="h-5 w-5 text-primary" />}
       formFields={[
         { key: "entity", label: "Entity", type: "text" },
@@ -76,7 +95,7 @@ function KycPage() {
           label: "Decision",
           required: true,
           type: "select",
-          options: ["approved", "rejected", "under_review", "pending", "submitted"],
+          options: [...KYC_STATUSES],
         },
         {
           key: "notes",
@@ -147,11 +166,11 @@ function KycPage() {
                       className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                     >
                       <ExternalLink className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{d.type.replace(/_/g, " ")}</span>
+                      <span className="truncate">{kycDocLabel(d.type)}</span>
                     </a>
                   ) : (
                     <span key={`${d.type}-${i}`} className="text-xs text-muted-foreground truncate">
-                      {d.type.replace(/_/g, " ")} (no URL)
+                      {kycDocLabel(d.type)} (no URL)
                     </span>
                   ),
                 )}
@@ -198,8 +217,10 @@ function KycPage() {
           const notes = String(data.notes || "").trim();
           if (!notes) throw new Error("Notes are required to reject KYC");
           await rejectKyc(id, notes);
+        } else if (status === "pending") {
+          return { ...row, status: "pending" };
         } else {
-          throw new Error("Set status to approved or rejected to update KYC");
+          throw new Error("Status can only be pending, approved, or rejected");
         }
         await queryClient.invalidateQueries({ queryKey: ["kyc", "applications"] });
         return { ...row, status, notes: String(data.notes ?? row.notes ?? "") };

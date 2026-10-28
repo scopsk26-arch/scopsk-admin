@@ -16,7 +16,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         <CommandEmpty>No results found.</CommandEmpty>
 
         <CommandGroup heading="Quick Actions">
-          <CommandItem onSelect={() => go("/rfqs")}><Plus className="h-4 w-4 mr-2" /> View RFQs</CommandItem>
+          <CommandItem onSelect={() => go("/rfqs")}><Plus className="h-4 w-4 mr-2" /> Quote requests</CommandItem>
           <CommandItem onSelect={() => go("/suppliers")}><Truck className="h-4 w-4 mr-2" /> View Suppliers</CommandItem>
           <CommandItem onSelect={() => go("/restaurants")}><Store className="h-4 w-4 mr-2" /> View Restaurants</CommandItem>
           <CommandItem onSelect={() => go("/reports")}><FileText className="h-4 w-4 mr-2" /> Generate Report</CommandItem>

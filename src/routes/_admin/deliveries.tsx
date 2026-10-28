@@ -139,7 +139,7 @@ function DeliveriesPage() {
   return (
     <DataPage
       title="Deliveries"
-      description="Live delivery tracking. Status changes persist to the API."
+      description="Track deliveries and update status."
       icon={<PackageCheck className="h-5 w-5 text-primary" />}
       entityName="Delivery"
       lookups={{

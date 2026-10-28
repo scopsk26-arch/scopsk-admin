@@ -33,8 +33,8 @@ function FraudPage() {
 
   return (
     <DataPage
-      title="Fraud Detection"
-      description="Rule-based heuristic alerts (not ML). Review open signals from /ai/fraud-signals."
+      title="Fraud alerts"
+      description="Review open risk signals."
       disableCrud
       icon={<AlertTriangle className="h-5 w-5 text-destructive" />}
       viewFields={[

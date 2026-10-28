@@ -12,7 +12,7 @@ import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/purchase-orders")({
-  head: () => ({ meta: [{ title: "Purchase Orders — ScopsK Admin" }] }),
+  head: () => ({ meta: [{ title: "Orders — ScopsK" }] }),
   component: PurchaseOrdersPage,
 });
 
@@ -80,8 +80,8 @@ function PurchaseOrdersPage() {
 
   return (
     <DataPage
-      title="Purchase Orders"
-      description="Commercial purchase order documents. An execution order is created when the supplier accepts. Status changes persist to the API."
+      title="Orders"
+      description="Confirmed orders. Status updates when the supplier accepts or delivers."
       icon={<ClipboardList className="h-5 w-5 text-primary" />}
       entityName="Purchase Order"
       lookups={{
@@ -106,8 +106,7 @@ function PurchaseOrdersPage() {
         { key: "orderNumber", label: "Order" },
         { key: "restaurant", label: "Buyer" },
         { key: "supplier", label: "Supplier" },
-        { key: "rfq", label: "RFQ" },
-        { key: "quotation", label: "Quotation" },
+        { key: "rfq", label: "Request" },
         { key: "itemCount", label: "Line items" },
         { key: "subtotal", label: "Actual value" },
         { key: "vatRate", label: "VAT %" },

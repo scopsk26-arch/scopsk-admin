@@ -35,8 +35,8 @@ type ApprovalRow = {
 function approvalTypeLabel(type: string) {
   const t = String(type || "").toLowerCase();
   if (t === "purchase_order" || t === "po") return "Purchase Order";
-  if (t === "rfq") return "RFQ";
-  if (t === "quotation" || t === "quote") return "Quotation";
+  if (t === "rfq") return "Request";
+  if (t === "quotation" || t === "quote") return "Request";
   return type || "—";
 }
 
@@ -87,7 +87,7 @@ function ApprovalsPage() {
   return (
     <DataPage
       title="Approvals"
-      description="Pending restaurant workflow approvals: RFQs waiting to publish, quotations waiting to award, and purchase orders waiting for supplier release. Approve or reject from Edit."
+      description="Requests and orders waiting for your yes or no."
       icon={<CheckSquare className="h-5 w-5 text-primary" />}
       entityName="Approval"
       formFields={[

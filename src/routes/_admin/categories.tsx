@@ -175,7 +175,7 @@ function CategoriesPage() {
     <>
       <DataPage
         title="Categories"
-        description="Top-level and nested categories. Use Parent category when creating, or Add subcategory on a row."
+        description="Product groups. Add a subcategory from a row, or set a parent when you create one."
         icon={<FolderTree className="h-5 w-5 text-primary" />}
         entityName="Category"
         idKey="id"

@@ -47,7 +47,7 @@ function RatingsPage() {
   return (
     <DataPage
       title="Ratings"
-      description="Marketplace ratings between restaurants and suppliers. Hide or restore visibility."
+      description="Ratings between restaurants and suppliers. Hide or show them."
       icon={<Star className="h-5 w-5 text-primary" />}
       entityName="Rating"
       hideView={false}

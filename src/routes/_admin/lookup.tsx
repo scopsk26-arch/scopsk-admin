@@ -11,7 +11,7 @@ import { fetchLookup } from "@/lib/api/resources";
 import { ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/lookup")({
-  head: () => ({ meta: [{ title: "Code Lookup — ScopsK Admin" }] }),
+  head: () => ({ meta: [{ title: "Find a record — ScopsK" }] }),
   component: LookupPage,
 });
 
@@ -54,7 +54,6 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 function InvestigationView({ result }: { result: any }) {
   const trail = result.quantityTrail;
   const rfq = result.rfq;
-  const quotation = result.quotation;
   const po = result.purchaseOrder;
   const order = result.order;
   const shipments = result.deliveries || (result.shipment ? [result.shipment] : []);
@@ -76,7 +75,7 @@ function InvestigationView({ result }: { result: any }) {
       </Card>
 
       {trail ? (
-        <Section title="Quantity trail (complaint investigation)">
+        <Section title="Quantities">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <div className="text-xs text-muted-foreground">Requested</div>
@@ -110,7 +109,7 @@ function InvestigationView({ result }: { result: any }) {
       ) : null}
 
       {result.organization ? (
-        <Section title="Organization (admin-only identity)">
+        <Section title="Account">
           <Row label="Name" value={result.organization.name} />
           <Row label="Code" value={result.organization.publicCode || "—"} />
           <Row label="Type" value={result.organization.type} />
@@ -133,7 +132,7 @@ function InvestigationView({ result }: { result: any }) {
       ) : null}
 
       {rfq ? (
-        <Section title="RFQ">
+        <Section title="Quote request">
           <Row label="Number" value={rfq.number} />
           <Row label="Title" value={rfq.title} />
           <Row label="Status" value={rfq.status} />
@@ -146,32 +145,8 @@ function InvestigationView({ result }: { result: any }) {
         </Section>
       ) : null}
 
-      {quotation ? (
-        <Section title="Quotation">
-          <Row label="Number" value={quotation.number} />
-          <Row label="Status" value={quotation.status} />
-          <Row label="Supplier" value={orgLabel(quotation.supplierOrg)} />
-          <Row
-            label="Total"
-            value={`${quotation.currency || "AED"} ${quotation.total ?? quotation.grandTotal ?? "—"}`}
-          />
-        </Section>
-      ) : null}
-
-      {Array.isArray(result.quotations) && result.quotations.length > 0 ? (
-        <Section title={`All quotations (${result.quotations.length})`}>
-          {result.quotations.map((q: any) => (
-            <Row
-              key={q.id}
-              label={q.number}
-              value={`${q.status} · ${orgLabel(q.supplierOrg)} · ${q.total ?? "—"}`}
-            />
-          ))}
-        </Section>
-      ) : null}
-
       {po ? (
-        <Section title="Purchase Order (PO)">
+        <Section title="Order">
           <Row label="Number" value={po.number} />
           <Row label="Status" value={po.status} />
           <Row label="Buyer" value={orgLabel(po.buyerOrg)} />
@@ -186,7 +161,7 @@ function InvestigationView({ result }: { result: any }) {
       ) : null}
 
       {order ? (
-        <Section title="Order (ORDR)">
+        <Section title="Fulfillment">
           <Row label="Number" value={order.number} />
           <Row label="Status" value={order.status} />
           <Row label="Accepted at" value={order.acceptedAt || "—"} />
@@ -194,7 +169,7 @@ function InvestigationView({ result }: { result: any }) {
       ) : null}
 
       {Array.isArray(shipments) && shipments.length > 0 ? (
-        <Section title="Deliveries / shipments">
+        <Section title="Deliveries">
           {shipments.map((d: any) => (
             <Row
               key={d.id}
@@ -211,7 +186,7 @@ function InvestigationView({ result }: { result: any }) {
       ) : null}
 
       {Array.isArray(invoices) && invoices.length > 0 ? (
-        <Section title="Invoices / payments">
+        <Section title="Invoices">
           {invoices.map((inv: any) => (
             <Row
               key={inv.id}
@@ -230,13 +205,13 @@ function InvestigationView({ result }: { result: any }) {
       ) : null}
 
       {Array.isArray(result.rfqTimeline) && result.rfqTimeline.length > 0 ? (
-        <Section title="RFQ timeline">
+        <Section title="Request timeline">
           <EventTimeline rows={result.rfqTimeline} kind="rfq" />
         </Section>
       ) : null}
 
       {Array.isArray(result.auditLogs) && result.auditLogs.length > 0 ? (
-        <Section title="Audit logs">
+        <Section title="Activity">
           <div className="max-h-48 overflow-auto space-y-2">
             {result.auditLogs.slice(0, 20).map((log: any) => (
               <div key={log.id} className="text-xs">
@@ -253,7 +228,7 @@ function InvestigationView({ result }: { result: any }) {
       ) : null}
 
       {result.linkedInvestigation ? (
-        <Section title="Linked investigation (from ticket code)">
+        <Section title="Linked ticket">
           <InvestigationView result={result.linkedInvestigation} />
         </Section>
       ) : null}
@@ -302,19 +277,18 @@ function LookupPage() {
           <Fingerprint className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Secure Code Decoder</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Find a record</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Reverse-track RFQ → QT → PO → ORDR → SHP → INV for complaint investigation.
-            Restaurant and supplier apps cannot decode these identifiers.
+            Paste a request, quote, order, delivery, invoice, or ticket code to see the full trail.
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Lookup</CardTitle>
+          <CardTitle className="text-base">Search</CardTitle>
           <CardDescription>
-            Paste any tracking code (RFQ / QT / PO / ORD / ORDR / INV / SHP / RST / SUP / ITM / TCK)
+            Paste a code from a ticket, quote request, order, delivery, or invoice.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -322,13 +296,13 @@ function LookupPage() {
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="RFQ-… / PO-… / ORDR-… / INV-… / SHP-… / RST-…"
+              placeholder="Paste a code…"
               className="font-mono"
               autoFocus
             />
             <Button type="submit" disabled={mutation.isPending} className="shrink-0 gap-2">
               <Search className="h-4 w-4" />
-              {mutation.isPending ? "Searching…" : "Decode"}
+              {mutation.isPending ? "Searching…" : "Search"}
             </Button>
           </form>
           {error && <p className="text-sm text-destructive mt-3">{error}</p>}

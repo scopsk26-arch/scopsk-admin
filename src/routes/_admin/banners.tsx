@@ -99,8 +99,8 @@ function BannersPage() {
 
   return (
     <DataPage
-      title="Promotional Banners"
-      description="Hero and promo banners shown in the restaurant mobile app."
+      title="Banners"
+      description="Promo images shown in the restaurant app."
       icon={<Megaphone className="h-5 w-5 text-primary" />}
       entityName="Banner"
       idKey="id"

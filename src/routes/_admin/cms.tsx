@@ -36,8 +36,8 @@ function CmsPage() {
 
   return (
     <DataPage
-      title="Content Management"
-      description="Landing pages, help articles, FAQs and legal pages."
+      title="Pages"
+      description="Help articles, FAQs, and legal pages."
       icon={<BookOpen className="h-5 w-5 text-primary" />}
       formFields={[
         { key: "title", label: "Title", required: true, type: "text" },
