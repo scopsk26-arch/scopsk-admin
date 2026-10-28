@@ -84,8 +84,7 @@ function LoginPage() {
             The control surface for <span className="text-gradient">B2B foodservice</span> procurement.
           </h1>
           <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
-            Manage restaurants and suppliers across anonymous RFQ and quotation workflows
-            with enterprise-grade admin tools.
+            Manage restaurants, suppliers, requests, and orders.
           </p>
 
           <div className="mt-10 grid max-w-md grid-cols-2 gap-3">

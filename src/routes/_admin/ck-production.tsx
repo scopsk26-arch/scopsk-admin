@@ -85,8 +85,8 @@ function CkProductionPage() {
 
   return (
     <DataPage
-      title="CK Production"
-      description="Daily cloud-kitchen production snapshot: produced, sold and remaining by dish."
+      title="Kitchen production"
+      description="Produced, sold, and remaining by dish for today."
       icon={<ChefHat className="h-5 w-5 text-primary" />}
       entityName="Dish"
       disableCrud

@@ -11,8 +11,8 @@ function SupplierApprovalsRoute() {
   return (
     <OrgApprovalsPage
       type="supplier"
-      title="Supplier Approvals"
-      description="Pending supplier onboarding queue — approve, reject, activate or deactivate with a reason."
+      title="New suppliers"
+      description="Approve, reject, or pause a supplier account."
       icon={Truck}
     />
   );

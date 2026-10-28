@@ -7,7 +7,7 @@ import { fetchRoleDetail } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/roles")({
-  head: () => ({ meta: [{ title: "Roles & Permissions — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Roles — ScopsK" }] }),
   component: RolesPage,
 });
 
@@ -34,8 +34,8 @@ function RolesPage() {
 
   return (
     <DataPage
-      title="Roles & Permissions"
-      description="Built-in and custom roles (read-only list from /admin/roles)."
+      title="Roles"
+      description="Who can see and change each part of the admin panel."
       disableCrud
       viewFields={[
         { key: "name", label: "Role" },

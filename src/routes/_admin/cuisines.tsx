@@ -88,7 +88,7 @@ function CuisinesPage() {
   return (
     <DataPage
       title="Cuisines"
-      description="Cuisine types with category mappings used for restaurant catalog filtering."
+      description="Cuisine types restaurants can choose at signup."
       icon={<UtensilsCrossed className="h-5 w-5 text-primary" />}
       entityName="Cuisine"
       idKey="id"

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Settings as SettingsIcon, Globe, CreditCard, Bell, Shield, Mail, SlidersHorizontal, Clock } from "lucide-react";
+import { Settings as SettingsIcon, Globe, CreditCard, Bell, Shield, Mail, SlidersHorizontal, Clock, UserRound } from "lucide-react";
 import { FieldLabel } from "@/components/admin/DataPage";
 import { SearchableMultiSelect } from "@/components/admin/SearchableSelect";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,117 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { api, asArray, str } from "@/lib/api/client";
+import { me } from "@/lib/api/auth";
+import { getSessionUser, setSessionUser } from "@/lib/auth-session";
 import { toast } from "sonner";
+
+function AdminProfileCard() {
+  const session = getSessionUser();
+  const meQ = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: () => me(),
+  });
+  const profile = meQ.data?.user ?? session ?? {};
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+
+  useEffect(() => {
+    setFirstName(str(profile.firstName, ""));
+    setLastName(str(profile.lastName, ""));
+  }, [profile.firstName, profile.lastName]);
+
+  const saveProfile = useMutation({
+    mutationFn: () =>
+      api.patch<any>("/auth/me", {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      }),
+    onSuccess: (data) => {
+      const next = data?.user ?? data ?? {};
+      if (session) {
+        setSessionUser({
+          ...session,
+          firstName: str(next.firstName, firstName.trim()) || null,
+          lastName: str(next.lastName, lastName.trim()) || null,
+        });
+      }
+      toast.success("Profile saved");
+    },
+    onError: (err: Error) => toast.error(err.message || "Could not save profile"),
+  });
+
+  const roleLabels: Record<string, string> = {
+    super_admin: "Super Admin",
+    operations_admin: "Operations Admin",
+    finance_admin: "Finance Admin",
+    auditor: "Auditor",
+    kyc_officer: "KYC Officer",
+    support_agent: "Support Agent",
+    marketing: "Marketing",
+  };
+  const role =
+    session?.roles
+      ?.map((item) => {
+        const slug = String(item.slug || item.role || item.name || "").toLowerCase();
+        return roleLabels[slug] || item.name || item.slug || item.role;
+      })
+      .filter(Boolean)
+      .join(", ") || "Admin";
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-6">
+      <div className="flex items-center gap-2.5">
+        <UserRound className="h-5 w-5 text-primary" />
+        <div>
+          <h2 className="font-display font-semibold">Your profile</h2>
+          <p className="text-sm text-muted-foreground">The admin account you are signed in with.</p>
+        </div>
+      </div>
+
+      {meQ.isLoading && !session ? (
+        <p className="text-sm text-muted-foreground">Loading profile…</p>
+      ) : meQ.isError && !session ? (
+        <p className="text-sm text-destructive">Could not load your profile.</p>
+      ) : (
+        <div className="space-y-3 max-w-3xl">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <FieldLabel className="text-muted-foreground">First name</FieldLabel>
+              <Input className="mt-1" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+            </div>
+            <div>
+              <FieldLabel className="text-muted-foreground">Last name</FieldLabel>
+              <Input className="mt-1" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <FieldLabel className="text-muted-foreground">Email</FieldLabel>
+              <Input
+                className="mt-1 bg-muted/50 text-muted-foreground disabled:opacity-100"
+                value={str(profile.email, session?.email || "")}
+                disabled
+              />
+            </div>
+            <div>
+              <FieldLabel className="text-muted-foreground">Role</FieldLabel>
+              <Input
+                className="mt-1 bg-muted/50 text-muted-foreground disabled:opacity-100"
+                value={role}
+                disabled
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button disabled={saveProfile.isPending} onClick={() => saveProfile.mutate()}>
+              {saveProfile.isPending ? "Saving…" : "Save profile"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/_admin/settings")({
   head: () => ({ meta: [{ title: "Settings — ScopsK" }] }),
@@ -276,7 +386,7 @@ function SettingsPage() {
     {
       icon: <Globe className="h-5 w-5 text-primary" />,
       title: "General",
-      description: "Brand, locale and timezone for the marketplace.",
+      description: "Name, currency, language, and timezone.",
       fields: [
         { key: "marketplace_name", label: "Marketplace name", required: true },
         { key: "default_currency", label: "Default currency", required: true, options: CURRENCIES },
@@ -286,8 +396,8 @@ function SettingsPage() {
     },
     {
       icon: <CreditCard className="h-5 w-5 text-primary" />,
-      title: "Commission & Tax",
-      description: "Restaurant and supplier commission rates (platform-only; never shown on invoices).",
+      title: "Fees and tax",
+      description: "Default commission and tax rates.",
       fields: [
         { key: "restaurant_commission", label: "Restaurant commission %", required: true },
         { key: "supplier_commission", label: "Supplier commission %", required: true },
@@ -299,8 +409,8 @@ function SettingsPage() {
     },
     {
       icon: <SlidersHorizontal className="h-5 w-5 text-primary" />,
-      title: "Matching & Marketplace",
-      description: "RFQ thresholds, supplier matching rules, PO approvals and delivery options.",
+      title: "Marketplace",
+      description: "Quote request minimums, matching, order approvals, and delivery options.",
       fields: [
         { key: "min_rfq_value_aed", label: "Min RFQ value (AED)" },
         { key: "matching_min_stock_pct", label: "Matching min stock %" },
@@ -311,7 +421,7 @@ function SettingsPage() {
     {
       icon: <Mail className="h-5 w-5 text-primary" />,
       title: "Email & SMS",
-      description: "Templates and provider configuration.",
+      description: "How email and SMS are sent.",
       fields: [
         { key: "sender_email", label: "Sender email" },
         { key: "sms_sender", label: "SMS sender" },
@@ -328,7 +438,7 @@ function SettingsPage() {
         desc: str(f.description, "Feature flag"),
       }))
     : [
-        { key: "ai_auto_flag", label: "AI auto-flag suspicious quotations", desc: "Rule-based heuristic flagging." },
+        { key: "ai_auto_flag", label: "AI auto-flag suspicious orders", desc: "Rule-based heuristic flagging." },
         { key: "enforce_kyc", label: "Enforce supplier KYC before publishing", desc: "Block unverified suppliers." },
         { key: "require_2fa", label: "Two-factor authentication required", desc: "Admin 2FA policy." },
       ];
@@ -347,6 +457,8 @@ function SettingsPage() {
           </p>
         </div>
       </div>
+
+      <AdminProfileCard />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {sections.map((s) => (

@@ -179,29 +179,90 @@ function mapOrgCommercial(r: any) {
         ? "week"
         : "month",
     paymentTermsDays: num(s.paymentTermsDays ?? r.paymentTermsDays),
+    purchasingTerms: str(s.metadata?.purchasingTerms ?? r.metadata?.purchasingTerms, ""),
+    sellingTerms: str(s.metadata?.sellingTerms ?? r.metadata?.sellingTerms, ""),
+    requestedCreditLimit: num(
+      s.metadata?.requestedCreditLimit ??
+        r.metadata?.requestedCreditLimit ??
+        r.profile?.metadata?.requestedCreditLimit,
+    ),
+    offersCredit: Boolean(s.metadata?.offersCredit ?? r.metadata?.offersCredit),
     discountMode: str(s.discountMode ?? r.discountMode, "none"),
     discountValue: num(s.discountValue ?? r.discountValue),
     rfqIntakeMode: str(s.rfqIntakeMode ?? r.rfqIntakeMode, "manual"),
   };
 }
 
+function addressLineOf(row: any): string {
+  if (!row || typeof row !== "object") return "";
+  return str(row.line1 ?? row.addressLine1 ?? row.address, "");
+}
+
+/** Street saved at signup lives on Address.line1, not on the organization row. */
+export function organizationStreet(source: any): string {
+  if (!source || typeof source !== "object") return "";
+  const addresses = Array.isArray(source.addresses) ? source.addresses : [];
+  const preferred =
+    addresses.find((a: any) => String(a?.label || "").toLowerCase() === "business") ||
+    addresses.find((a: any) => String(a?.label || "").toLowerCase() === "warehouse") ||
+    addresses.find((a: any) => addressLineOf(a));
+  const fromAddresses = addressLineOf(preferred);
+  if (fromAddresses) return fromAddresses;
+
+  const profile = source.profile ?? {};
+  const fromProfile = str(
+    addressLineOf(profile.businessAddress) ||
+      addressLineOf(profile.warehouseAddress) ||
+      addressLineOf(profile.receivingAddress),
+    "",
+  );
+  if (fromProfile) return fromProfile;
+
+  const meta =
+    source.metadata && typeof source.metadata === "object" ? source.metadata : {};
+  return str(source.address ?? meta.businessStreet ?? meta.address, "");
+}
+
 export function mapOrgRow(r: any, type: "restaurant" | "supplier") {
   const { cuisineIds, cuisineLabel } = mapOrgCuisines(r);
   const commercial = mapOrgCommercial(r);
+  const profile = r.profile ?? {};
+  const meta = {
+    ...(r.metadata && typeof r.metadata === "object" ? r.metadata : {}),
+    ...(r.settings?.metadata && typeof r.settings.metadata === "object" ? r.settings.metadata : {}),
+    ...(profile.metadata && typeof profile.metadata === "object" ? profile.metadata : {}),
+  };
+  const hours =
+    meta.workingHours && typeof meta.workingHours === "object"
+      ? (meta.workingHours as { days?: unknown; open?: unknown; close?: unknown })
+      : {};
+  const address = organizationStreet({ ...r, metadata: meta });
+  const city = str(r.city ?? profile.businessCity, "");
+  const country = str(r.country ?? profile.businessCountry, "");
   return {
     id: str(r.id),
     name: str(r.name, "Untitled"),
     industry: cuisineLabel !== "—" ? cuisineLabel : str(r.metadata?.industry, "—"),
     cuisines: cuisineLabel,
     cuisineIds,
-    region: str(r.city || r.country, "—"),
+    region: str(city || country, "—"),
+    city,
+    country,
+    address,
     branches: num(r.metadata?.branches),
     orders: num(r.metadata?.orders ?? r.orderCount),
     spend: num(r.metadata?.spend ?? r.spend),
     rfqs: num(r.metadata?.rfqs),
     status: str(r.status || r.verificationStatus, "pending"),
     verificationStatus: str(r.verificationStatus, "—"),
-    categories: Array.isArray(r.metadata?.categories) ? r.metadata.categories : [],
+    categories: Array.isArray(meta.categories) ? meta.categories : [],
+    coverageAreas: Array.isArray(meta.coverageAreas) ? meta.coverageAreas : [],
+    dubaiArea: str(meta.dubaiArea ?? meta.neighborhood, ""),
+    workingHours: meta.workingHours ?? null,
+    workingDays: Array.isArray(hours.days) ? hours.days.map((d) => String(d)) : [],
+    workingOpen: str(hours.open, ""),
+    workingClose: str(hours.close, ""),
+    branchName: str(r.branches?.[0]?.name ?? meta.branchName, ""),
     revenue: num(r.metadata?.revenue ?? r.revenue),
     winRate: num(r.metadata?.winRate),
     rating: num(r.rating ?? r.metadata?.rating),
@@ -212,10 +273,14 @@ export function mapOrgRow(r: any, type: "restaurant" | "supplier") {
     poApprovalLevels: num(r.poApprovalLevels ?? r.settings?.poApprovalLevels),
     minRfqValueAed: num(r.minRfqValueAed ?? r.settings?.minRfqValueAed),
     ...commercial,
-    ownerName: str(r.ownerName ?? r.profile?.ownerName, ""),
-    tradeLicenseNumber: str(r.tradeLicenseNumber ?? r.profile?.tradeLicenseNumber, ""),
-    vatRegistrationNumber: str(r.vatRegistrationNumber ?? r.profile?.vatRegistrationNumber, ""),
-    foodLicenseNumber: str(r.foodLicenseNumber ?? r.profile?.foodLicenseNumber, ""),
+    ownerName: str(r.ownerName ?? profile.ownerName, ""),
+    tradeLicenseNumber: str(r.tradeLicenseNumber ?? profile.tradeLicenseNumber, ""),
+    vatRegistrationNumber: str(r.vatRegistrationNumber ?? profile.vatRegistrationNumber, ""),
+    foodLicenseNumber: str(r.foodLicenseNumber ?? profile.foodLicenseNumber, ""),
+    bankName: str(profile.bankName ?? r.bankName, ""),
+    bankAccountName: str(profile.bankAccountName ?? r.bankAccountName, ""),
+    bankAccountNumber: str(profile.bankAccountNumber ?? r.bankAccountNumber, ""),
+    bankIban: str(profile.bankIban ?? r.bankIban, ""),
     documents: Array.isArray(r.documents)
       ? r.documents.map((d: any) => ({
           id: str(d.id),
@@ -227,6 +292,7 @@ export function mapOrgRow(r: any, type: "restaurant" | "supplier") {
       : [],
     documentCount: num(r.documentCount, Array.isArray(r.documents) ? r.documents.length : 0),
     kycApplication: r.kycApplication ?? null,
+    creditRequestStatus: str(meta.creditRequestStatus, ""),
     rejectReason: str(r.metadata?.rejectReason ?? r.rejectReason, ""),
     submitted: r.createdAt
       ? String(r.createdAt).slice(0, 10)
@@ -278,10 +344,11 @@ export type OrgSettingsPatch = {
   discountMode?: string;
   discountValue?: number | string;
   rfqIntakeMode?: string;
+  metadata?: Record<string, unknown>;
 };
 
 export async function updateOrgSettings(organizationId: string, data: OrgSettingsPatch) {
-  const payload: Record<string, string | number> = {};
+  const payload: Record<string, unknown> = {};
   const numKeys = [
     "poApprovalLevels",
     "minRfqValueAed",
@@ -309,6 +376,9 @@ export async function updateOrgSettings(organizationId: string, data: OrgSetting
   }
   if (payload.deliveryFeeMode === "none") payload.deliveryFeeValue = 0;
   if (payload.discountMode === "none") payload.discountValue = 0;
+  if (data.metadata && typeof data.metadata === "object") {
+    payload.metadata = data.metadata;
+  }
   if (!Object.keys(payload).length) return null;
   return api.patch(`/organizations/${organizationId}/settings`, payload);
 }
@@ -322,6 +392,10 @@ export async function updateOrgProfile(
     "tradeLicenseNumber",
     "vatRegistrationNumber",
     "foodLicenseNumber",
+    "bankName",
+    "bankAccountName",
+    "bankAccountNumber",
+    "bankIban",
   ] as const;
   const payload: Record<string, string> = {};
   for (const key of keys) {
@@ -361,46 +435,68 @@ export async function updateOrganization(
     payload.cuisineIds = data.cuisineIds.map((id: unknown) => String(id).trim()).filter(Boolean);
   }
 
-  if (type === "restaurant") {
-    const nextMeta: Record<string, unknown> = { ...currentMeta };
-    let metaChanged = false;
-    if (data.industry != null) {
-      nextMeta.industry = String(data.industry);
-      metaChanged = true;
-    }
-    if (data.rating != null && String(data.rating).trim() !== "") {
-      const n = Number(data.rating);
-      if (Number.isFinite(n)) {
-        nextMeta.rating = Math.min(5, Math.max(0, n));
-        metaChanged = true;
-      }
-    }
-    if (metaChanged) payload.metadata = nextMeta;
-    if (data.region != null && String(data.region).trim()) {
-      payload.city = String(data.region).trim();
-    }
+  const nextMeta: Record<string, unknown> = { ...currentMeta };
+  let metaChanged = false;
+  const setMeta = (key: string, value: unknown) => {
+    nextMeta[key] = value;
+    metaChanged = true;
+  };
+  if (data.industry != null) setMeta("industry", String(data.industry));
+  if (data.dubaiArea != null) {
+    const area = String(data.dubaiArea).trim();
+    setMeta("dubaiArea", area);
+    setMeta("neighborhood", area);
   }
-
-  if (type === "supplier") {
-    const nextMeta: Record<string, unknown> = {
-      ...((payload.metadata as Record<string, unknown> | undefined) ?? currentMeta),
-    };
-    let metaChanged = false;
-    if (data.industry != null) {
-      nextMeta.industry = String(data.industry);
-      metaChanged = true;
-    }
-    if (data.categories != null) {
-      const cats = Array.isArray(data.categories)
-        ? data.categories.map((s) => String(s).trim()).filter(Boolean)
-        : String(data.categories)
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean);
-      nextMeta.categories = cats;
-      metaChanged = true;
-    }
-    if (metaChanged) payload.metadata = nextMeta;
+  if (data.branchName != null) setMeta("branchName", String(data.branchName).trim());
+  if (data.address != null) setMeta("businessStreet", String(data.address).trim());
+  if (data.purchasingTerms != null) setMeta("purchasingTerms", String(data.purchasingTerms).trim());
+  if (data.sellingTerms != null) {
+    const selling = String(data.sellingTerms).trim();
+    setMeta("sellingTerms", selling);
+    setMeta("offersCredit", selling !== "cash_only");
+  }
+  if (data.requestedCreditLimit != null && String(data.requestedCreditLimit).trim() !== "") {
+    const n = Number(data.requestedCreditLimit);
+    if (Number.isFinite(n)) setMeta("requestedCreditLimit", Math.max(0, n));
+  }
+  if (data.creditRequestStatus === "approved" || data.creditRequestStatus === "rejected") {
+    setMeta("creditRequestStatus", data.creditRequestStatus);
+  }
+  if (Array.isArray(data.categories)) {
+    setMeta(
+      "categories",
+      data.categories.map((s: unknown) => String(s).trim()).filter(Boolean),
+    );
+  }
+  if (Array.isArray(data.coverageAreas)) {
+    setMeta(
+      "coverageAreas",
+      data.coverageAreas.map((s: unknown) => String(s).trim()).filter(Boolean),
+    );
+  }
+  if (data.workingDays != null || data.workingOpen != null || data.workingClose != null) {
+    const prevHours =
+      currentMeta.workingHours && typeof currentMeta.workingHours === "object"
+        ? (currentMeta.workingHours as Record<string, unknown>)
+        : {};
+    setMeta("workingHours", {
+      ...prevHours,
+      days: Array.isArray(data.workingDays)
+        ? data.workingDays.map((d: unknown) => String(d))
+        : prevHours.days,
+      open: data.workingOpen != null ? String(data.workingOpen).trim() : prevHours.open,
+      close: data.workingClose != null ? String(data.workingClose).trim() : prevHours.close,
+    });
+  }
+  if (type === "restaurant" && data.rating != null && String(data.rating).trim() !== "") {
+    const n = Number(data.rating);
+    if (Number.isFinite(n)) setMeta("rating", Math.min(5, Math.max(0, n)));
+  }
+  if (metaChanged) payload.metadata = nextMeta;
+  if (data.city != null && String(data.city).trim()) payload.city = String(data.city).trim();
+  else if (data.region != null && String(data.region).trim()) payload.city = String(data.region).trim();
+  if (data.country != null && String(data.country).trim()) {
+    payload.country = String(data.country).trim();
   }
 
   if (data.status != null && String(data.status).trim()) {
@@ -1421,6 +1517,8 @@ export async function fetchAdminWalletCreditRequests(query?: {
   status?: string;
   page?: number;
   limit?: number;
+  organizationId?: string;
+  category?: string;
 }) {
   const page = await fetchPage("/admin/wallets/credit-requests", query);
   return {

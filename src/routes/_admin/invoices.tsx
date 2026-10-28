@@ -1,15 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { InvoiceDetailView } from "@/components/admin/DetailViews";
-import { Receipt, Wallet } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { fetchInvoiceDetail, markInvoicePaid } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { WalletsManagement } from "./wallets";
 
 export const Route = createFileRoute("/_admin/invoices")({
   head: () => ({ meta: [{ title: "Invoices — ScopsK" }] }),
@@ -81,7 +78,7 @@ function InvoicesList() {
   return (
     <DataPage
       title="Invoices"
-      description="Invoice payment status. Set status to paid to mark an invoice paid via the API."
+      description="Mark invoices as paid, or open one to see the breakdown."
       icon={<Receipt className="h-5 w-5 text-primary" />}
       lookups={{
         party: parties,
@@ -176,7 +173,7 @@ function InvoicesList() {
       ]}
       onUpdate={async (id, data, row) => {
         if (String(data.status) !== "paid") {
-          throw new Error("Only marking as paid is supported — set status to paid");
+          throw new Error("Set status to paid to mark this invoice paid.");
         }
         const orgId = String(row.organizationId || "");
         if (!orgId) throw new Error("Missing organization for this invoice");
@@ -189,31 +186,5 @@ function InvoicesList() {
 }
 
 function InvoicesPage() {
-  const [tab, setTab] = useState("invoices");
-
-  return (
-    <div className="space-y-0">
-      <div className="px-6 lg:px-8 pt-6 lg:pt-8">
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
-            <TabsTrigger value="invoices">
-              <Receipt />
-              Invoices
-            </TabsTrigger>
-            <TabsTrigger value="wallets">
-              <Wallet />
-              Wallets
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-      {tab === "invoices" ? (
-        <InvoicesList />
-      ) : (
-        <div className="p-6 lg:p-8 pt-4">
-          <WalletsManagement embedded />
-        </div>
-      )}
-    </div>
-  );
+  return <InvoicesList />;
 }

@@ -174,6 +174,8 @@ export function DataPage<T extends Record<string, any>>({
   onUpdate,
   onDelete,
   onRowClick,
+  autoOpenId,
+  onAutoOpened,
   onStatusChange,
   rowClassName,
   pageSize = 20,
@@ -215,6 +217,9 @@ export function DataPage<T extends Record<string, any>>({
    * Any other return value handles the click.
    */
   onRowClick?: (row: T) => boolean | void;
+  /** Open the View dialog for this id once rows are available (notification deep link). */
+  autoOpenId?: string;
+  onAutoOpened?: () => void;
   /** Save a new status from the row menu. Falls back to onUpdate when omitted. */
   onStatusChange?: (id: string, status: string, row: T) => Promise<void> | void;
   /** Extra classes for a body row, such as a nested subcategory. */
@@ -361,6 +366,18 @@ export function DataPage<T extends Record<string, any>>({
     setViewDetail(null);
     setViewLoading(false);
   };
+
+  const openedIdRef = useRef<string>("");
+  useEffect(() => {
+    const id = String(autoOpenId || "").trim();
+    if (!id || openedIdRef.current === id) return;
+    const match = initialRows.find((row) => String(row?.[idKey as keyof T] ?? "") === id);
+    openedIdRef.current = id;
+    void openView((match || ({ [idKey]: id } as T)));
+    onAutoOpened?.();
+    // openView is stable enough for one-shot deep links
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenId, rowsSyncKey]);
 
   const openEdit = async (row: T) => {
     setEditing(row);

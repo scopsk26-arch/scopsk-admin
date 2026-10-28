@@ -12,29 +12,7 @@ import {
 import { api, str } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-
-type AdminListPath =
-  | "/rfqs"
-  | "/quotations"
-  | "/purchase-orders"
-  | "/deliveries"
-  | "/invoices"
-  | "/outstanding"
-  | "/payments"
-  | "/wallets"
-  | "/rewards"
-  | "/referrals"
-  | "/catalog"
-  | "/inventory"
-  | "/support"
-  | "/disputes"
-  | "/product-requests"
-  | "/kyc"
-  | "/org-reports"
-  | "/approvals"
-  | "/ck-orders"
-  | "/restaurants"
-  | "/suppliers";
+import { notificationNavTarget, notificationPayload } from "@/lib/notification-nav";
 
 type NotificationRow = {
   id: string;
@@ -46,74 +24,6 @@ type NotificationRow = {
   status: string;
   data: Record<string, unknown>;
 };
-
-function notificationPayload(raw: unknown): Record<string, unknown> {
-  if (!raw) return {};
-  if (typeof raw === "string") {
-    try {
-      const parsed = JSON.parse(raw) as unknown;
-      return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
-    } catch {
-      return {};
-    }
-  }
-  return typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-}
-
-function payloadId(data: Record<string, unknown>, key: string) {
-  const value = data[key];
-  return value != null && String(value).trim() ? String(value) : "";
-}
-
-/** List page that owns this notification. */
-function notificationListPath(row: NotificationRow): AdminListPath | null {
-  const data = row.data;
-  const type = String(data.type || "").toLowerCase();
-  const kind = String(data.kind || "").toLowerCase();
-  const text = `${type} ${row.title} ${row.body}`.toLowerCase();
-
-  if (type.includes("pending_approval")) return "/approvals";
-  if (payloadId(data, "deliveryId")) return "/deliveries";
-  if (payloadId(data, "invoiceId")) {
-    return kind === "overdue" || type.includes("outstanding") ? "/outstanding" : "/invoices";
-  }
-  if (payloadId(data, "paymentId")) return "/payments";
-  if (payloadId(data, "ckOrderId")) return "/ck-orders";
-  if (payloadId(data, "purchaseOrderId")) return "/purchase-orders";
-  if (payloadId(data, "quotationId")) return "/quotations";
-  if (payloadId(data, "rfqId")) return "/rfqs";
-  if (payloadId(data, "reportId")) return "/org-reports";
-  if (payloadId(data, "kycApplicationId") || payloadId(data, "documentId")) return "/kyc";
-  if (payloadId(data, "inventoryItemId")) return "/inventory";
-  if (payloadId(data, "rewardId")) return "/rewards";
-  if (payloadId(data, "productRequestId")) return "/product-requests";
-  if (payloadId(data, "disputeId")) return "/disputes";
-  if (payloadId(data, "ticketId") || payloadId(data, "supportTicketId")) return "/support";
-  if (payloadId(data, "walletId") || payloadId(data, "withdrawalId")) return "/wallets";
-  if (payloadId(data, "referralId")) return "/referrals";
-
-  if (/invoice|outstanding|overdue/.test(text)) return text.includes("outstanding") || text.includes("overdue") ? "/outstanding" : "/invoices";
-  if (/payment/.test(text)) return "/payments";
-  if (/deliver/.test(text)) return "/deliveries";
-  if (/purchase order|\bpo\b|po_/.test(text)) return "/purchase-orders";
-  if (/quot/.test(text)) return "/quotations";
-  if (/rfq|purchase request/.test(text)) return "/rfqs";
-  if (/cloud kitchen order|ck_order/.test(text)) return "/ck-orders";
-  if (/inventory|low stock|out of stock/.test(text)) return "/inventory";
-  if (/kyc|trade license/.test(text)) return "/kyc";
-  if (/report/.test(text)) return "/org-reports";
-  if (/product request/.test(text)) return "/product-requests";
-  if (/catalog/.test(text)) return "/catalog";
-  if (/dispute/.test(text)) return "/disputes";
-  if (/support|ticket/.test(text)) return "/support";
-  if (/wallet|withdraw/.test(text)) return "/wallets";
-  if (/reward/.test(text)) return "/rewards";
-  if (/referral/.test(text)) return "/referrals";
-  if (/approval/.test(text)) return "/approvals";
-  if (/supplier/.test(text)) return "/suppliers";
-  if (/restaurant/.test(text)) return "/restaurants";
-  return null;
-}
 
 export const Route = createFileRoute("/_admin/notifications")({
   head: () => ({ meta: [{ title: "Notifications — ScopsK" }] }),
@@ -152,7 +62,7 @@ function NotificationsPage() {
   return (
     <DataPage
       title="Notifications"
-      description="System and operational notifications. Open one to go to its list."
+      description="Alerts from the marketplace. Tap one to open the related record."
       icon={<Bell className="h-5 w-5 text-primary" />}
       entityName="Notification"
       viewFields={[
@@ -194,7 +104,7 @@ function NotificationsPage() {
         { label: "Total", value: String(rows.length) },
         {
           label: "Approval queue",
-          value: String(rows.filter((r) => /approv/i.test(r.category)).length),
+          value: String(rows.filter((r) => /approv|registration/i.test(r.category)).length),
           tone: "info",
         },
         {
@@ -232,9 +142,9 @@ function NotificationsPage() {
             .post(`/notifications/${row.id}/read`)
             .finally(() => queryClient.invalidateQueries({ queryKey: ["notifications"] }));
         }
-        const path = notificationListPath(row);
-        if (!path) return false;
-        void navigate({ to: path });
+        const target = notificationNavTarget(row);
+        if (!target) return false;
+        void navigate({ to: target.to, search: target.search ?? {} });
       }}
     />
   );

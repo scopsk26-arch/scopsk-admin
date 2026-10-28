@@ -52,7 +52,7 @@ function RewardsPage() {
   return (
     <DataPage
       title="Rewards"
-      description="Read-only reward ledger — referral, promotional and admin credits issued to organization wallets."
+      description="Credits given to restaurants and suppliers — referrals, promotions, and admin top-ups."
       icon={<Gift className="h-5 w-5 text-primary" />}
       disableCrud
       entityName="Reward"

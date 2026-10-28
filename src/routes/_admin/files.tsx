@@ -34,8 +34,8 @@ function FilesPage() {
 
   return (
     <DataPage
-      title="File Management"
-      description="Legacy table view of uploaded files. Prefer Media Library for upload + Copy CDN URL."
+      title="Files"
+      description="Uploaded files. Use Files in the sidebar to upload and copy a link."
       disableCrud
       icon={<FolderOpen className="h-5 w-5 text-primary" />}
       viewFields={[

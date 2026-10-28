@@ -9,6 +9,7 @@ export type DataChangedPayload = {
   organizationId?: string | null;
   tags?: string[];
   at?: string;
+  organizationType?: string;
 };
 
 export type AdminSocketStatus = "idle" | "connecting" | "connected" | "disconnected" | "error";

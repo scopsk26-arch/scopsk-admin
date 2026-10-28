@@ -62,7 +62,7 @@ function PaymentsPage() {
   return (
     <DataPage
       title="Payments"
-      description="Payment ledger (read-only). Mark invoices paid from the Invoices page until a payment gateway is configured."
+      description="Money received. Mark invoices paid from the Invoices page."
       disableCrud
       icon={<CreditCard className="h-5 w-5 text-primary" />}
       viewFields={[

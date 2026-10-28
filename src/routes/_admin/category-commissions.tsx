@@ -52,8 +52,8 @@ export function CategoryCommissionsPanel() {
 
   return (
     <DataPage
-      title="Category Commissions"
-      description="Per-category restaurant and supplier commission rates (platform-only ledger settings)."
+      title="Rates by category"
+      description="Commission % for restaurants and suppliers, by product category."
       icon={<Percent className="h-5 w-5 text-primary" />}
       entityName="Category commission"
       idKey="categoryId"

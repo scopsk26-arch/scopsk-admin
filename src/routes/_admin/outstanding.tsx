@@ -5,7 +5,7 @@ import { Landmark } from "lucide-react";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/outstanding")({
-  head: () => ({ meta: [{ title: "Outstanding — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Unpaid invoices — ScopsK" }] }),
   component: OutstandingPage,
 });
 
@@ -45,8 +45,8 @@ function OutstandingPage() {
 
   return (
     <DataPage
-      title="Outstanding"
-      description="Restaurant invoice balances — issued, overdue and paid amounts by invoice."
+      title="Unpaid invoices"
+      description="Issued, overdue, and paid amounts by invoice."
       icon={<Landmark className="h-5 w-5 text-primary" />}
       disableCrud
       entityName="Outstanding"

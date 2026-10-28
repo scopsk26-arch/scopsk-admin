@@ -16,17 +16,26 @@ import {
 } from "@/lib/api/resources";
 import { api } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
+import { PAYMENT_TERM_OPTIONS, areaOptions } from "@/lib/org-app-fields";
 
 type OrgDoc = { id?: string; type: string; url?: string; fileName?: string; status?: string };
 
 export const Route = createFileRoute("/_admin/restaurants")({
   head: () => ({ meta: [{ title: "Restaurants — ScopsK" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    open: typeof search.open === "string" ? search.open : undefined,
+  }),
   component: RestaurantsPage,
 });
 
 function RestaurantsPage() {
+  const navigate = Route.useNavigate();
+  const { open: openId } = Route.useSearch();
   const { cuisines: cuisineOptions } = useAdminLookups(["cuisines"]);
-  const cuisineLookups = useMemo(() => ({ cuisineIds: cuisineOptions }), [cuisineOptions]);
+  const cuisineLookups = useMemo(
+    () => ({ cuisineIds: cuisineOptions, dubaiArea: areaOptions() }),
+    [cuisineOptions],
+  );
   const queryClient = useQueryClient();
 
   const list = usePagedList({
@@ -46,23 +55,43 @@ function RestaurantsPage() {
   return (
     <DataPage
       title="Restaurants"
-      description="Manage onboarded restaurants, cuisines, KYC/profile fields and org procurement settings."
+      description="Review restaurant accounts, documents, and payment terms."
       icon={<Store className="h-5 w-5 text-primary" />}
       lookups={cuisineLookups}
       formFields={[
         { key: "name", label: "Restaurant", required: true, type: "text" },
-        { key: "email", label: "Email", type: "text", placeholder: "sarah@primeplate.io" },
+        { key: "branchName", label: "Branch name", type: "text" },
+        { key: "ownerName", label: "Owner name", type: "text" },
+        { key: "email", label: "Business email", type: "text", placeholder: "ops@restaurant.com" },
+        { key: "phone", label: "Mobile number", type: "text" },
+        {
+          key: "dubaiArea",
+          label: "Area / neighborhood",
+          type: "searchable",
+          placeholder: "Select area…",
+        },
+        { key: "address", label: "Building & street", type: "text" },
+        { key: "city", label: "City / emirate", type: "text" },
+        { key: "country", label: "Country", type: "text" },
         {
           key: "cuisineIds",
           label: "Cuisines",
           type: "multiselect",
           placeholder: "Select cuisines…",
         },
-        { key: "region", label: "Region", type: "text" },
-        { key: "ownerName", label: "Owner name", type: "text" },
-        { key: "tradeLicenseNumber", label: "Trade license #", type: "text" },
-        { key: "vatRegistrationNumber", label: "VAT registration #", type: "text" },
-        { key: "foodLicenseNumber", label: "Food license #", type: "text" },
+        {
+          key: "purchasingTerms",
+          label: "How they pay",
+          type: "select",
+          options: PAYMENT_TERM_OPTIONS,
+        },
+        { key: "requestedCreditLimit", label: "Requested credit (AED)", type: "number", min: 0 },
+        { key: "paymentTermsDays", label: "Credit duration (days)", type: "number", min: 0 },
+        { key: "creditLimit", label: "Approved credit limit (AED)", type: "number", min: 0 },
+        { key: "bankName", label: "Bank name", type: "text" },
+        { key: "bankAccountName", label: "Account holder", type: "text" },
+        { key: "bankAccountNumber", label: "Account number", type: "text" },
+        { key: "bankIban", label: "IBAN", type: "text" },
         { key: "rating", label: "Rating (0–5)", type: "number", min: 0, max: 5 },
         { key: "poApprovalLevels", label: "PO approval levels", type: "number", min: 0 },
         { key: "minRfqValueAed", label: "Min RFQ value (AED)", type: "number", min: 0 },
@@ -73,14 +102,6 @@ function RestaurantsPage() {
           options: ["none", "fixed", "percent"],
         },
         { key: "deliveryFeeValue", label: "Delivery fee value", type: "number", min: 0 },
-        { key: "creditLimit", label: "Credit limit (AED)", type: "number", min: 0 },
-        {
-          key: "creditPeriod",
-          label: "Credit renews",
-          type: "select",
-          options: ["week", "month"],
-        },
-        { key: "paymentTermsDays", label: "Payment terms (days)", type: "number", min: 0 },
         {
           key: "discountMode",
           label: "Discount mode",
@@ -98,10 +119,14 @@ function RestaurantsPage() {
       ]}
       viewFields={[
         { key: "name", label: "Restaurant" },
+        { key: "branchName", label: "Branch" },
+        { key: "ownerName", label: "Owner" },
         { key: "email", label: "Email" },
         { key: "phone", label: "Phone" },
-        { key: "legalName", label: "Legal name" },
-        { key: "region", label: "Region" },
+        { key: "dubaiArea", label: "Area" },
+        { key: "address", label: "Street" },
+        { key: "city", label: "City" },
+        { key: "country", label: "Country" },
         { key: "status", label: "Status" },
       ]}
       loadDetail={async (row) => fetchOrganizationDetail(row.id)}
@@ -129,17 +154,14 @@ function RestaurantsPage() {
             .map((o) => o.value);
         }
         return {
+          ...mapped,
           cuisineIds,
-          cuisines: mapped.cuisines,
-          rating: mapped.rating,
-          deliveryFeeMode: mapped.deliveryFeeMode,
-          deliveryFeeValue: mapped.deliveryFeeValue,
-          creditLimit: mapped.creditLimit,
           creditPeriod: mapped.creditPeriod === "week" ? "week" : "month",
-          paymentTermsDays: mapped.paymentTermsDays,
-          discountMode: mapped.discountMode,
-          discountValue: mapped.discountValue,
         };
+      }}
+      autoOpenId={openId}
+      onAutoOpened={() => {
+        if (openId) void navigate({ to: "/restaurants", search: {} });
       }}
       renderView={(detail, row) => <OrganizationDetailView detail={detail} row={row} />}
       kpis={[
@@ -154,7 +176,7 @@ function RestaurantsPage() {
         await updateOrganization(id, { status }, "restaurant");
         await queryClient.invalidateQueries({ queryKey: ["organizations", "restaurant"] });
       }}
-      searchKeys={["name", "email", "region", "cuisines", "industry", "tradeLicenseNumber", "id"]}
+      searchKeys={["name", "email", "region", "cuisines", "industry", "id"]}
       emptyHint={
         isLoading ? "Loading…" : isError ? "Failed to load restaurants." : "No restaurants found."
       }
@@ -187,14 +209,16 @@ function RestaurantsPage() {
           className: "whitespace-nowrap max-w-[220px]",
           render: (r) => <TagListDropdown value={r.cuisines || r.categories || r.industry} />,
         },
-        { key: "region", label: "Region" },
+        { key: "phone", label: "Phone" },
+        { key: "branchName", label: "Branch" },
+        { key: "dubaiArea", label: "Area" },
+        { key: "city", label: "City" },
         {
           key: "rating",
           label: "Rating",
           className: "whitespace-nowrap w-[1%]",
           render: (r) => (r.rating > 0 ? String(r.rating) : "—"),
         },
-        { key: "tradeLicenseNumber", label: "Trade license", className: "font-mono text-xs" },
         {
           key: "documents",
           label: "Documents",
@@ -218,7 +242,34 @@ function RestaurantsPage() {
         },
         { key: "poApprovalLevels", label: "PO levels" },
         { key: "minRfqValueAed", label: "Min RFQ", render: (r) => AED(r.minRfqValueAed) },
-        { key: "creditLimit", label: "Credit", render: (r) => AED(r.creditLimit) },
+        {
+          key: "purchasingTerms",
+          label: "Payment",
+          className: "whitespace-nowrap",
+          render: (r) => {
+            const key = String(r.purchasingTerms || "").toLowerCase();
+            if (key === "cash_only") return "Cash";
+            if (key === "credit_only") return "Credit";
+            if (key === "cash_or_credit") return "Cash & credit";
+            return r.paymentTermsDays > 0 ? "Cash & credit" : "Cash";
+          },
+        },
+        {
+          key: "requestedCreditLimit",
+          label: "Requested credit",
+          render: (r) =>
+            r.requestedCreditLimit > 0 ? (
+              <span>
+                {AED(r.requestedCreditLimit)}
+                {r.paymentTermsDays > 0 ? (
+                  <span className="text-muted-foreground"> · {r.paymentTermsDays}d</span>
+                ) : null}
+              </span>
+            ) : (
+              "—"
+            ),
+        },
+        { key: "creditLimit", label: "Live credit", render: (r) => AED(r.creditLimit) },
         { key: "paymentTermsDays", label: "Terms (d)" },
         {
           key: "verificationStatus",
@@ -266,6 +317,10 @@ function RestaurantsPage() {
           paymentTermsDays,
           discountMode: data.discountMode,
           discountValue,
+          metadata: {
+            purchasingTerms: data.purchasingTerms,
+            requestedCreditLimit: nonNeg(data.requestedCreditLimit),
+          },
         });
         await updateOrgProfile(id, data);
         await queryClient.invalidateQueries({ queryKey: ["organizations", "restaurant"] });
@@ -283,13 +338,20 @@ function RestaurantsPage() {
           discountValue,
           email: String(data.email ?? updated.email ?? ""),
           ownerName: String(data.ownerName ?? updated.ownerName ?? ""),
-          tradeLicenseNumber: String(data.tradeLicenseNumber ?? updated.tradeLicenseNumber ?? ""),
-          vatRegistrationNumber: String(
-            data.vatRegistrationNumber ?? updated.vatRegistrationNumber ?? "",
-          ),
-          foodLicenseNumber: String(data.foodLicenseNumber ?? updated.foodLicenseNumber ?? ""),
           cuisineIds,
           cuisines: cuisineLabel || updated.cuisines || "—",
+          phone: String(data.phone ?? updated.phone ?? ""),
+          branchName: String(data.branchName ?? updated.branchName ?? ""),
+          dubaiArea: String(data.dubaiArea ?? updated.dubaiArea ?? ""),
+          address: String(data.address ?? updated.address ?? ""),
+          city: String(data.city ?? updated.city ?? ""),
+          country: String(data.country ?? updated.country ?? ""),
+          purchasingTerms: String(data.purchasingTerms ?? updated.purchasingTerms ?? ""),
+          requestedCreditLimit: nonNeg(data.requestedCreditLimit),
+          bankName: String(data.bankName ?? updated.bankName ?? ""),
+          bankAccountName: String(data.bankAccountName ?? updated.bankAccountName ?? ""),
+          bankAccountNumber: String(data.bankAccountNumber ?? updated.bankAccountNumber ?? ""),
+          bankIban: String(data.bankIban ?? updated.bankIban ?? ""),
         };
       }}
       onDelete={async (id) => {

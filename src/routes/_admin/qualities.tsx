@@ -44,8 +44,8 @@ function QualitiesPage() {
 
   return (
     <DataPage
-      title="Product Qualities"
-      description="Master list of product quality grades used across the catalog."
+      title="Quality grades"
+      description="Quality labels used on products."
       icon={<Award className="h-5 w-5 text-primary" />}
       entityName="Quality"
       disableCrud

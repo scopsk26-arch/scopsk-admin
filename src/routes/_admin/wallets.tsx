@@ -21,6 +21,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,7 +68,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/wallets")({
-  head: () => ({ meta: [{ title: "Wallet Management — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Wallets — ScopsK" }] }),
   component: WalletsPage,
 });
 
@@ -75,6 +82,7 @@ const TX_TONES: Record<string, "success" | "destructive" | "warning" | "info"> =
 type WalletInnerTab =
   | "balances"
   | "credit-requests"
+  | "wallet-requests"
   | "credit-facility"
   | "withdrawals"
   | "refunds"
@@ -146,7 +154,6 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
   const [action, setAction] = useState<"credit" | "debit">("credit");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [idempotencyKey, setIdempotencyKey] = useState("");
 
   const orgOptions = useMemo(
     () => restaurants.map((o) => ({ ...o, label: o.label })),
@@ -223,16 +230,11 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
       const body = {
         amount: value,
         description: description.trim() || undefined,
-        idempotencyKey: idempotencyKey.trim() || undefined,
       };
       return action === "credit" ? creditOrgWallet(orgId, body) : debitOrgWallet(orgId, body);
     },
-    onSuccess: async (result: any) => {
-      toast.success(
-        result?.idempotent
-          ? `Idempotent ${action} replayed`
-          : `Wallet ${action === "credit" ? "credited" : "debited"}`,
-      );
+    onSuccess: async () => {
+      toast.success(action === "credit" ? "Cash added to the wallet" : "Cash removed from the wallet");
       setAmount("");
       setDescription("");
       await qc.invalidateQueries({ queryKey: ["admin", "wallet", orgId] });
@@ -291,7 +293,7 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
-                {["Organization", "Type", "Code", "Available", "Pending", "Currency", "Status", "Updated"].map((h) => (
+                {["Organization", "Code", "Available", "Pending", "Status", "Updated"].map((h) => (
                   <th key={h} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                     {h}
                   </th>
@@ -301,7 +303,7 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
             <tbody>
               {filteredWallets.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-14 text-center">
+                  <td colSpan={6} className="px-4 py-14 text-center">
                     <div className="text-sm font-medium text-foreground">No wallets</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {walletsLoading
@@ -325,11 +327,9 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
                     )}
                   >
                     <td className="px-4 py-3 font-medium whitespace-nowrap">{w.organization}</td>
-                    <td className="px-4 py-3 capitalize whitespace-nowrap">{w.orgType}</td>
                     <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">{w.publicCode}</td>
                     <td className="px-4 py-3 whitespace-nowrap tabular-nums">{AED(w.availableBalance)}</td>
                     <td className="px-4 py-3 whitespace-nowrap tabular-nums">{AED(w.pendingBalance ?? w.heldBalance)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{w.currency}</td>
                     <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={w.status} /></td>
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{w.updated}</td>
                   </tr>
@@ -393,15 +393,14 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
                 <div className="text-lg font-semibold mt-0.5">{AED(num(wallet?.usedCredit))}</div>
               </div>
               <div className="sm:col-span-2 text-xs text-muted-foreground">
-                Currency {str(wallet?.currency, "AED")} · Status {str(wallet?.status, "—")}. Credit
-                requests stay under the Credit requests tab only (no month expiry, no platform ledger).
+                Cash in this wallet is separate from the credit limit. Approve a credit request on the Credit requests tab to raise the limit.
               </div>
             </div>
           )}
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-4">
-          <h2 className="font-display font-semibold">Adjust balance</h2>
+          <h2 className="font-display font-semibold">Add or remove cash</h2>
           <div>
             <FieldLabel required className="text-muted-foreground">Action</FieldLabel>
             <Select value={action} onValueChange={(v) => setAction(v as "credit" | "debit")}>
@@ -409,8 +408,8 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="credit">Credit</SelectItem>
-                <SelectItem value="debit">Debit</SelectItem>
+                <SelectItem value="credit">Add cash</SelectItem>
+                <SelectItem value="debit">Remove cash</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -427,22 +426,13 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
             />
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Description</Label>
+            <Label className="text-xs text-muted-foreground">Note</Label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="mt-1"
-              placeholder="Optional note for the ledger entry"
+              placeholder="Why this cash is being added or removed"
               rows={3}
-            />
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">Idempotency key</Label>
-            <Input
-              value={idempotencyKey}
-              onChange={(e) => setIdempotencyKey(e.target.value)}
-              className="mt-1 font-mono text-xs"
-              placeholder="Optional unique key"
             />
           </div>
           <div className="flex justify-end">
@@ -451,10 +441,10 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
               onClick={() => mutate.mutate()}
             >
               {mutate.isPending
-                ? "Submitting…"
+                ? "Saving…"
                 : action === "credit"
-                  ? "Credit wallet"
-                  : "Debit wallet"}
+                  ? "Add cash"
+                  : "Remove cash"}
             </Button>
           </div>
         </div>
@@ -473,7 +463,7 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
-                {["Date", "Type", "Amount", "Balance before", "Balance after", "Order", "Reference", "Description", "Status"].map((h) => (
+                {["Date", "Type", "Amount", "Balance before", "Balance after", "Order", "Description", "Status"].map((h) => (
                   <th key={h} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                     {h}
                   </th>
@@ -483,7 +473,7 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
             <tbody>
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-14 text-center">
+                  <td colSpan={8} className="px-4 py-14 text-center">
                     <div className="text-sm font-medium text-foreground">No transactions</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       {!orgId
@@ -501,7 +491,10 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
                   <tr key={t.id} className="border-b border-border last:border-0 hover:bg-primary/[0.04] transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{t.createdAt}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <StatusBadge status={t.type} tone={TX_TONES[t.type] ?? "default"} />
+                      <StatusBadge
+                        status={t.type === "credit" ? "Cash in" : t.type === "debit" ? "Cash out" : t.type}
+                        tone={TX_TONES[t.type] ?? "default"}
+                      />
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">{AED(t.amount)}</td>
                     <td className="px-4 py-3 whitespace-nowrap tabular-nums text-muted-foreground">
@@ -510,11 +503,6 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
                     <td className="px-4 py-3 whitespace-nowrap tabular-nums">{AED(t.balanceAfter)}</td>
                     <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">
                       {t.orderNumber || "—"}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="font-mono text-xs inline-block max-w-[220px] truncate align-middle" title={t.reference}>
-                        {t.reference}
-                      </span>
                     </td>
                     <td className="px-4 py-3 max-w-[280px] truncate" title={t.description}>{t.description}</td>
                     <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={t.status} /></td>
@@ -589,27 +577,31 @@ function walletRequestStatusLabel(status: string) {
   }
 }
 
-function CreditRequestsPanel() {
+function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }) {
   const qc = useQueryClient();
   const [status, setStatus] = useState("all");
+  const [review, setReview] = useState<WalletCreditRequestRow | null>(null);
+  const [reason, setReason] = useState("");
   const [decision, setDecision] = useState<{
     title: string;
     message: string;
     time: string;
   } | null>(null);
+  const isCredit = kind === "credit_limit";
   const list = usePagedList<WalletCreditRequestRow>({
-    queryKey: ["admin", "wallet-credit-requests", status],
+    queryKey: ["admin", "wallet-credit-requests", kind, status],
     path: "/admin/wallets/credit-requests",
-    query: status === "all" ? undefined : { status },
+    query: { category: kind, ...(status === "all" ? {} : { status }) },
     load: ({ page, pageSize, search }) =>
       fetchAdminWalletCreditRequests({
+        category: kind,
         status: status === "all" ? undefined : status,
         search: search || undefined,
         page,
         limit: pageSize,
       }),
   });
-  const rows = list.rows;
+  const rows = list.rows.filter((row) => row.kind === kind);
 
   const patchRequestStatus = (ticketId: string, next: string) => {
     qc.setQueriesData(
@@ -632,49 +624,51 @@ function CreditRequestsPanel() {
     mutationFn: (row: WalletCreditRequestRow) => acceptWalletCreditRequest(row.id),
     onSuccess: async (_data, row) => {
       const time = formatDecisionTime();
-      const kind = row.kind === "credit_limit" ? "Credit" : "Funds";
       const amount = row.amount > 0 ? AED(row.amount) : "";
       setDecision({
-        title: `${kind} request accepted`,
-        message: `${row.organization}${amount ? ` · ${amount}` : ""} was approved. The restaurant will see this in Wallet / Credit.`,
+        title: isCredit ? "Credit request approved" : "Wallet request approved",
+        message: isCredit
+          ? `${row.organization}${amount ? ` · ${amount}` : ""} was approved. The limit shows under Credit limits. Cash in Accounts stays the same.`
+          : `${row.organization}${amount ? ` · ${amount}` : ""} was approved. The cash shows under Accounts.`,
         time,
       });
       patchRequestStatus(row.id, "resolved");
+      setReview(null);
+      setReason("");
       await qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
       await qc.invalidateQueries({ queryKey: ["admin", "credit-facilities"] });
     },
-    onError: (err: Error) => toast.error(err.message || "Accept failed"),
+    onError: (err: Error) => toast.error(err.message || "Approve failed"),
   });
 
   const rejectM = useMutation({
-    mutationFn: (row: WalletCreditRequestRow) => {
-      const reason = window.prompt("Reject reason (optional)") ?? undefined;
-      return rejectWalletCreditRequest(row.id, reason);
-    },
+    mutationFn: (row: WalletCreditRequestRow) => rejectWalletCreditRequest(row.id, reason),
     onSuccess: async (_data, row) => {
       const time = formatDecisionTime();
-      const kind = row.kind === "credit_limit" ? "Credit" : "Funds";
       const amount = row.amount > 0 ? AED(row.amount) : "";
       setDecision({
-        title: `${kind} request rejected`,
+        title: isCredit ? "Credit request rejected" : "Wallet request rejected",
         message: `${row.organization}${amount ? ` · ${amount}` : ""} was not approved.`,
         time,
       });
       patchRequestStatus(row.id, "closed");
+      setReview(null);
+      setReason("");
       await qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
     },
     onError: (err: Error) => toast.error(err.message || "Reject failed"),
   });
 
   const busy = acceptM.isPending || rejectM.isPending;
+  const reviewOpen =
+    review?.status === "open" || review?.status === "in_progress" || review?.status === "waiting";
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Funds requests add cash to the restaurant wallet (shows under Balances). Credit requests only
-        raise the credit facility and create a repayment invoice — they do not post to Balances or
-        Platform wallet, and have no week/month expiry. After accept, track repayments under{" "}
-        <span className="font-medium text-foreground">Credit facility</span>.
+        {isCredit
+          ? "Credit requests raise the restaurant credit limit. They do not add cash to the wallet. After you approve one, the limit shows under Credit limits."
+          : "Wallet requests add cash to the restaurant wallet. After you approve one, the amount shows under Accounts."}
       </p>
       <div className="rounded-xl border border-border bg-card shadow-soft overflow-hidden">
         <div className="p-4 flex flex-wrap gap-2 border-b border-border bg-muted/20">
@@ -704,8 +698,8 @@ function CreditRequestsPanel() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
-                {["Ticket", "Type", "Organization", "Amount", "Subject", "Requester", "Status", "Created", "Actions"].map((h) => (
-                  <th key={h} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                {["Organization", "Amount", "Subject", "Requester", "Status", "Created", ""].map((h) => (
+                  <th key={h || "review"} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                     {h}
                   </th>
                 ))}
@@ -714,58 +708,51 @@ function CreditRequestsPanel() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-14 text-center text-sm text-muted-foreground">
-                    {list.isLoading ? "Loading…" : list.isError ? "Failed to load credit requests." : "No funds or credit requests."}
+                  <td colSpan={7} className="px-4 py-14 text-center text-sm text-muted-foreground">
+                    {list.isLoading
+                      ? "Loading…"
+                      : list.isError
+                        ? "Failed to load requests."
+                        : isCredit
+                          ? "No credit requests."
+                          : "No wallet requests."}
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => {
-                  const actionable = r.status === "open" || r.status === "in_progress" || r.status === "waiting";
-                  const statusLabel = walletRequestStatusLabel(r.status);
-                  return (
-                    <tr key={r.id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">{r.number}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-xs">
-                        {r.kind === "credit_limit" ? "Credit" : "Funds"}
-                      </td>
-                      <td className="px-4 py-3 font-medium whitespace-nowrap">{r.organization}</td>
-                      <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">
-                        {r.amount > 0 ? AED(r.amount) : "—"}
-                      </td>
-                      <td className="px-4 py-3 max-w-[240px] truncate" title={r.subject}>{r.subject}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{r.requester}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <StatusBadge status={statusLabel} />
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{r.createdAt}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {actionable ? (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              className="h-8"
-                              disabled={busy}
-                              onClick={() => acceptM.mutate(r)}
-                            >
-                              Accept
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8"
-                              disabled={busy}
-                              onClick={() => rejectM.mutate(r)}
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
+                rows.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="border-b border-border last:border-0 cursor-pointer hover:bg-primary/[0.04]"
+                    onClick={() => {
+                      setReason("");
+                      setReview(r);
+                    }}
+                  >
+                    <td className="px-4 py-3 font-medium whitespace-nowrap">{r.organization}</td>
+                    <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">
+                      {r.amount > 0 ? AED(r.amount) : "—"}
+                    </td>
+                    <td className="px-4 py-3 max-w-[240px] truncate" title={r.subject}>{r.subject}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{r.requester}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <StatusBadge status={walletRequestStatusLabel(r.status)} />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{r.createdAt}</td>
+                    <td className="px-4 py-3 whitespace-nowrap" onClick={(event) => event.stopPropagation()}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => {
+                          setReason("");
+                          setReview(r);
+                        }}
+                      >
+                        Review
+                      </Button>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -777,10 +764,82 @@ function CreditRequestsPanel() {
           onPageChange={list.setPage}
         />
       </div>
+
+      <Dialog
+        open={review !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReview(null);
+            setReason("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {isCredit ? "Review credit request" : "Review wallet request"}
+            </DialogTitle>
+            <DialogDescription>
+              {[review?.organization, review?.requester].filter((part) => part && part !== "—").join(" · ")}
+            </DialogDescription>
+          </DialogHeader>
+          {review ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {reviewOpen
+                  ? isCredit
+                    ? "Approving raises the credit limit. It does not add cash to the wallet."
+                    : "Approving adds this cash to the restaurant wallet."
+                  : isCredit
+                    ? "This credit request is already decided."
+                    : "This wallet request is already decided."}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2 text-sm">
+                <div>
+                  <div className="text-xs text-muted-foreground">Amount</div>
+                  <div className="mt-1 font-medium">{review.amount > 0 ? AED(review.amount) : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Status</div>
+                  <div className="mt-1">
+                    <StatusBadge status={walletRequestStatusLabel(review.status)} />
+                  </div>
+                </div>
+                <div className="sm:col-span-2">
+                  <div className="text-xs text-muted-foreground">Subject</div>
+                  <div className="mt-1">{review.subject}</div>
+                </div>
+              </div>
+              {reviewOpen ? (
+                <>
+                  <Textarea
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    placeholder="Reason, optional if you reject"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button disabled={busy} onClick={() => acceptM.mutate(review)}>
+                      {isCredit ? "Approve credit" : "Approve wallet"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      disabled={busy}
+                      onClick={() => rejectM.mutate(review)}
+                    >
+                      {isCredit ? "Reject credit" : "Reject wallet"}
+                    </Button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
       <DecisionResultDialog result={decision} onClose={() => setDecision(null)} />
     </div>
   );
 }
+
 
 function owingStatusLabel(status: CreditFacilityRow["owingStatus"]) {
   switch (status) {
@@ -1312,10 +1371,9 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
           <Wallet className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-display font-semibold tracking-tight">Wallet Management</h1>
+          <h1 className="text-2xl font-display font-semibold tracking-tight">Wallets</h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Restaurant wallets only — review ledgers and credit or debit balances
-            (idempotent when a key is provided).
+            Add or take money from restaurant wallets, and review credit and wallet requests.
           </p>
         </div>
       </div>
@@ -1324,15 +1382,19 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
         <TabsList>
           <TabsTrigger value="balances">
             <List />
-            Balances
+            Accounts
           </TabsTrigger>
           <TabsTrigger value="credit-requests">
             <FileText />
             Credit requests
           </TabsTrigger>
+          <TabsTrigger value="wallet-requests">
+            <Wallet />
+            Wallet requests
+          </TabsTrigger>
           <TabsTrigger value="credit-facility">
             <CircleDollarSign />
-            Credit facility
+            Credit limits
           </TabsTrigger>
           <TabsTrigger value="withdrawals">
             <Landmark />
@@ -1344,7 +1406,7 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
           </TabsTrigger>
           <TabsTrigger value="platform">
             <Landmark />
-            Platform wallet
+            ScopsK account
           </TabsTrigger>
         </TabsList>
 
@@ -1352,7 +1414,10 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
           <BalancesPanel orgTypeFilter="restaurant" />
         </TabsContent>
         <TabsContent value="credit-requests" className="mt-0">
-          <CreditRequestsPanel />
+          <CreditRequestsPanel kind="credit_limit" />
+        </TabsContent>
+        <TabsContent value="wallet-requests" className="mt-0">
+          <CreditRequestsPanel kind="wallet_topup" />
         </TabsContent>
         <TabsContent value="credit-facility" className="mt-0">
           <CreditFacilityPanel />

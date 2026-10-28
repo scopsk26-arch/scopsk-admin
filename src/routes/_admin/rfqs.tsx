@@ -9,7 +9,7 @@ import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
 export const Route = createFileRoute("/_admin/rfqs")({
-  head: () => ({ meta: [{ title: "RFQs — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Quote requests — ScopsK" }] }),
   component: RfqsPage,
 });
 
@@ -77,8 +77,8 @@ function RfqsPage() {
 
   return (
     <DataPage
-      title="Requests for Quotation"
-      description="Live RFQs across categories with quotation counts."
+      title="Quote requests"
+      description="Open quote requests from restaurants."
       icon={<FileText className="h-5 w-5 text-primary" />}
       exportExcludeKeys={["budget", "estimatedBudget"]}
       lookups={{
@@ -109,13 +109,12 @@ function RfqsPage() {
         },
       ]}
       viewFields={[
-        { key: "number", label: "RFQ #" },
+        { key: "number", label: "RFQ request" },
         { key: "title", label: "Title" },
         { key: "restaurant", label: "Restaurant" },
         { key: "category", label: "Visibility" },
         { key: "quantity", label: "Quantity" },
         { key: "itemCount", label: "Line items" },
-        { key: "quotations", label: "Quotations" },
         { key: "deliveryDate", label: "Delivery date" },
         { key: "created", label: "Created" },
         { key: "creator", label: "Creator" },
@@ -124,26 +123,15 @@ function RfqsPage() {
       loadDetail={async (row) => fetchRfqDetail(row.id)}
       renderView={(detail) => <RfqDetailView detail={detail} />}
       kpis={[
-        { label: "Active RFQs", value: String(open), tone: "info" },
-        { label: "Total RFQs", value: String(list.total) },
-        {
-          label: "Avg. responses",
-          value: rows.length
-            ? (rows.reduce((s, r) => s + r.quotations, 0) / rows.length).toFixed(1)
-            : "0",
-        },
-        {
-          label: "With quotes",
-          value: String(rows.filter((r) => r.quotations > 0).length),
-          tone: "success",
-        },
+        { label: "Open requests", value: String(open), tone: "info" },
+        { label: "Total requests", value: String(list.total) },
       ]}
       rows={rows}
       serverPagination={pagedListProps(list)}
       searchKeys={["number", "restaurant", "category", "title"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load RFQs." : "No RFQs found."}
       columns={[
-        { key: "number", label: "RFQ", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
+        { key: "number", label: "RFQ request", className: "font-mono text-xs whitespace-nowrap w-[1%]" },
         {
           key: "restaurant",
           label: "Restaurant",
@@ -160,7 +148,6 @@ function RfqsPage() {
         },
         { key: "category", label: "Visibility", className: "whitespace-nowrap w-[1%]" },
         { key: "quantity", label: "Quantity", className: "whitespace-nowrap w-[1%]" },
-        { key: "quotations", label: "Quotes", className: "whitespace-nowrap w-[1%]" },
         { key: "created", label: "Created", className: "whitespace-nowrap w-[1%]" },
         {
           key: "status",

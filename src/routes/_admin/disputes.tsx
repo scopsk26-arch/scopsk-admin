@@ -98,7 +98,7 @@ function DisputesPage() {
   return (
     <DataPage
       title="Disputes"
-      description="A restaurant raises a dispute on an order. The supplier replies in the app. Review it here, then set the result the restaurant and supplier both see."
+      description="A restaurant disputed an order. Review both sides, then set the result they both see."
       icon={<Scale className="h-5 w-5 text-primary" />}
       formFields={[
         {

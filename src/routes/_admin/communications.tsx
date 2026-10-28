@@ -25,7 +25,7 @@ function CommunicationsPage() {
   return (
     <DataPage
       title="Communications"
-      description="In-app, email, SMS and push messages across the marketplace."
+      description="Messages sent in the app, email, SMS, and push."
       icon={<MessageSquare className="h-5 w-5 text-primary" />}
       disableCrud
       viewFields={[

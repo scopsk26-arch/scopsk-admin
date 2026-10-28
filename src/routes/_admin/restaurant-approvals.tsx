@@ -3,16 +3,16 @@ import { Store } from "lucide-react";
 import { OrgApprovalsPage } from "@/components/admin/OrgApprovalsPage";
 
 export const Route = createFileRoute("/_admin/restaurant-approvals")({
-  head: () => ({ meta: [{ title: "Restaurant Approvals — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Account review — ScopsK" }] }),
   component: RestaurantApprovalsRoute,
 });
 
 function RestaurantApprovalsRoute() {
   return (
     <OrgApprovalsPage
-      type="restaurant"
-      title="Restaurant Approvals"
-      description="Pending restaurant onboarding queue — approve, reject, activate or deactivate with a reason."
+      type="both"
+      title="Account review"
+      description="Check KYC, then the account. If they asked for credit, check that request too."
       icon={Store}
     />
   );

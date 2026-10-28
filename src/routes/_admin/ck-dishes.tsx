@@ -418,7 +418,7 @@ function CkDishesPage() {
 
       <DataPage
         title="Cloud Kitchen Dishes"
-        description="Add dishes one by one. Kitchen is assigned automatically. Upload images in Media Library, then paste the CDN URL here (or upload in the Image field)."
+        description="Add dishes one by one. Upload a photo in Files, then paste the link here."
         icon={<Soup className="h-5 w-5 text-primary" />}
         entityName="Dish"
         idKey="id"

@@ -55,8 +55,8 @@ function AiCenterPage() {
 
   return (
     <DataPage
-      title="AI Control Center"
-      description="Rule-based heuristics (not trained ML). Scores from /ai/* endpoints with honest confidence labels."
+      title="Risk scores"
+      description="Automated scores for marketplace activity."
       disableCrud
       icon={<Brain className="h-5 w-5 text-primary" />}
       viewFields={[

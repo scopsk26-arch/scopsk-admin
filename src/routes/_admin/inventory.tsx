@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_admin/inventory")({
-  head: () => ({ meta: [{ title: "Restaurant Inventory — ScopsK" }] }),
+  head: () => ({ meta: [{ title: "Stock — ScopsK" }] }),
   component: InventoryPage,
 });
 
@@ -71,8 +71,8 @@ function InventoryPage() {
 
   return (
     <DataPage
-      title="Restaurant Inventory"
-      description="Monitor stock levels for a selected restaurant organization."
+      title="Stock"
+      description="Stock levels for a restaurant."
       icon={<Warehouse className="h-5 w-5 text-primary" />}
       entityName="Inventory item"
       disableCrud
