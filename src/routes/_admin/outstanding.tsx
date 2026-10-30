@@ -46,7 +46,7 @@ function OutstandingPage() {
   return (
     <DataPage
       title="Unpaid invoices"
-      description="Issued, overdue, and paid amounts by invoice."
+      description="Bills that are not paid yet."
       icon={<Landmark className="h-5 w-5 text-primary" />}
       disableCrud
       entityName="Outstanding"

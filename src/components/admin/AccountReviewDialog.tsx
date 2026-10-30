@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
   fetchOrganizationDetail,
   mapOrgRow,
   rejectWalletCreditRequest,
+  reviewKycDocument,
   updateOrgSettings,
   updateOrganization,
   type WalletCreditRequestRow,
@@ -59,6 +61,15 @@ type Snapshot = {
   purchasingTerms: string;
   sellingTerms: string;
   ticket: WalletCreditRequestRow | null;
+  documents: KycDoc[];
+};
+
+type KycDoc = {
+  id: string;
+  type: string;
+  fileName: string;
+  url: string;
+  status: string;
 };
 
 function errMsg(err: unknown) {
@@ -112,6 +123,16 @@ export function hasPendingCredit(row: AccountReviewRow, ticket?: WalletCreditReq
   const live = Number(row.creditLimit) || 0;
   const decision = String(row.creditRequestStatus || "").toLowerCase();
   return requested > 0 && live <= 0 && decision !== "approved" && decision !== "rejected";
+}
+
+export function needsAccountReview(row: AccountReviewRow & { documents?: { status?: string }[] }): boolean {
+  const waiting = accountWaitingOn(row);
+  if (waiting === "KYC" || waiting === "Account" || waiting === "Credit request") return true;
+  const docs = Array.isArray(row.documents) ? row.documents : [];
+  return docs.some((doc) => {
+    const status = String(doc?.status || "pending").toLowerCase();
+    return status === "pending" || status === "rejected";
+  });
 }
 
 export function accountWaitingOn(row: AccountReviewRow): string {
@@ -176,7 +197,23 @@ async function loadSnapshot(id: string, fallbackType: "restaurant" | "supplier")
     purchasingTerms: String(row.purchasingTerms || ""),
     sellingTerms: String(row.sellingTerms || ""),
     ticket,
+    documents: kycDocs(detail),
   };
+}
+
+function kycDocs(detail: any): KycDoc[] {
+  const raw = Array.isArray(detail?.documents)
+    ? detail.documents
+    : Array.isArray(detail?.kycApplication?.documents)
+      ? detail.kycApplication.documents
+      : [];
+  return raw.map((doc: any) => ({
+    id: String(doc.id || ""),
+    type: String(doc.documentType || doc.type || "document").replace(/_/g, " "),
+    fileName: String(doc.fileName || doc.file?.originalName || doc.name || "File"),
+    url: String(doc.url || doc.file?.cdnUrl || doc.file?.url || ""),
+    status: String(doc.status || "pending").toLowerCase(),
+  }));
 }
 
 function Step({
@@ -217,6 +254,71 @@ function Step({
   );
 }
 
+function KycDocList({
+  documents,
+  onChange,
+}: {
+  documents: KycDoc[];
+  onChange: (documents: KycDoc[]) => void;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  if (!documents.length) return null;
+
+  const review = async (id: string, status: "approved" | "rejected") => {
+    let notes: string | undefined;
+    if (status === "rejected") {
+      const reason = window.prompt("Reason for rejecting this document");
+      if (reason == null) return;
+      notes = reason.trim();
+      if (!notes) {
+        toast.error("A reason is required to reject a document");
+        return;
+      }
+    }
+    setBusyId(id);
+    try {
+      await reviewKycDocument(id, status, notes);
+      onChange(documents.map((doc) => (doc.id === id ? { ...doc, status } : doc)));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update the document");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      {documents.map((doc) => {
+        const pending = doc.status !== "approved" && doc.status !== "rejected";
+        return (
+          <div key={doc.id || doc.fileName} className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 last:border-0">
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium capitalize">{doc.type}</div>
+              <div className="truncate text-xs text-muted-foreground">{doc.fileName}</div>
+            </div>
+            <StatusBadge status={doc.status || "pending"} />
+            {doc.url ? (
+              <a href={doc.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                Open
+              </a>
+            ) : null}
+            {pending && doc.id ? (
+              <>
+                <Button type="button" size="sm" className="h-7 px-2" disabled={busyId === doc.id} onClick={() => void review(doc.id, "approved")}>
+                  Approve
+                </Button>
+                <Button type="button" size="sm" variant="destructive" className="h-7 px-2" disabled={busyId === doc.id} onClick={() => void review(doc.id, "rejected")}>
+                  Reject
+                </Button>
+              </>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AccountReviewDialog({
   row,
   open,
@@ -235,6 +337,7 @@ export function AccountReviewDialog({
   const [kycReason, setKycReason] = useState("");
   const [suspendReason, setSuspendReason] = useState("");
   const [creditReason, setCreditReason] = useState("");
+  const [giveAmount, setGiveAmount] = useState("");
 
   useEffect(() => {
     if (!open || !row?.id) return;
@@ -247,7 +350,11 @@ export function AccountReviewDialog({
     const fallback = row.type === "supplier" ? "supplier" : "restaurant";
     loadSnapshot(row.id, fallback)
       .then((next) => {
-        if (!cancelled) setSnap(next);
+        if (!cancelled) {
+          setSnap(next);
+          const asked = next?.ticket?.amount || next?.requestedCreditLimit || 0;
+          setGiveAmount(asked > 0 ? String(asked) : "");
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(errMsg(err));
@@ -292,11 +399,16 @@ export function AccountReviewDialog({
   const kycOpen = OPEN_KYC.has(snap?.kycApplicationStatus.toLowerCase() || "");
   const canApproveKyc = Boolean(snap?.kycApplicationId) && kycOpen && (snap?.documentCount || 0) > 0;
   const askedAmount = snap?.ticket?.amount || snap?.requestedCreditLimit || 0;
+  const docs = snap?.documents ?? [];
+  const docsAllApproved = docs.length > 0 && docs.every((doc) => doc.status === "approved");
+  const docsStillWaiting = docs.some((doc) => doc.status !== "approved");
 
   const waiting = !snap
     ? ""
-    : kyc === "pending"
-      ? "KYC is waiting for a decision. The account stays closed until you approve it."
+    : docsStillWaiting
+      ? "Approve every document before you open the account."
+      : kyc === "pending"
+      ? "KYC is waiting for a decision. Approving KYC does not open the account."
       : kyc === "rejected" || accountStatus === "rejected"
         ? "KYC was rejected, so this account is closed."
         : accountStatus === "pending"
@@ -332,19 +444,20 @@ export function AccountReviewDialog({
             <Step
               index={1}
               title="KYC"
-              state={kyc === "pending" ? "current" : "done"}
+              state={docsStillWaiting || kyc === "pending" ? "current" : "done"}
               summary={
-                kyc === "approved"
-                  ? "KYC is approved. The account can be active."
+                docsStillWaiting
+                  ? "Approve every document. Approve KYC approves any that are still waiting. The account stays closed until then."
                   : kyc === "rejected"
                     ? "KYC is rejected. The account stays closed."
-                    : snap.documentCount > 0
-                      ? `${snap.documentCount} document${snap.documentCount === 1 ? "" : "s"} uploaded. Approving KYC opens the account. Rejecting KYC closes it.`
-                      : "No KYC documents uploaded yet. You can reject the account, or wait for the documents."
+                    : "Every document is approved. Open the account in the next step."
               }
             >
-              <StatusBadge status={kyc === "approved" ? "verified" : kyc === "rejected" ? "rejected" : "pending"} />
-              {kyc === "pending" ? (
+              <KycDocList
+                documents={snap.documents}
+                onChange={(documents) => setSnap({ ...snap, documents })}
+              />
+              {docsStillWaiting || kyc === "pending" ? (
                 <>
                   <Textarea
                     value={kycReason}
@@ -359,16 +472,8 @@ export function AccountReviewDialog({
                           await api.post(`/kyc/applications/${snap.kycApplicationId}/approve`, {
                             notes: kycReason.trim() || undefined,
                           });
-                          let next = await refresh(snap.id, snap.type);
-                          if (String(next.status).toLowerCase() === "pending") {
-                            await api.post(`/organizations/${snap.id}/activate`, {});
-                            next = await refresh(snap.id, snap.type);
-                          }
-                          toast.success(
-                            String(next.status).toLowerCase() === "active"
-                              ? "KYC approved. The account is now active."
-                              : "KYC approved.",
-                          );
+                          await refresh(snap.id, snap.type);
+                          toast.success("KYC approved. Open the account when you are ready.");
                         })
                       }
                     >
@@ -384,11 +489,8 @@ export function AccountReviewDialog({
                           if (snap.kycApplicationId && kycOpen) {
                             await api.post(`/kyc/applications/${snap.kycApplicationId}/reject`, { notes: reason });
                           }
-                          if (String(snap.status).toLowerCase() !== "rejected") {
-                            await api.post(`/organizations/${snap.id}/reject`, { reason });
-                          }
                           await refresh(snap.id, snap.type);
-                          toast.success("KYC rejected. The account is closed.");
+                          toast.success("KYC rejected. The documents are rejected. The account stays closed until you open it.");
                         })
                       }
                     >
@@ -402,10 +504,10 @@ export function AccountReviewDialog({
             <Step
               index={2}
               title="Account"
-              state={kyc !== "approved" ? "locked" : accountStatus === "pending" ? "current" : "done"}
+              state={!docsAllApproved ? "locked" : accountStatus === "pending" ? "current" : "done"}
               summary={
-                kyc !== "approved"
-                  ? "This stays closed until KYC is approved."
+                !docsAllApproved
+                  ? "This stays closed until every document is approved."
                   : accountStatus === "active"
                     ? "The account is active. Suspend it only if it should stop working."
                     : accountStatus === "suspended"
@@ -415,8 +517,7 @@ export function AccountReviewDialog({
                         : "KYC is approved. Open the account."
               }
             >
-              <StatusBadge status={snap.status || "pending"} />
-              {kyc === "approved" && accountStatus === "pending" ? (
+              {docsAllApproved && accountStatus === "pending" ? (
                 <Button
                   disabled={busy !== null}
                   onClick={() =>
@@ -430,7 +531,7 @@ export function AccountReviewDialog({
                   Open account
                 </Button>
               ) : null}
-              {kyc === "approved" && accountStatus === "active" ? (
+              {docsAllApproved && accountStatus === "active" ? (
                 <>
                   <Textarea
                     value={suspendReason}
@@ -454,7 +555,7 @@ export function AccountReviewDialog({
                   </Button>
                 </>
               ) : null}
-              {kyc === "approved" && accountStatus === "suspended" ? (
+              {docsAllApproved && accountStatus === "suspended" ? (
                 <Button
                   disabled={busy !== null}
                   onClick={() =>
@@ -474,10 +575,10 @@ export function AccountReviewDialog({
             <Step
               index={3}
               title="Credit request"
-              state={!accountOpen || kyc !== "approved" ? "locked" : credit === "pending" ? "current" : "done"}
+              state={!docsAllApproved || !accountOpen ? "locked" : credit === "pending" ? "current" : "done"}
               summary={
-                kyc !== "approved" || !accountOpen
-                  ? "Available after KYC is approved and the account is open."
+                !docsAllApproved || !accountOpen
+                  ? "Available after every document is approved and the account is open."
                   : credit === "none"
                     ? "This account did not ask for credit."
                     : credit === "approved"
@@ -489,8 +590,39 @@ export function AccountReviewDialog({
                           }.`
               }
             >
-              {accountOpen && kyc === "approved" && credit === "pending" ? (
+              {accountOpen && docsAllApproved && credit === "pending" ? (
                 <>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Credit to give (AED)</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 w-9 px-0"
+                        onClick={() =>
+                          setGiveAmount((current) => String(Math.max(0, (Number(current) || 0) - 100)))
+                        }
+                      >
+                        −
+                      </Button>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={100}
+                        value={giveAmount}
+                        onChange={(event) => setGiveAmount(event.target.value)}
+                        className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 w-9 px-0"
+                        onClick={() => setGiveAmount((current) => String((Number(current) || 0) + 100))}
+                      >
+                        +
+                      </Button>
+                    </div>
+                  </div>
                   <Textarea
                     value={creditReason}
                     onChange={(event) => setCreditReason(event.target.value)}
@@ -498,13 +630,15 @@ export function AccountReviewDialog({
                   />
                   <div className="flex flex-wrap gap-2">
                     <Button
-                      disabled={busy !== null || askedAmount <= 0}
+                      disabled={busy !== null || !(Number(giveAmount) > 0)}
                       onClick={() =>
                         void run("credit-approve", async () => {
+                          const chosen = Number(giveAmount);
+                          if (!(chosen > 0)) throw new Error("Enter the credit amount to give");
                           if (snap.ticket && creditIsOpen(snap.ticket)) {
-                            await acceptWalletCreditRequest(snap.ticket.id);
+                            await acceptWalletCreditRequest(snap.ticket.id, chosen);
                           } else {
-                            await updateOrgSettings(snap.id, { creditLimit: askedAmount });
+                            await updateOrgSettings(snap.id, { creditLimit: chosen });
                             await updateOrganization(
                               snap.id,
                               { creditRequestStatus: "approved" },

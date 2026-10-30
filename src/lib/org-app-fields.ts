@@ -51,6 +51,18 @@ export const WEEKDAY_OPTIONS = [
 
 export const PAYMENT_TERM_OPTIONS = ["cash_only", "credit_only", "cash_or_credit"];
 
+/** Supplier signup only asks whether they offer credit. Older accounts may still be credit_only. */
+export const SUPPLIER_SELLING_TERM_OPTIONS = [
+  { value: "cash_only", label: "Cash on Delivery" },
+  { value: "credit_only", label: "Credit Terms" },
+  { value: "cash_or_credit", label: "Both Cash & Credit" },
+];
+
+export function supplierSellingTermsLabel(value: unknown): string {
+  const key = String(value || "").toLowerCase();
+  return SUPPLIER_SELLING_TERM_OPTIONS.find((option) => option.value === key)?.label || "—";
+}
+
 export function areaOptions() {
   return DUBAI_AREAS.map((value) => ({ value, label: value }));
 }

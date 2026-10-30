@@ -399,9 +399,7 @@ export async function updateOrgProfile(
   ] as const;
   const payload: Record<string, string> = {};
   for (const key of keys) {
-    if (data[key] != null && String(data[key]).trim() !== "") {
-      payload[key] = String(data[key]).trim();
-    }
+    if (data[key] != null) payload[key] = String(data[key]).trim();
   }
   if (!Object.keys(payload).length) return null;
   return api.patch(`/organizations/${organizationId}/profile`, payload);
@@ -534,6 +532,38 @@ export type PagedRows = {
   page: number;
   pageSize: number;
 };
+
+/** Counts every KYC application and every document still waiting, not just one table page. */
+export async function fetchKycWaitingCounts() {
+  const pageSize = 100;
+  let page = 1;
+  let total = 0;
+  let pendingApplications = 0;
+  let approvedApplications = 0;
+  let waitingDocuments = 0;
+  do {
+    const fetched = await fetchPage("/kyc/applications", {
+      page,
+      limit: pageSize,
+      sortBy: "createdAt",
+      sortOrder: "DESC",
+    });
+    total = fetched.total;
+    for (const r of fetched.rows) {
+      const status = String(r.status || "pending").toLowerCase();
+      if (status === "approved") approvedApplications += 1;
+      else if (status !== "rejected") pendingApplications += 1;
+      const docs = Array.isArray(r.documents) ? r.documents : [];
+      for (const doc of docs) {
+        const docStatus = String(doc?.status || "pending").toLowerCase();
+        if (docStatus !== "approved" && docStatus !== "rejected") waitingDocuments += 1;
+      }
+    }
+    if (!fetched.rows.length) break;
+    page += 1;
+  } while ((page - 1) * pageSize < total && page <= 20);
+  return { total, pendingApplications, approvedApplications, waitingDocuments };
+}
 
 /** One page from a list endpoint. Sends page, limit, and search. */
 export async function fetchPage(
@@ -1005,6 +1035,62 @@ export async function fetchPendingOrganizations(type: "restaurant" | "supplier")
   return list
     .filter((r: any) => !r.type || r.type === type)
     .map((r: any) => mapOrgRow(r, type));
+}
+
+/** Same rows as Account review: pending accounts plus open credit requests. */
+export async function fetchAccountReviewQueue(type: "restaurant" | "supplier" | "both" = "both") {
+  const pending =
+    type !== "both"
+      ? await fetchPendingOrganizations(type)
+      : (
+          await Promise.all([
+            fetchPendingOrganizations("restaurant"),
+            fetchPendingOrganizations("supplier"),
+          ])
+        ).flat();
+  const known = new Set(pending.map((row) => row.id));
+  let openCreditIds: string[] = [];
+  try {
+    const credit = await fetchAdminWalletCreditRequests({ category: "credit_limit", limit: 100 });
+    openCreditIds = [
+      ...new Set(
+        credit.rows
+          .filter((item) => {
+            const status = String(item.status || "").toLowerCase();
+            return (
+              item.kind === "credit_limit" &&
+              item.organizationId &&
+              status !== "resolved" &&
+              status !== "closed"
+            );
+          })
+          .map((item) => item.organizationId),
+      ),
+    ];
+  } catch {
+    openCreditIds = [];
+  }
+  const extras = (
+    await Promise.all(
+      openCreditIds
+        .filter((id) => !known.has(id))
+        .map(async (id) => {
+          try {
+            const detail = await fetchOrganizationDetail(id);
+            const orgType = detail?.type === "supplier" ? "supplier" : "restaurant";
+            if (type !== "both" && orgType !== type) return null;
+            return { ...mapOrgRow(detail, orgType), openCredit: true as const };
+          } catch {
+            return null;
+          }
+        }),
+    )
+  ).filter((row): row is NonNullable<typeof row> => Boolean(row));
+  const withCredit = new Set(openCreditIds);
+  return [
+    ...pending.map((row) => ({ ...row, openCredit: withCredit.has(row.id) })),
+    ...extras,
+  ];
 }
 
 export async function approveOrganization(id: string, reason?: string) {
@@ -1552,8 +1638,10 @@ export async function fetchAdminWalletCreditRequests(query?: {
   };
 }
 
-export async function acceptWalletCreditRequest(ticketId: string) {
-  return api.post(`/admin/wallets/credit-requests/${ticketId}/accept`, {});
+export async function acceptWalletCreditRequest(ticketId: string, amount?: number) {
+  return api.post(`/admin/wallets/credit-requests/${ticketId}/accept`, {
+    ...(amount != null && Number.isFinite(amount) ? { amount } : {}),
+  });
 }
 
 export async function rejectWalletCreditRequest(ticketId: string, reason?: string) {

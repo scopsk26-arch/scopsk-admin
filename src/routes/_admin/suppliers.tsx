@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, AED } from "@/components/admin/DataPage";
 import { OrganizationDetailView } from "@/components/admin/DetailViews";
 import { TagListDropdown } from "@/components/admin/TagListDropdown";
+import { AccountReviewDialog, needsAccountReview, type AccountReviewRow } from "@/components/admin/AccountReviewDialog";
 import { Truck } from "lucide-react";
 import {
   deleteOrganization,
@@ -16,11 +17,13 @@ import {
   updateOrgSettings,
 } from "@/lib/api/resources";
 import {
-  PAYMENT_TERM_OPTIONS,
+  SUPPLIER_SELLING_TERM_OPTIONS,
+  supplierSellingTermsLabel,
   WEEKDAY_OPTIONS,
   areaOptions,
   categoryOptions,
 } from "@/lib/org-app-fields";
+import { api, asArray } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/suppliers")({
   head: () => ({ meta: [{ title: "Suppliers — ScopsK" }] }),
@@ -43,6 +46,7 @@ function SuppliersPage() {
     [],
   );
   const queryClient = useQueryClient();
+  const [review, setReview] = useState<AccountReviewRow | null>(null);
 
   const list = usePagedList({
     queryKey: ["organizations", "supplier"],
@@ -50,7 +54,19 @@ function SuppliersPage() {
     query: { type: "supplier" },
     map: (row) => mapOrgRow(row, "supplier"),
   });
-  const rows = list.rows;
+  const { data: platformSettings = [] } = useQuery({
+    queryKey: ["admin", "settings"],
+    queryFn: async () => asArray(await api.get("/admin/settings", { query: { scope: "platform" } })),
+  });
+  const platformMinRfq = useMemo(() => {
+    const row = platformSettings.find((s: { key?: string }) => s.key === "min_rfq_value_aed");
+    const raw = row?.value;
+    const n = Number(raw && typeof raw === "object" && "value" in raw ? raw.value : raw);
+    return Number.isFinite(n) ? n : null;
+  }, [platformSettings]);
+  const rows = list.rows.map((row) =>
+    platformMinRfq == null ? row : { ...row, minRfqValueAed: platformMinRfq },
+  );
   const isLoading = list.isLoading;
   const isError = list.isError;
 
@@ -61,6 +77,7 @@ function SuppliersPage() {
     : 0;
 
   return (
+    <>
     <DataPage
       title="Suppliers"
       description="Review supplier accounts, categories, coverage, and how they get paid."
@@ -69,6 +86,7 @@ function SuppliersPage() {
       lookups={lookups}
       formFields={[
         { key: "name", label: "Company name", required: true, type: "text" },
+        { key: "legalName", label: "Legal name", type: "text" },
         { key: "ownerName", label: "Owner name", type: "text" },
         {
           key: "email",
@@ -76,6 +94,7 @@ function SuppliersPage() {
           required: true,
           type: "text",
           placeholder: "ops@supplier.com",
+          lockedOnEdit: true,
         },
         { key: "phone", label: "Mobile number", type: "text" },
         {
@@ -109,24 +128,18 @@ function SuppliersPage() {
         },
         {
           key: "sellingTerms",
-          label: "How they get paid",
-          type: "select",
-          options: PAYMENT_TERM_OPTIONS,
+          label: "Payment method",
+          type: "searchable",
+          selectOptions: SUPPLIER_SELLING_TERM_OPTIONS,
+          placeholder: "Cash on Delivery, Credit Terms, or Both",
         },
-        { key: "requestedCreditLimit", label: "Credit offered (AED)", type: "number", min: 0 },
+        { key: "requestedCreditLimit", label: "Requested credit (AED)", type: "number", min: 0 },
         { key: "paymentTermsDays", label: "Credit duration (days)", type: "number", min: 0 },
         { key: "bankName", label: "Bank name", type: "text" },
         { key: "bankAccountName", label: "Account holder", type: "text" },
         { key: "bankAccountNumber", label: "Account number", type: "text" },
         { key: "bankIban", label: "IBAN", type: "text" },
-        { key: "poApprovalLevels", label: "PO approval levels", type: "number" },
-        { key: "minRfqValueAed", label: "Min RFQ value (AED)", type: "number" },
-        {
-          key: "rfqIntakeMode",
-          label: "RFQ intake mode",
-          type: "select",
-          options: ["manual", "auto"],
-        },
+        { key: "minRfqValueAed", label: "Min RFQ value (AED)", type: "readonly" },
         {
           key: "status",
           label: "Status",
@@ -159,6 +172,11 @@ function SuppliersPage() {
         if (openId) void navigate({ to: "/suppliers", search: {} });
       }}
       renderView={(detail, row) => <OrganizationDetailView detail={detail} row={row} />}
+      onRowClick={(row) => {
+        if (!needsAccountReview(row)) return false;
+        setReview(row as AccountReviewRow);
+        return true;
+      }}
       kpis={[
         { label: "Total suppliers", value: String(list.total) },
         { label: "Verified", value: String(verified), tone: "success" },
@@ -214,19 +232,13 @@ function SuppliersPage() {
         { key: "dubaiArea", label: "Area" },
         {
           key: "sellingTerms",
-          label: "Selling terms",
+          label: "Payment method",
           className: "whitespace-nowrap",
-          render: (r) => {
-            const key = String(r.sellingTerms || "").toLowerCase();
-            if (key === "cash_only") return "Cash";
-            if (key === "credit_only") return "Credit";
-            if (key === "cash_or_credit") return "Cash & credit";
-            return "—";
-          },
+          render: (r) => supplierSellingTermsLabel(r.sellingTerms),
         },
         {
           key: "requestedCreditLimit",
-          label: "Credit offered",
+          label: "Requested credit",
           render: (r) =>
             r.requestedCreditLimit > 0 ? (
               <span>
@@ -239,7 +251,6 @@ function SuppliersPage() {
               "—"
             ),
         },
-        { key: "poApprovalLevels", label: "PO levels" },
         { key: "minRfqValueAed", label: "Min RFQ", render: (r) => AED(r.minRfqValueAed) },
         {
           key: "rfqIntakeMode",
@@ -256,9 +267,12 @@ function SuppliersPage() {
         if (!data.name?.trim()) throw new Error("Supplier name is required");
         const updated = await updateOrganization(id, data, "supplier");
         await updateOrgSettings(id, {
-          poApprovalLevels: data.poApprovalLevels,
-          minRfqValueAed: data.minRfqValueAed,
-          rfqIntakeMode: data.rfqIntakeMode,
+          ...(data.poApprovalLevels != null && data.poApprovalLevels !== ""
+            ? { poApprovalLevels: data.poApprovalLevels }
+            : {}),
+          ...(data.rfqIntakeMode
+            ? { rfqIntakeMode: data.rfqIntakeMode }
+            : {}),
           paymentTermsDays: data.paymentTermsDays,
           metadata: {
             sellingTerms: data.sellingTerms,
@@ -272,7 +286,7 @@ function SuppliersPage() {
           ...updated,
           ...data,
           poApprovalLevels: Number(data.poApprovalLevels ?? updated.poApprovalLevels),
-          minRfqValueAed: Number(data.minRfqValueAed ?? updated.minRfqValueAed),
+          minRfqValueAed: platformMinRfq ?? Number(updated.minRfqValueAed ?? 0),
           rfqIntakeMode: String(data.rfqIntakeMode ?? updated.rfqIntakeMode ?? "manual"),
         };
       }}
@@ -281,5 +295,16 @@ function SuppliersPage() {
         await queryClient.invalidateQueries({ queryKey: ["organizations", "supplier"] });
       }}
     />
+    <AccountReviewDialog
+      row={review}
+      open={review !== null}
+      onOpenChange={(next) => {
+        if (!next) setReview(null);
+      }}
+      onUpdated={() => {
+        void queryClient.invalidateQueries({ queryKey: ["organizations", "supplier"] });
+      }}
+    />
+    </>
   );
 }

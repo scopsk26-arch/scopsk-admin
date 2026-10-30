@@ -8,12 +8,7 @@ import {
   type AccountReviewRow,
 } from "@/components/admin/AccountReviewDialog";
 import type { LucideIcon } from "lucide-react";
-import {
-  fetchAdminWalletCreditRequests,
-  fetchOrganizationDetail,
-  fetchPendingOrganizations,
-  mapOrgRow,
-} from "@/lib/api/resources";
+import { fetchAccountReviewQueue, fetchOrganizationDetail } from "@/lib/api/resources";
 
 type OrgApprovalsPageProps = {
   type: "restaurant" | "supplier" | "both";
@@ -31,60 +26,7 @@ export function OrgApprovalsPage({ type, title, description, icon: Icon }: OrgAp
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey,
     staleTime: 30_000,
-    queryFn: async () => {
-      const pending =
-        type !== "both"
-          ? await fetchPendingOrganizations(type)
-          : (
-              await Promise.all([
-                fetchPendingOrganizations("restaurant"),
-                fetchPendingOrganizations("supplier"),
-              ])
-            ).flat();
-      const known = new Set(pending.map((row) => row.id));
-      let openCreditIds: string[] = [];
-      try {
-        const credit = await fetchAdminWalletCreditRequests({ category: "credit_limit", limit: 100 });
-        openCreditIds = [
-          ...new Set(
-            credit.rows
-              .filter((item) => {
-                const status = String(item.status || "").toLowerCase();
-                return (
-                  item.kind === "credit_limit" &&
-                  item.organizationId &&
-                  status !== "resolved" &&
-                  status !== "closed"
-                );
-              })
-              .map((item) => item.organizationId),
-          ),
-        ];
-      } catch {
-        openCreditIds = [];
-      }
-      const extras = (
-        await Promise.all(
-          openCreditIds
-            .filter((id) => !known.has(id))
-            .map(async (id) => {
-              try {
-                const detail = await fetchOrganizationDetail(id);
-                const orgType = detail?.type === "supplier" ? "supplier" : "restaurant";
-                if (type !== "both" && orgType !== type) return null;
-                return { ...mapOrgRow(detail, orgType), openCredit: true as const };
-              } catch {
-                return null;
-              }
-            }),
-        )
-      ).filter((row): row is NonNullable<typeof row> => Boolean(row));
-      const withCredit = new Set(openCreditIds);
-      return [
-        ...pending.map((row) => ({ ...row, openCredit: withCredit.has(row.id) })),
-        ...extras,
-      ];
-    },
+    queryFn: () => fetchAccountReviewQueue(type),
   });
 
   const pendingKyc = rows.filter((r) => accountWaitingOn(r) === "KYC").length;

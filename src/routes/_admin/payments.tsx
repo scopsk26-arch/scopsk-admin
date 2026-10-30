@@ -62,7 +62,7 @@ function PaymentsPage() {
   return (
     <DataPage
       title="Payments"
-      description="Money received. Mark invoices paid from the Invoices page."
+      description="Money that has already moved."
       disableCrud
       icon={<CreditCard className="h-5 w-5 text-primary" />}
       viewFields={[

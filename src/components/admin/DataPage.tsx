@@ -64,6 +64,8 @@ export type FormField = {
   allowClear?: boolean;
   /** Show red * and block submit when empty. */
   required?: boolean;
+  /** Shown, but not editable, when updating an existing record. */
+  lockedOnEdit?: boolean;
   /** Minimum value for number inputs (HTML min + clamp on change). */
   min?: number;
   /** Maximum value for number inputs. */
@@ -365,6 +367,11 @@ export function DataPage<T extends Record<string, any>>({
     setViewing(null);
     setViewDetail(null);
     setViewLoading(false);
+  };
+
+  const openRow = (row: T) => {
+    if (onRowClick && onRowClick(row) !== false) return;
+    if (canView) void openView(row);
   };
 
   const openedIdRef = useRef<string>("");
@@ -699,10 +706,7 @@ export function DataPage<T extends Record<string, any>>({
                       (canView || onRowClick) && "cursor-pointer",
                       rowClassName?.(row),
                     )}
-                    onClick={() => {
-                      if (onRowClick && onRowClick(row) !== false) return;
-                      if (canView) void openView(row);
-                    }}
+                    onClick={() => openRow(row)}
                   >
                     {columns.map((c) => {
                       const isStatus = String(c.key) === "status";
@@ -1138,14 +1142,14 @@ function RecordDialog({
                       disabled={saving}
                       placeholder={f.placeholder}
                     />
-                  ) : f.type === "readonly" ? (
+                  ) : f.type === "readonly" || (isEdit && f.lockedOnEdit) ? (
                     <Input
                       id={f.key}
                       value={form[f.key] ? String(form[f.key]) : ""}
-                      placeholder={f.placeholder ?? "Auto-generated"}
+                      placeholder={f.placeholder ?? (f.lockedOnEdit ? "" : "Auto-generated")}
                       readOnly
                       disabled
-                      className="mt-1 font-mono text-xs bg-muted/40"
+                      className="mt-1 bg-muted/50 text-muted-foreground disabled:opacity-100"
                     />
                   ) : f.type === "multiselect" ? (
                     <SearchableMultiSelect

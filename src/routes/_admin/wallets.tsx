@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet,
@@ -69,6 +69,21 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/wallets")({
   head: () => ({ meta: [{ title: "Wallets — ScopsK" }] }),
+  validateSearch: (search: Record<string, unknown>): { tab: WalletInnerTab } => {
+    const tab = String(search.tab || "");
+    const allowed: WalletInnerTab[] = [
+      "balances",
+      "credit-requests",
+      "wallet-requests",
+      "credit-facility",
+      "withdrawals",
+      "refunds",
+      "platform",
+    ];
+    return {
+      tab: (allowed as string[]).includes(tab) ? (tab as WalletInnerTab) : "balances",
+    };
+  },
   component: WalletsPage,
 });
 
@@ -582,6 +597,10 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
   const [status, setStatus] = useState("all");
   const [review, setReview] = useState<WalletCreditRequestRow | null>(null);
   const [reason, setReason] = useState("");
+  const [giveAmount, setGiveAmount] = useState("");
+  useEffect(() => {
+    setGiveAmount(review && review.amount > 0 ? String(review.amount) : "");
+  }, [review]);
   const [decision, setDecision] = useState<{
     title: string;
     message: string;
@@ -621,10 +640,18 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
   };
 
   const acceptM = useMutation({
-    mutationFn: (row: WalletCreditRequestRow) => acceptWalletCreditRequest(row.id),
+    mutationFn: (row: WalletCreditRequestRow) => {
+      const chosen = Number(giveAmount);
+      return acceptWalletCreditRequest(
+        row.id,
+        isCredit && Number.isFinite(chosen) && chosen > 0 ? chosen : undefined,
+      );
+    },
     onSuccess: async (_data, row) => {
       const time = formatDecisionTime();
-      const amount = row.amount > 0 ? AED(row.amount) : "";
+      const chosen = Number(giveAmount);
+      const granted = isCredit && Number.isFinite(chosen) && chosen > 0 ? chosen : row.amount;
+      const amount = granted > 0 ? AED(granted) : "";
       setDecision({
         title: isCredit ? "Credit request approved" : "Wallet request approved",
         message: isCredit
@@ -725,6 +752,7 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                     className="border-b border-border last:border-0 cursor-pointer hover:bg-primary/[0.04]"
                     onClick={() => {
                       setReason("");
+                      setGiveAmount(r.amount > 0 ? String(r.amount) : "");
                       setReview(r);
                     }}
                   >
@@ -745,6 +773,7 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                         className="h-8"
                         onClick={() => {
                           setReason("");
+                          setGiveAmount(r.amount > 0 ? String(r.amount) : "");
                           setReview(r);
                         }}
                       >
@@ -771,6 +800,7 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
           if (!open) {
             setReview(null);
             setReason("");
+            setGiveAmount("");
           }
         }}
       >
@@ -796,7 +826,7 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
               </p>
               <div className="grid gap-3 sm:grid-cols-2 text-sm">
                 <div>
-                  <div className="text-xs text-muted-foreground">Amount</div>
+                  <div className="text-xs text-muted-foreground">Requested</div>
                   <div className="mt-1 font-medium">{review.amount > 0 ? AED(review.amount) : "—"}</div>
                 </div>
                 <div>
@@ -812,13 +842,56 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
               </div>
               {reviewOpen ? (
                 <>
+                  {isCredit ? (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Credit to give (AED)</div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-9 w-9 px-0"
+                          onClick={() =>
+                            setGiveAmount((current) =>
+                              String(Math.max(0, (Number(current) || 0) - 100)),
+                            )
+                          }
+                        >
+                          −
+                        </Button>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={100}
+                          value={giveAmount}
+                          onChange={(event) => setGiveAmount(event.target.value)}
+                          className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-9 w-9 px-0"
+                          onClick={() =>
+                            setGiveAmount((current) => String((Number(current) || 0) + 100))
+                          }
+                        >
+                          +
+                        </Button>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        This is the amount added to the restaurant credit limit. It can be less or more than they asked for.
+                      </p>
+                    </div>
+                  ) : null}
                   <Textarea
                     value={reason}
                     onChange={(event) => setReason(event.target.value)}
                     placeholder="Reason, optional if you reject"
                   />
                   <div className="flex flex-wrap gap-2">
-                    <Button disabled={busy} onClick={() => acceptM.mutate(review)}>
+                    <Button
+                      disabled={busy || (isCredit && !(Number(giveAmount) > 0))}
+                      onClick={() => acceptM.mutate(review)}
+                    >
                       {isCredit ? "Approve credit" : "Approve wallet"}
                     </Button>
                     <Button
@@ -1361,8 +1434,17 @@ function RefundsPanel() {
   );
 }
 
-export function WalletsManagement({ embedded = false }: { embedded?: boolean }) {
-  const [tab, setTab] = useState<WalletInnerTab>("balances");
+export function WalletsManagement({
+  embedded = false,
+  initialTab = "balances",
+}: {
+  embedded?: boolean;
+  initialTab?: WalletInnerTab;
+}) {
+  const [tab, setTab] = useState<WalletInnerTab>(initialTab);
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   return (
     <div className={cn(embedded ? "space-y-6" : "p-6 lg:p-8 space-y-6")}>
@@ -1442,5 +1524,6 @@ export function WalletsManagement({ embedded = false }: { embedded?: boolean }) 
 }
 
 function WalletsPage() {
-  return <WalletsManagement />;
+  const { tab } = Route.useSearch();
+  return <WalletsManagement initialTab={tab} />;
 }

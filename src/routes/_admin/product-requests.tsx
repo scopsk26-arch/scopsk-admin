@@ -59,6 +59,32 @@ function ProductRequestsPage() {
         { key: "created", label: "Created" },
         { key: "notes", label: "Notes" },
       ]}
+      loadDetail={async (row) => api.get<Record<string, unknown>>(`/product-requests/${row.id}`)}
+      renderView={(detail) => {
+        const photos = (Array.isArray(detail.attachments) ? detail.attachments : [])
+          .map((item: { id?: string; file?: { cdnUrl?: string | null; mimeType?: string | null } }) => item)
+          .filter((item: { file?: { cdnUrl?: string | null; mimeType?: string | null } }) => {
+            const url = item.file?.cdnUrl;
+            const type = item.file?.mimeType || "";
+            return Boolean(url) && (type === "" || type.startsWith("image/"));
+          });
+        if (!photos.length) return null;
+        return (
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">Photo</div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {photos.map((item: { id?: string; file?: { cdnUrl?: string | null } }) => (
+                <img
+                  key={item.id || item.file?.cdnUrl}
+                  src={item.file?.cdnUrl || ""}
+                  alt="Product request"
+                  className="h-48 w-full rounded-lg border border-border object-cover"
+                />
+              ))}
+            </div>
+          </div>
+        );
+      }}
       kpis={[
         { label: "On this page", value: String(rows.length) },
         { label: "Waiting", value: String(pending), tone: "warning" },
