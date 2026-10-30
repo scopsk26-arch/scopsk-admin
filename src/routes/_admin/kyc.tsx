@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { KycDetailView } from "@/components/admin/DetailViews";
 import { ExternalLink, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { approveKyc, fetchKycDetail, rejectKyc } from "@/lib/api/resources";
+import { approveKyc, fetchKycDetail, fetchKycWaitingCounts, rejectKyc } from "@/lib/api/resources";
 import { str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/kyc")({
@@ -79,8 +79,15 @@ function KycPage() {
   const isLoading = list.isLoading;
   const isError = list.isError;
 
-  const pending = rows.filter((r) => r.status === "pending").length;
-  const approved = rows.filter((r) => r.status === "approved").length;
+  const counts = useQuery({
+    queryKey: ["kyc", "counts"],
+    queryFn: fetchKycWaitingCounts,
+    staleTime: 30_000,
+  });
+  const pending = counts.data?.pendingApplications ?? rows.filter((r) => r.status === "pending").length;
+  const approved = counts.data?.approvedApplications ?? rows.filter((r) => r.status === "approved").length;
+  const waitingDocuments = counts.data?.waitingDocuments ?? rows.reduce((sum, r) => sum + r.docCount, 0);
+  const total = counts.data?.total ?? list.total;
 
   return (
     <DataPage
@@ -116,14 +123,10 @@ function KycPage() {
       loadDetail={async (row) => fetchKycDetail(row.id)}
       renderView={(detail) => <KycDetailView detail={detail} />}
       kpis={[
-        { label: "Pending review", value: String(pending), tone: "warning" },
+        { label: "Waiting documents", value: String(waitingDocuments), tone: "warning" },
+        { label: "Pending review", value: String(pending), tone: "info" },
         { label: "Approved", value: String(approved), tone: "success" },
-        { label: "Total", value: String(rows.length), tone: "info" },
-        {
-          label: "With documents",
-          value: String(rows.filter((r) => r.docCount > 0).length),
-          tone: "destructive",
-        },
+        { label: "Total", value: String(total) },
       ]}
       rows={rows}
       serverPagination={pagedListProps(list)}
@@ -223,6 +226,7 @@ function KycPage() {
           throw new Error("Status can only be pending, approved, or rejected");
         }
         await queryClient.invalidateQueries({ queryKey: ["kyc", "applications"] });
+        await queryClient.invalidateQueries({ queryKey: ["kyc", "counts"] });
         return { ...row, status, notes: String(data.notes ?? row.notes ?? "") };
       }}
     />

@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { OrganizationDetailView } from "@/components/admin/DetailViews";
 import { TagListDropdown } from "@/components/admin/TagListDropdown";
+import { AccountReviewDialog, needsAccountReview, type AccountReviewRow } from "@/components/admin/AccountReviewDialog";
 import { Store } from "lucide-react";
 import {
   fetchOrganizationDetail,
@@ -14,7 +15,7 @@ import {
   updateOrgProfile,
   updateOrgSettings,
 } from "@/lib/api/resources";
-import { api } from "@/lib/api/client";
+import { api, asArray } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import { PAYMENT_TERM_OPTIONS, areaOptions } from "@/lib/org-app-fields";
 
@@ -37,6 +38,7 @@ function RestaurantsPage() {
     [cuisineOptions],
   );
   const queryClient = useQueryClient();
+  const [review, setReview] = useState<AccountReviewRow | null>(null);
 
   const list = usePagedList({
     queryKey: ["organizations", "restaurant"],
@@ -44,7 +46,19 @@ function RestaurantsPage() {
     query: { type: "restaurant" },
     map: (row) => mapOrgRow(row, "restaurant"),
   });
-  const rows = list.rows;
+  const { data: platformSettings = [] } = useQuery({
+    queryKey: ["admin", "settings"],
+    queryFn: async () => asArray(await api.get("/admin/settings", { query: { scope: "platform" } })),
+  });
+  const platformMinRfq = useMemo(() => {
+    const row = platformSettings.find((s: { key?: string }) => s.key === "min_rfq_value_aed");
+    const raw = row?.value;
+    const n = Number(raw && typeof raw === "object" && "value" in raw ? raw.value : raw);
+    return Number.isFinite(n) ? n : null;
+  }, [platformSettings]);
+  const rows = list.rows.map((row) =>
+    platformMinRfq == null ? row : { ...row, minRfqValueAed: platformMinRfq },
+  );
   const isLoading = list.isLoading;
   const isError = list.isError;
 
@@ -53,6 +67,7 @@ function RestaurantsPage() {
   const spend = rows.reduce((s, r) => s + (r.spend || 0), 0);
 
   return (
+    <>
     <DataPage
       title="Restaurants"
       description="Review restaurant accounts, documents, and payment terms."
@@ -60,9 +75,10 @@ function RestaurantsPage() {
       lookups={cuisineLookups}
       formFields={[
         { key: "name", label: "Restaurant", required: true, type: "text" },
+        { key: "legalName", label: "Legal name", type: "text" },
         { key: "branchName", label: "Branch name", type: "text" },
         { key: "ownerName", label: "Owner name", type: "text" },
-        { key: "email", label: "Business email", type: "text", placeholder: "ops@restaurant.com" },
+        { key: "email", label: "Business email", type: "text", placeholder: "ops@restaurant.com", lockedOnEdit: true },
         { key: "phone", label: "Mobile number", type: "text" },
         {
           key: "dubaiArea",
@@ -81,7 +97,7 @@ function RestaurantsPage() {
         },
         {
           key: "purchasingTerms",
-          label: "How they pay",
+          label: "Payment method",
           type: "select",
           options: PAYMENT_TERM_OPTIONS,
         },
@@ -94,7 +110,7 @@ function RestaurantsPage() {
         { key: "bankIban", label: "IBAN", type: "text" },
         { key: "rating", label: "Rating (0–5)", type: "number", min: 0, max: 5 },
         { key: "poApprovalLevels", label: "PO approval levels", type: "number", min: 0 },
-        { key: "minRfqValueAed", label: "Min RFQ value (AED)", type: "number", min: 0 },
+        { key: "minRfqValueAed", label: "Min RFQ value (AED)", type: "readonly" },
         {
           key: "deliveryFeeMode",
           label: "Delivery fee mode",
@@ -129,7 +145,16 @@ function RestaurantsPage() {
         { key: "country", label: "Country" },
         { key: "status", label: "Status" },
       ]}
-      loadDetail={async (row) => fetchOrganizationDetail(row.id)}
+      loadDetail={async (row) => {
+        const detail = await fetchOrganizationDetail(row.id);
+        const branches = Array.isArray(detail?.branches) ? detail.branches : [];
+        const branchName =
+          branches.find((b: { name?: string }) => b?.name)?.name ||
+          detail?.metadata?.branchName ||
+          row.branchName ||
+          "";
+        return { ...detail, branchName };
+      }}
       loadEdit={async (row) => {
         const detail = await fetchOrganizationDetail(row.id);
         let mapped = mapOrgRow(detail, "restaurant");
@@ -164,6 +189,11 @@ function RestaurantsPage() {
         if (openId) void navigate({ to: "/restaurants", search: {} });
       }}
       renderView={(detail, row) => <OrganizationDetailView detail={detail} row={row} />}
+      onRowClick={(row) => {
+        if (!needsAccountReview(row)) return false;
+        setReview(row as AccountReviewRow);
+        return true;
+      }}
       kpis={[
         { label: "Total restaurants", value: String(list.total) },
         { label: "Active", value: String(active), tone: "success" },
@@ -210,7 +240,6 @@ function RestaurantsPage() {
           render: (r) => <TagListDropdown value={r.cuisines || r.categories || r.industry} />,
         },
         { key: "phone", label: "Phone" },
-        { key: "branchName", label: "Branch" },
         { key: "dubaiArea", label: "Area" },
         { key: "city", label: "City" },
         {
@@ -240,11 +269,10 @@ function RestaurantsPage() {
             );
           },
         },
-        { key: "poApprovalLevels", label: "PO levels" },
         { key: "minRfqValueAed", label: "Min RFQ", render: (r) => AED(r.minRfqValueAed) },
         {
           key: "purchasingTerms",
-          label: "Payment",
+          label: "Payment method",
           className: "whitespace-nowrap",
           render: (r) => {
             const key = String(r.purchasingTerms || "").toLowerCase();
@@ -295,7 +323,6 @@ function RestaurantsPage() {
           .map((o) => o.label)
           .join(", ");
         const poApprovalLevels = nonNeg(data.poApprovalLevels);
-        const minRfqValueAed = nonNeg(data.minRfqValueAed);
         const deliveryFeeValue = nonNeg(data.deliveryFeeValue);
         const creditLimit = nonNeg(data.creditLimit);
         const paymentTermsDays = nonNeg(data.paymentTermsDays);
@@ -309,7 +336,6 @@ function RestaurantsPage() {
         );
         await updateOrgSettings(id, {
           poApprovalLevels,
-          minRfqValueAed,
           deliveryFeeMode: data.deliveryFeeMode,
           deliveryFeeValue,
           creditLimit,
@@ -328,7 +354,7 @@ function RestaurantsPage() {
           ...updated,
           rating: Number(updated.rating ?? rating),
           poApprovalLevels,
-          minRfqValueAed,
+          minRfqValueAed: platformMinRfq ?? Number(updated.minRfqValueAed ?? 0),
           deliveryFeeMode: String(data.deliveryFeeMode ?? updated.deliveryFeeMode ?? "none"),
           deliveryFeeValue,
           creditLimit,
@@ -359,5 +385,16 @@ function RestaurantsPage() {
         await queryClient.invalidateQueries({ queryKey: ["organizations", "restaurant"] });
       }}
     />
+    <AccountReviewDialog
+      row={review}
+      open={review !== null}
+      onOpenChange={(next) => {
+        if (!next) setReview(null);
+      }}
+      onUpdated={() => {
+        void queryClient.invalidateQueries({ queryKey: ["organizations", "restaurant"] });
+      }}
+    />
+    </>
   );
 }

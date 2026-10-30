@@ -12,7 +12,12 @@ import {
 import { StatusBadge } from "@/components/admin/DataPage";
 import { cn } from "@/lib/utils";
 import { asArray, num, str } from "@/lib/api/client";
-import { fetchAdminDashboard } from "@/lib/api/resources";
+import {
+  fetchAccountReviewQueue,
+  fetchAdminDashboard,
+  fetchAdminWalletCreditRequests,
+  fetchKycWaitingCounts,
+} from "@/lib/api/resources";
 import { getSessionUser, subscribeSession } from "@/lib/auth-session";
 
 export const Route = createFileRoute("/_admin/dashboard")({
@@ -52,6 +57,16 @@ function useClock() {
   return now;
 }
 
+async function waitingRequestCount(category: "credit_limit" | "wallet_topup") {
+  const statuses = ["open", "waiting", "in_progress"];
+  const pages = await Promise.all(
+    statuses.map((status) =>
+      fetchAdminWalletCreditRequests({ category, status, page: 1, limit: 1 }),
+    ),
+  );
+  return pages.reduce((sum, page) => sum + page.total, 0);
+}
+
 function Dashboard() {
   const now = useClock();
   const user = useSyncExternalStore(subscribeSession, getSessionUser, () => null);
@@ -60,6 +75,32 @@ function Dashboard() {
   const { data: dash, isError, isLoading } = useQuery({
     queryKey: ["admin", "dashboard"],
     queryFn: fetchAdminDashboard,
+    refetchOnWindowFocus: true,
+  });
+  const kycCounts = useQuery({
+    queryKey: ["kyc", "counts"],
+    queryFn: fetchKycWaitingCounts,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+  const creditWaiting = useQuery({
+    queryKey: ["admin", "wallet-waiting", "credit_limit"],
+    queryFn: () => waitingRequestCount("credit_limit"),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+  const walletWaiting = useQuery({
+    queryKey: ["admin", "wallet-waiting", "wallet_topup"],
+    queryFn: () => waitingRequestCount("wallet_topup"),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+  const walletTab =
+    (walletWaiting.data ?? 0) > (creditWaiting.data ?? 0) ? "wallet-requests" : "credit-requests";
+  const accountReview = useQuery({
+    queryKey: ["organizations", "both", "pendingApproval"],
+    queryFn: () => fetchAccountReviewQueue("both"),
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
   });
 
@@ -80,14 +121,18 @@ function Dashboard() {
     {
       key: "kyc",
       label: "Documents to review",
-      count: num(pending.kyc ?? d.kycPending),
+      count: kycCounts.isSuccess
+        ? kycCounts.data.waitingDocuments
+        : num(pending.kyc ?? d.kycPending),
       to: "/kyc" as const,
       icon: ShieldCheck,
     },
     {
       key: "orgs",
       label: "Account review",
-      count: num(pending.orgApprovals ?? d.orgsPendingApproval),
+      count: accountReview.isSuccess
+        ? accountReview.data.length
+        : num(pending.orgApprovals ?? d.orgsPendingApproval),
       to: "/restaurant-approvals" as const,
       icon: Building2,
     },
@@ -240,7 +285,30 @@ function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
           {attentionRows.map((row) => {
             const Icon = row.icon;
-            return (
+            return row.key === "wallet" ? (
+              <Link
+                key={row.key}
+                to="/wallets"
+                search={{ tab: walletTab }}
+                className="flex items-center gap-3 rounded-xl border border-border bg-background/60 px-3 py-3 hover:bg-muted/60 transition-colors"
+              >
+                <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium leading-snug">{row.label}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {row.count} waiting
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-sm font-semibold tabular-nums text-foreground">
+                    {row.count}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Link>
+            ) : (
               <Link
                 key={row.key}
                 to={row.to}

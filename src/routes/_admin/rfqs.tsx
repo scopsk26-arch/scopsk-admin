@@ -112,7 +112,7 @@ function RfqsPage() {
         { key: "number", label: "RFQ request" },
         { key: "title", label: "Title" },
         { key: "restaurant", label: "Restaurant" },
-        { key: "category", label: "Visibility" },
+        { key: "awardedSupplier", label: "Awarded supplier" },
         { key: "quantity", label: "Quantity" },
         { key: "itemCount", label: "Line items" },
         { key: "deliveryDate", label: "Delivery date" },
@@ -120,7 +120,21 @@ function RfqsPage() {
         { key: "creator", label: "Creator" },
         { key: "status", label: "Status" },
       ]}
-      loadDetail={async (row) => fetchRfqDetail(row.id)}
+      loadDetail={async (row) => {
+        const detail = await fetchRfqDetail(row.id);
+        const orders = Array.isArray(detail?.purchaseOrders) ? detail.purchaseOrders : [];
+        const names = [
+          ...new Set(
+            orders
+              .map((order: { supplierName?: string; supplierOrg?: { name?: string } }) =>
+                order.supplierName || order.supplierOrg?.name || "",
+              )
+              .map((name: string) => name.trim())
+              .filter(Boolean),
+          ),
+        ];
+        return { ...detail, awardedSupplier: names.length ? names.join(", ") : "—" };
+      }}
       renderView={(detail) => <RfqDetailView detail={detail} />}
       kpis={[
         { label: "Open requests", value: String(open), tone: "info" },
@@ -146,7 +160,6 @@ function RfqsPage() {
             </span>
           ),
         },
-        { key: "category", label: "Visibility", className: "whitespace-nowrap w-[1%]" },
         { key: "quantity", label: "Quantity", className: "whitespace-nowrap w-[1%]" },
         { key: "created", label: "Created", className: "whitespace-nowrap w-[1%]" },
         {

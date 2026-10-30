@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AED, DetailSection, DetailTable, StatusBadge, formatStatusLabel } from "@/components/admin/DataPage";
 import { Button } from "@/components/ui/button";
-import { num, str } from "@/lib/api/client";
+import { api, asArray, num, str } from "@/lib/api/client";
 import { organizationStreet, reviewKycDocument } from "@/lib/api/resources";
 import { computeQuotationAiScore, extractFinanceBreakdown } from "@/lib/admin-export";
 
@@ -516,9 +518,33 @@ export function PurchaseOrderDetailView({ detail }: { detail: any }) {
   const items = Array.isArray(detail?.items) ? detail.items : [];
   const deliveries = Array.isArray(detail?.deliveries) ? detail.deliveries : [];
   const invoices = Array.isArray(detail?.invoices) ? detail.invoices : [];
+  const firstDelivery = deliveries[0];
+  const firstInvoice = invoices[0];
+  const paymentId = firstInvoice?.payments?.[0]?.id ?? firstInvoice?.payment?.id;
+  const steps = [
+    { name: "Quote request", to: "/rfqs" as const, id: detail?.rfqId ?? detail?.rfq?.id },
+    { name: "Order", to: "/purchase-orders" as const, id: detail?.id },
+    { name: "Delivery", to: "/deliveries" as const, id: firstDelivery?.id },
+    { name: "Invoice", to: "/invoices" as const, id: firstInvoice?.id },
+    { name: "Payment", to: "/payments" as const, id: paymentId },
+  ];
 
   return (
     <>
+      <div className="flex flex-wrap items-center gap-1 text-sm">
+        {steps.map((step, index) => (
+          <span key={step.name} className="inline-flex items-center gap-1">
+            {index > 0 ? <span className="text-muted-foreground">→</span> : null}
+            <Link
+              to={step.to}
+              title={step.id ? `Open ${step.name}` : step.name}
+              className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium hover:bg-muted"
+            >
+              {step.name}
+            </Link>
+          </span>
+        ))}
+      </div>
       <DetailSection title="Parties & links">
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
           <div><span className="text-muted-foreground">Buyer: </span>{str(detail.buyerOrg?.name, "—")}</div>
@@ -856,6 +882,11 @@ function OrgDocumentsTable({ documents }: { documents: any[] }) {
     }
   };
 
+  const showReview = docs.some((doc) => {
+    const id = str(doc.id, "");
+    return Boolean(id) && String(doc.status || "pending").toLowerCase() === "pending";
+  });
+
   return (
     <DetailTable
       rows={docs}
@@ -878,26 +909,28 @@ function OrgDocumentsTable({ documents }: { documents: any[] }) {
             ) : "—";
           },
         },
-        {
-          key: "review",
-          label: "Review",
-          render: (r) => {
-            const id = str(r.id, "");
-            const status = String(r.status || "pending").toLowerCase();
-            if (!id || status !== "pending") return <span className="text-xs text-muted-foreground">—</span>;
-            const busy = busyId === id;
-            return (
-              <div className="flex gap-1.5">
-                <Button type="button" size="sm" className="h-7 px-2" disabled={busy} onClick={() => review(id, "approved")}>
-                  Approve
-                </Button>
-                <Button type="button" size="sm" variant="outline" className="h-7 px-2" disabled={busy} onClick={() => review(id, "rejected")}>
-                  Reject
-                </Button>
-              </div>
-            );
-          },
-        },
+        ...(showReview
+          ? [{
+              key: "review",
+              label: "Review",
+              render: (r: any) => {
+                const id = str(r.id, "");
+                const status = String(r.status || "pending").toLowerCase();
+                if (!id || status !== "pending") return <span className="text-xs text-muted-foreground">—</span>;
+                const busy = busyId === id;
+                return (
+                  <div className="flex gap-1.5">
+                    <Button type="button" size="sm" className="h-7 px-2" disabled={busy} onClick={() => review(id, "approved")}>
+                      Approve
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" className="h-7 px-2" disabled={busy} onClick={() => review(id, "rejected")}>
+                      Reject
+                    </Button>
+                  </div>
+                );
+              },
+            }]
+          : []),
       ]}
     />
   );
@@ -971,6 +1004,19 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
   const requestedCredit = num(meta.requestedCreditLimit ?? row?.requestedCreditLimit);
   const termsDays = num(settings.paymentTermsDays ?? row?.paymentTermsDays);
   const hours = workingHoursLabel(meta.workingHours ?? row?.workingHours);
+  const { data: platformSettings = [] } = useQuery({
+    queryKey: ["admin", "settings"],
+    queryFn: async () => asArray(await api.get("/admin/settings", { query: { scope: "platform" } })),
+  });
+  const platformMinRfq = useMemo(() => {
+    const setting = platformSettings.find((s: { key?: string }) => s.key === "min_rfq_value_aed");
+    const raw = setting?.value;
+    const n = Number(raw && typeof raw === "object" && "value" in raw ? raw.value : raw);
+    return Number.isFinite(n) ? n : null;
+  }, [platformSettings]);
+  const minRfqShown = meta.minRfqValueExplicit === true
+    ? num(settings.minRfqValueAed)
+    : (platformMinRfq ?? num(row?.minRfqValueAed ?? settings.minRfqValueAed));
   const branchName = str(
     branches[0]?.name ?? row?.branchName ?? detail?.branches?.[0]?.name,
     "—",
@@ -982,6 +1028,7 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
         <div className="grid gap-3 sm:grid-cols-2">
           {(isSupplier
             ? [
+                ["Legal name", str(detail.legalName ?? row?.legalName, "—")],
                 ["Owner", str(profile.ownerName ?? detail.ownerName ?? row?.ownerName, "—")],
                 ["Phone", str(detail.phone ?? row?.phone, "—")],
                 ["Product categories", categories],
@@ -991,12 +1038,12 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
                 ["Country", str(detail.country ?? row?.country, "—")],
                 ["Coverage", coverage],
                 ["Working hours", hours],
-                ["How they get paid", commerceTermsLabel(sellingTerms)],
+                ["Payment method", commerceTermsLabel(sellingTerms || (termsDays > 0 ? "cash_or_credit" : "cash_only"))],
                 [
-                  "Credit offered",
-                  meta.offersCredit || sellingTerms === "credit_only" || sellingTerms === "cash_or_credit"
+                  "Requested credit",
+                  requestedCredit > 0
                     ? `${money(requestedCredit)}${termsDays > 0 ? ` · ${termsDays} days` : ""}`
-                    : "No",
+                    : "Cash only",
                 ],
                 ["Bank", str(profile.bankName ?? detail.bankName ?? row?.bankName, "—")],
                 ["Account holder", str(profile.bankAccountName ?? row?.bankAccountName, "—")],
@@ -1004,6 +1051,7 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
                 ["IBAN", str(profile.bankIban ?? detail.bankIban ?? row?.bankIban, "—")],
               ]
             : [
+                ["Legal name", str(detail.legalName ?? row?.legalName, "—")],
                 ["Owner", str(profile.ownerName ?? detail.ownerName ?? row?.ownerName, "—")],
                 ["Phone", str(detail.phone ?? row?.phone, "—")],
                 ["Branch", branchName],
@@ -1012,7 +1060,7 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
                 ["City", str(detail.city ?? row?.city, "—")],
                 ["Country", str(detail.country ?? row?.country, "—")],
                 ["Cuisines", cuisines],
-                ["How they pay", commerceTermsLabel(purchasingTerms || (termsDays > 0 ? "cash_or_credit" : "cash_only"))],
+                ["Payment method", commerceTermsLabel(purchasingTerms || (termsDays > 0 ? "cash_or_credit" : "cash_only"))],
                 [
                   "Requested credit",
                   requestedCredit > 0
@@ -1041,7 +1089,7 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
                 ["Product categories", categories !== "—" ? categories : cuisines],
                 ["RFQ intake", str(settings.rfqIntakeMode ?? row?.rfqIntakeMode, "manual")],
                 ["PO approval levels", str(settings.poApprovalLevels ?? row?.poApprovalLevels, "0")],
-                ["Minimum RFQ", money(settings.minRfqValueAed ?? row?.minRfqValueAed)],
+                ["Minimum RFQ", money(minRfqShown)],
                 ["Stock match minimum", `${num(settings.matchingMinStockPct)}%`],
                 ["Delivery options", deliveryOptions],
                 ["Anonymous marketplace", anonymous ? "On" : "Off"],
@@ -1051,7 +1099,7 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
             : [
                 ["Cuisines", cuisines],
                 ["PO approval levels", str(settings.poApprovalLevels ?? row?.poApprovalLevels, "0")],
-                ["Minimum RFQ", money(settings.minRfqValueAed ?? row?.minRfqValueAed)],
+                ["Minimum RFQ", money(minRfqShown)],
                 ["Delivery fee", feeLabel(settings.deliveryFeeMode ?? row?.deliveryFeeMode, settings.deliveryFeeValue ?? row?.deliveryFeeValue)],
                 ["Credit limit", money(settings.creditLimit ?? row?.creditLimit)],
                 ["Payment terms", `${num(settings.paymentTermsDays ?? row?.paymentTermsDays)} days`],
@@ -1072,6 +1120,9 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
       <DetailSection title="Compliance">
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
           <div><span className="text-muted-foreground">Owner: </span>{str(profile.ownerName ?? detail.ownerName ?? row?.ownerName, "—")}</div>
+          <div><span className="text-muted-foreground">Trade licence: </span>{str(profile.tradeLicenseNumber ?? row?.tradeLicenseNumber, "—")}</div>
+          <div><span className="text-muted-foreground">Food licence: </span>{str(profile.foodLicenseNumber ?? row?.foodLicenseNumber, "—")}</div>
+          <div><span className="text-muted-foreground">VAT / TRN: </span>{str(profile.vatRegistrationNumber ?? row?.vatRegistrationNumber, "—")}</div>
           <div><span className="text-muted-foreground">KYC: </span>{statusCell(detail.verificationStatus ?? row?.verificationStatus)}</div>
           <div><span className="text-muted-foreground">KYC application: </span>{statusCell(detail.kycApplication?.status)}</div>
         </div>
