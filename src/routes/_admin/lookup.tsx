@@ -264,7 +264,7 @@ function LookupPage() {
     e.preventDefault();
     const code = q.trim();
     if (code.length < 3) {
-      setError("Enter at least 3 characters");
+      setError("Type at least 3 characters of the number.");
       return;
     }
     mutation.mutate(code);
@@ -279,7 +279,7 @@ function LookupPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Find a record</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Paste a request, quote, order, delivery, invoice, or ticket code to see the full trail.
+            Type the number from a quote request, order, delivery, invoice, or support ticket.
           </p>
         </div>
       </div>
@@ -288,7 +288,7 @@ function LookupPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Search</CardTitle>
           <CardDescription>
-            Paste a code from a ticket, quote request, order, delivery, or invoice.
+            Look for the number on the request, order, delivery, invoice, or ticket. It usually starts with letters, such as RFQ, PO, or TCK.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -296,7 +296,7 @@ function LookupPage() {
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Paste a code…"
+              placeholder="Example: TCK-2026-000047"
               className="font-mono"
               autoFocus
             />

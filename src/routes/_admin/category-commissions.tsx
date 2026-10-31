@@ -37,6 +37,14 @@ export function CategoryCommissionsPanel() {
   const isLoading = list.isLoading;
   const isError = list.isError;
 
+  const categoryName = (row: { categoryId?: string; category?: string }) => {
+    const fromCatalog = categories.find((c) => c.value === row.categoryId)?.label;
+    if (fromCatalog) return fromCatalog;
+    const stored = str(row.category, "");
+    if (stored && stored !== "—") return stored;
+    return "Category removed from the catalog";
+  };
+
   const avgRestaurant = useMemo(() => {
     if (!rows.length) return "—";
     return (rows.reduce((s, r) => s + r.restaurantRate, 0) / rows.length).toFixed(1);
@@ -53,43 +61,51 @@ export function CategoryCommissionsPanel() {
   return (
     <DataPage
       title="Rates by category"
-      description="Commission % for restaurants and suppliers, by product category."
+      description="Choose how much ScopsK keeps on orders in each product category. Restaurant % is charged to the buyer. Supplier % is charged to the seller. A category with no rate uses the platform default."
       icon={<Percent className="h-5 w-5 text-primary" />}
-      entityName="Category commission"
+      entityName="Category rate"
+      rowLabel={(row) => categoryName(row)}
+      viewDescription="These percentages apply when an order includes products from this category."
       idKey="categoryId"
       formFields={[
         {
           key: "categoryId",
-          label: "Category",
+          label: "Product category",
           required: true,
           type: "searchable",
           selectOptions: categories,
           placeholder: "Search categories…",
+          hint: "Pick the catalog category these rates apply to.",
         },
         {
           key: "restaurantRate",
-          label: "Restaurant rate %",
+          label: "Restaurant %",
           required: true,
           type: "number",
+          min: 0,
+          max: 100,
           placeholder: "e.g. 4.5",
+          hint: "Percent of the order charged to the restaurant.",
         },
         {
           key: "supplierRate",
-          label: "Supplier rate %",
+          label: "Supplier %",
           required: true,
           type: "number",
+          min: 0,
+          max: 100,
           placeholder: "e.g. 3.0",
+          hint: "Percent of the order charged to the supplier.",
         },
       ]}
       lookups={{ categoryId: categories }}
       viewFields={[
-        { key: "category", label: "Category" },
-        { key: "categoryId", label: "Category ID" },
+        { key: "category", label: "Product category" },
         { key: "restaurantRate", label: "Restaurant %" },
         { key: "supplierRate", label: "Supplier %" },
       ]}
       kpis={[
-        { label: "Configured", value: String(rows.length) },
+        { label: "Categories with a rate", value: String(list.total) },
         {
           label: "Avg restaurant %",
           value: avgRestaurant === "—" ? "—" : `${avgRestaurant}%`,
@@ -110,17 +126,13 @@ export function CategoryCommissionsPanel() {
           ? "Loading…"
           : isError
             ? "Failed to load category commissions."
-            : "No category commissions yet — add rates per category."
+            : "No category rates yet. Add one to charge a different percent for that product category."
       }
       columns={[
         {
           key: "category",
           label: "Category",
-          render: (r) => (
-            <span className="font-medium">
-              {categories.find((c) => c.value === r.categoryId)?.label ?? r.category}
-            </span>
-          ),
+          render: (r) => <span className="font-medium">{categoryName(r)}</span>,
         },
         {
           key: "restaurantRate",

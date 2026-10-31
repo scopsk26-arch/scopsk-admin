@@ -57,6 +57,7 @@ function RewardCard({ title, reward }: { title: string; reward: any }) {
 
 function ReferralsList({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [status, setStatus] = useState("all");
+  const [statusCounts, setStatusCounts] = useState({ pending: 0, qualified: 0, rewarded: 0, expired: 0, cancelled: 0 });
 
   const list = usePagedList({
     queryKey: ["admin", "referrals", status],
@@ -70,13 +71,14 @@ function ReferralsList({ onOpenSettings }: { onOpenSettings: () => void }) {
         search: search || undefined,
         sortBy: "createdAt",
         sortOrder: sort === "oldest" ? "ASC" : "DESC",
+      }).then((data) => {
+        setStatusCounts(data.statusCounts);
+        return { rows: data.rows, total: data.total };
       }),
   });
   const rows = list.rows;
   const isLoading = list.isLoading;
   const isError = list.isError;
-
-  const count = (s: string) => rows.filter((r: any) => r.status === s).length;
 
   return (
     <DataPage
@@ -87,9 +89,9 @@ function ReferralsList({ onOpenSettings }: { onOpenSettings: () => void }) {
       entityName="Referral"
       kpis={[
         { label: "Total", value: String(list.total) },
-        { label: "Pending", value: String(count("pending")), tone: "warning" },
-        { label: "Qualified", value: String(count("qualified")), tone: "info" },
-        { label: "Rewarded", value: String(count("rewarded")), tone: "success" },
+        { label: "Pending", value: String(statusCounts.pending), tone: "warning" },
+        { label: "Qualified", value: String(statusCounts.qualified), tone: "info" },
+        { label: "Rewarded", value: String(statusCounts.rewarded), tone: "success" },
       ]}
       rows={rows}
       serverPagination={pagedListProps(list)}

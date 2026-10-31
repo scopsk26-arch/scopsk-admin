@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Scale } from "lucide-react";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { api, str } from "@/lib/api/client";
+import { fetchPage } from "@/lib/api/resources";
 
 export const Route = createFileRoute("/_admin/disputes")({
   head: () => ({ meta: [{ title: "Disputes — ScopsK" }] }),
@@ -83,6 +84,28 @@ function mapDispute(r: any) {
   };
 }
 
+async function countAllPages(path: string, statusOf: (row: any) => string) {
+  const counts: Record<string, number> = {};
+  let page = 1;
+  let total = 0;
+  do {
+    const fetched = await fetchPage(path, { page, limit: 100 });
+    total = fetched.total;
+    for (const row of fetched.rows) {
+      const status = statusOf(row);
+      counts[status] = (counts[status] ?? 0) + 1;
+    }
+    if (fetched.rows.length < 100) break;
+    page += 1;
+  } while ((page - 1) * 100 < total && page <= 10);
+  return counts;
+}
+
+function sumStatuses(counts: Record<string, number> | undefined, names: string[]) {
+  if (!counts) return 0;
+  return names.reduce((sum, name) => sum + (counts[name] ?? 0), 0);
+}
+
 function DisputesPage() {
   const queryClient = useQueryClient();
   const list = usePagedList({
@@ -91,9 +114,12 @@ function DisputesPage() {
     map: mapDispute,
   });
   const rows = list.rows;
-  const open = rows.filter((r) =>
-    ["open", "awaiting_response", "under_review", "investigating"].includes(r.status),
-  ).length;
+  const summary = useQuery({
+    queryKey: ["disputes", "summary"],
+    queryFn: () => countAllPages("/disputes", (row) => String(row.status || "")),
+    staleTime: 30_000,
+  });
+  const byStatus = summary.data;
 
   return (
     <DataPage
@@ -134,16 +160,20 @@ function DisputesPage() {
         }
       }}
       kpis={[
-        { label: "On this page", value: String(rows.length) },
-        { label: "Still open", value: String(open), tone: "warning" },
+        { label: "Disputes", value: String(list.total) },
+        {
+          label: "Still open",
+          value: summary.isLoading ? "…" : String(sumStatuses(byStatus, ["open", "awaiting_response", "under_review", "investigating"])),
+          tone: "warning",
+        },
         {
           label: "Waiting on supplier",
-          value: String(rows.filter((r) => r.status === "awaiting_response" || r.status === "open").length),
+          value: summary.isLoading ? "…" : String(sumStatuses(byStatus, ["awaiting_response", "open"])),
           tone: "info",
         },
         {
           label: "Resolved",
-          value: String(rows.filter((r) => r.status === "resolved").length),
+          value: summary.isLoading ? "…" : String(byStatus?.resolved ?? 0),
           tone: "success",
         },
       ]}
