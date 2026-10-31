@@ -665,6 +665,7 @@ export type CommissionRow = {
   order: string;
   party: string;
   organization: string;
+  organizationCode?: string;
   gross: number;
   rate: string;
   commission: number;
@@ -728,13 +729,14 @@ export async function fetchCommissions(query?: {
     const party = str(r.partyLabel ?? r.party, "—");
     return {
       id: str(r.id),
-      po: str(r.poNumber ?? r.purchaseOrder?.number ?? r.purchaseOrderId, "—"),
+      po: str(r.poNumber ?? r.purchaseOrder?.number, "—"),
       order: str(r.orderNumber ?? r.purchaseOrder?.executionOrder?.number, "—"),
       party,
       organization: str(
-        r.organizationName ?? r.supplierOrg?.name ?? r.supplier?.name ?? r.supplierOrgId,
+        r.organizationName ?? r.supplierOrg?.name ?? r.supplier?.name,
         "—",
       ),
+      organizationCode: str(r.organizationCode ?? r.supplierOrg?.publicCode, ""),
       gross,
       rate: `${rateNum}%`,
       commission: amount,
@@ -1301,8 +1303,18 @@ export async function fetchAdminReferrals(query?: {
   sortBy?: string;
   sortOrder?: string;
 }) {
-  const page = await fetchPage("/admin/referrals", query);
-  return { rows: page.rows.map(mapReferralRow), total: page.total };
+  const { data, meta } = await api.getEnvelope<any>("/admin/referrals", { query });
+  const rows = asArray(data).map(mapReferralRow);
+  const total = Number(meta?.total);
+  const rawCounts = (meta?.statusCounts || {}) as Record<string, unknown>;
+  const statusCounts = {
+    pending: num(rawCounts.pending),
+    qualified: num(rawCounts.qualified),
+    rewarded: num(rawCounts.rewarded),
+    expired: num(rawCounts.expired),
+    cancelled: num(rawCounts.cancelled),
+  };
+  return { rows, total: Number.isFinite(total) ? total : rows.length, statusCounts };
 }
 
 /** GET /admin/referrals/:id — includes both reward records. */

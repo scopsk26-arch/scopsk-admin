@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { OrganizationDetailView } from "@/components/admin/DetailViews";
@@ -21,6 +22,7 @@ export function OrgApprovalsPage({ type, title, description, icon: Icon }: OrgAp
   const queryClient = useQueryClient();
   const queryKey = ["organizations", type, "pendingApproval"] as const;
   const showsBoth = type === "both";
+  const [tab, setTab] = useState<"restaurant" | "supplier">("restaurant");
   const [review, setReview] = useState<AccountReviewRow | null>(null);
 
   const { data: rows = [], isLoading, isError } = useQuery({
@@ -29,9 +31,10 @@ export function OrgApprovalsPage({ type, title, description, icon: Icon }: OrgAp
     queryFn: () => fetchAccountReviewQueue(type),
   });
 
-  const pendingKyc = rows.filter((r) => accountWaitingOn(r) === "KYC").length;
-  const creditWaiting = rows.filter((r) => accountWaitingOn(r) === "Credit request").length;
-  const rejected = rows.filter((r) => String(r.status).toLowerCase() === "rejected").length;
+  const visible = showsBoth ? rows.filter((r) => r.type === tab) : rows;
+  const pendingKyc = visible.filter((r) => accountWaitingOn(r) === "KYC").length;
+  const creditWaiting = visible.filter((r) => accountWaitingOn(r) === "Credit request").length;
+  const rejected = visible.filter((r) => String(r.status).toLowerCase() === "rejected").length;
 
   const refreshQueue = () => {
     void queryClient.invalidateQueries({ queryKey: ["organizations"] });
@@ -45,7 +48,17 @@ export function OrgApprovalsPage({ type, title, description, icon: Icon }: OrgAp
       title={title}
       description={description}
       icon={<Icon className="h-5 w-5 text-primary" />}
-      entityName={type === "restaurant" ? "Restaurant" : type === "supplier" ? "Supplier" : "Account"}
+      entityName={showsBoth ? (tab === "supplier" ? "Supplier" : "Restaurant") : type === "supplier" ? "Supplier" : "Restaurant"}
+      afterHeader={
+        showsBoth ? (
+          <Tabs value={tab} onValueChange={(value) => setTab(value as "restaurant" | "supplier")}>
+            <TabsList>
+              <TabsTrigger value="restaurant">Restaurants</TabsTrigger>
+              <TabsTrigger value="supplier">Suppliers</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        ) : null
+      }
       viewFields={[
         { key: "name", label: "Organization" },
         { key: "ownerName", label: "Owner" },
@@ -64,12 +77,12 @@ export function OrgApprovalsPage({ type, title, description, icon: Icon }: OrgAp
       loadDetail={async (row) => fetchOrganizationDetail(row.id)}
       renderView={(detail) => <OrganizationDetailView detail={detail} />}
       kpis={[
-        { label: "In queue", value: String(rows.length), tone: "warning" },
+        { label: "In queue", value: String(visible.length), tone: "warning" },
         { label: "KYC waiting", value: String(pendingKyc), tone: "info" },
         { label: "Credit waiting", value: String(creditWaiting), tone: "warning" },
         { label: "Rejected", value: String(rejected), tone: "destructive" },
       ]}
-      rows={rows}
+      rows={visible}
       onRowClick={(row) => {
         setReview(row);
         return true;
@@ -81,7 +94,7 @@ export function OrgApprovalsPage({ type, title, description, icon: Icon }: OrgAp
           : isError
             ? `Failed to load ${type} approvals.`
             : showsBoth
-              ? "No pending restaurant or supplier accounts."
+              ? `No pending ${tab === "supplier" ? "supplier" : "restaurant"} accounts.`
               : `No pending ${type} approvals.`
       }
       columns={[
@@ -93,21 +106,10 @@ export function OrgApprovalsPage({ type, title, description, icon: Icon }: OrgAp
         },
         {
           key: "name",
-          label: showsBoth ? "Account" : type === "restaurant" ? "Restaurant" : "Supplier",
+          label: showsBoth ? (tab === "supplier" ? "Supplier" : "Restaurant") : type === "restaurant" ? "Restaurant" : "Supplier",
           className: "whitespace-nowrap",
           render: (r) => <span className="font-medium">{r.name}</span>,
         },
-        ...(showsBoth
-          ? [
-              {
-                key: "type" as const,
-                label: "Type",
-                className: "whitespace-nowrap w-[1%] capitalize",
-                render: (r: { type?: string }) =>
-                  r.type === "supplier" ? "Supplier" : "Restaurant",
-              },
-            ]
-          : []),
         { key: "email", label: "Email", className: "whitespace-nowrap" },
         { key: "phone", label: "Phone", className: "whitespace-nowrap w-[1%]" },
         { key: "dubaiArea", label: "Area", className: "whitespace-nowrap w-[1%]" },

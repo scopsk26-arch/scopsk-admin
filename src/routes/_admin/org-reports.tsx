@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { Flag } from "lucide-react";
 import { api, str } from "@/lib/api/client";
+import { fetchPage } from "@/lib/api/resources";
 
 export const Route = createFileRoute("/_admin/org-reports")({
   head: () => ({ meta: [{ title: "Complaints — ScopsK" }] }),
@@ -60,10 +61,24 @@ function OrgReportsPage() {
   const rows = list.rows;
   const isLoading = list.isLoading;
   const isError = list.isError;
-
-  const open = rows.filter((r) =>
-    ["submitted", "acknowledged", "investigating", "awaiting_response"].includes(r.status),
-  ).length;
+  const summary = useQuery({
+    queryKey: ["admin", "organization-reports", "summary"],
+    queryFn: async () => {
+      const openStatuses = new Set(["submitted", "acknowledged", "investigating", "awaiting_response"]);
+      let open = 0;
+      let page = 1;
+      let total = 0;
+      do {
+        const fetched = await fetchPage("/organization-reports", { page, limit: 100 });
+        total = fetched.total;
+        open += fetched.rows.filter((row) => openStatuses.has(String(row.status || ""))).length;
+        if (fetched.rows.length < 100) break;
+        page += 1;
+      } while ((page - 1) * 100 < total && page <= 10);
+      return { open, total };
+    },
+    staleTime: 30_000,
+  });
 
   return (
     <DataPage
@@ -73,8 +88,8 @@ function OrgReportsPage() {
       entityName="Report"
       hideView={false}
       kpis={[
-        { label: "Total", value: String(list.total) },
-        { label: "Open", value: String(open), tone: "warning" },
+        { label: "Complaints", value: String(summary.data?.total ?? list.total) },
+        { label: "Open", value: summary.isLoading ? "…" : String(summary.data?.open ?? 0), tone: "warning" },
       ]}
       rows={rows}
       serverPagination={pagedListProps(list)}

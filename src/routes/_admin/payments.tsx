@@ -1,9 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { PaymentDetailView } from "@/components/admin/DetailViews";
 import { CreditCard } from "lucide-react";
-import { fetchInvoiceDetail } from "@/lib/api/resources";
+import { fetchAdminDashboard, fetchInvoiceDetail } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/payments")({
@@ -53,11 +54,21 @@ function PaymentsPage() {
   const isLoading = list.isLoading;
   const isError = list.isError;
 
-  const processed = rows
-    .filter((r) => ["succeeded", "completed", "paid", "active"].includes(r.status))
-    .reduce((s, r) => s + r.amount, 0);
-  const pending = rows.filter((r) => r.status === "pending").reduce((s, r) => s + r.amount, 0);
-  const failed = rows.filter((r) => r.status === "failed").length;
+  const dash = useQuery({
+    queryKey: ["admin", "dashboard"],
+    queryFn: fetchAdminDashboard,
+    staleTime: 30_000,
+  });
+  const totals = (dash.data?.payments || {}) as Record<string, unknown>;
+  const processed = totals.succeededTotal != null
+    ? num(totals.succeededTotal)
+    : rows.filter((r) => r.status === "succeeded").reduce((s, r) => s + r.amount, 0);
+  const pending = totals.pendingTotal != null
+    ? num(totals.pendingTotal)
+    : rows.filter((r) => r.status === "pending").reduce((s, r) => s + r.amount, 0);
+  const failed = totals.failedCount != null
+    ? num(totals.failedCount)
+    : rows.filter((r) => r.status === "failed").length;
 
   return (
     <DataPage
@@ -96,7 +107,7 @@ function PaymentsPage() {
         { label: "Processed", value: AED(processed), tone: "success" },
         { label: "Pending", value: AED(pending), tone: "warning" },
         { label: "Failed", value: String(failed), tone: "destructive" },
-        { label: "Rows", value: String(rows.length), tone: "info" },
+        { label: "Payments", value: String(totals.count != null ? num(totals.count) : list.total), tone: "info" },
       ]}
       rows={rows}
       serverPagination={pagedListProps(list)}

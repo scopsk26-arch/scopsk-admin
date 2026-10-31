@@ -140,12 +140,23 @@ async function loadSupportTickets(args: {
   } while ((apiPage - 1) * 100 < reportedTotal && apiPage <= 10);
 
   const start = (args.page - 1) * args.pageSize;
+  const mapped = collected.map(mapTicket);
+  const complaintRows = mapped.filter((row) => {
+    const cat = String(row.category || "").toLowerCase();
+    return (
+      ["order complaint", "complaint", "org report"].includes(cat) ||
+      String(row.relatedCode || "").includes("/")
+    );
+  });
   return {
-    rows: collected.slice(start, start + args.pageSize).map(mapTicket),
-    total: collected.length,
-    waiting: collected.filter((row) =>
+    rows: mapped.slice(start, start + args.pageSize),
+    total: mapped.length,
+    waiting: mapped.filter((row) =>
       ["open", "in_progress", "waiting"].includes(String(row.status || "")),
     ).length,
+    complaints: complaintRows.length,
+    high: mapped.filter((row) => row.priority === "high" || row.priority === "urgent").length,
+    resolved: mapped.filter((row) => row.status === "resolved").length,
   };
 }
 
@@ -169,20 +180,18 @@ function SupportPage() {
         sort: "newest",
         status: "all",
       });
-      return loaded.waiting;
+      return {
+        waiting: loaded.waiting,
+        complaints: loaded.complaints,
+        high: loaded.high,
+        resolved: loaded.resolved,
+      };
     },
   });
   const rows = list.rows;
   const isLoading = list.isLoading;
   const isError = list.isError;
-
-  const complaints = rows.filter((r) => {
-    const cat = String(r.category || "").toLowerCase();
-    return (
-      ["order complaint", "complaint", "org report"].includes(cat) ||
-      String(r.relatedCode || "").includes("/")
-    );
-  }).length;
+  const counts = waiting.data;
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["support"] });
@@ -242,18 +251,16 @@ function SupportPage() {
       }}
       renderView={(detail) => <TicketDetail detail={detail} />}
       kpis={[
-        { label: "Open tickets", value: waiting.isLoading ? "…" : String(waiting.data ?? 0), tone: "info" },
-        { label: "Order complaints", value: String(complaints), tone: "warning" },
+        { label: "Open tickets", value: waiting.isLoading ? "…" : String(counts?.waiting ?? 0), tone: "info" },
+        { label: "Order complaints", value: waiting.isLoading ? "…" : String(counts?.complaints ?? 0), tone: "warning" },
         {
           label: "High priority",
-          value: String(
-            rows.filter((r) => r.priority === "high" || r.priority === "urgent").length,
-          ),
+          value: waiting.isLoading ? "…" : String(counts?.high ?? 0),
           tone: "destructive",
         },
         {
           label: "Resolved",
-          value: String(rows.filter((r) => r.status === "resolved").length),
+          value: waiting.isLoading ? "…" : String(counts?.resolved ?? 0),
           tone: "success",
         },
       ]}
