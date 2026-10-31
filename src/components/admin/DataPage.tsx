@@ -61,6 +61,8 @@ export type FormField = {
   /** Searchable dropdown options (value/label). */
   selectOptions?: SelectOption[];
   placeholder?: string;
+  /** Short note under the field label. */
+  hint?: string;
   allowClear?: boolean;
   /** Show red * and block submit when empty. */
   required?: boolean;
@@ -160,6 +162,7 @@ export function DataPage<T extends Record<string, any>>({
   rows: initialRows,
   searchKeys = [],
   filters,
+  afterHeader,
   emptyHint,
   formFields,
   viewFields,
@@ -169,6 +172,8 @@ export function DataPage<T extends Record<string, any>>({
   lookups,
   idKey = "id",
   entityName: entityNameProp,
+  rowLabel,
+  viewDescription,
   disableCrud = false,
   hideView = false,
   hideExport = false,
@@ -192,6 +197,7 @@ export function DataPage<T extends Record<string, any>>({
   rows: T[];
   searchKeys?: (keyof T | string)[];
   filters?: ReactNode;
+  afterHeader?: ReactNode;
   emptyHint?: string;
   formFields?: FormField[];
   /** Fields shown in View dialog (defaults to formFields → columns). */
@@ -206,6 +212,10 @@ export function DataPage<T extends Record<string, any>>({
   lookups?: Record<string, SelectOption[]>;
   idKey?: string;
   entityName?: string;
+  /** Friendly name in the delete confirmation. Falls back to the record id. */
+  rowLabel?: (row: T) => string;
+  /** Replaces the generic view-dialog subtitle. */
+  viewDescription?: string;
   disableCrud?: boolean;
   /** Hide the Eye/View action (rare). */
   hideView?: boolean;
@@ -623,6 +633,8 @@ export function DataPage<T extends Record<string, any>>({
         </div>
       </div>
 
+      {afterHeader}
+
       {kpis.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {kpis.map((k) => (
@@ -812,7 +824,7 @@ export function DataPage<T extends Record<string, any>>({
         <DialogContent className="max-w-3xl max-h-[90vh] !flex !flex-col overflow-hidden gap-4">
           <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>View {entity}</DialogTitle>
-            <DialogDescription>Read-only details for this record.</DialogDescription>
+            <DialogDescription>{viewDescription || "Read-only details for this record."}</DialogDescription>
           </DialogHeader>
           {viewLoading ? (
             <div className="py-10 text-center text-sm text-muted-foreground">Loading details…</div>
@@ -876,7 +888,7 @@ export function DataPage<T extends Record<string, any>>({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {entity.toLowerCase()}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove <span className="font-mono">{deleting ? String(deleting[idKey as keyof T]) : ""}</span>. This action cannot be undone.
+              This will permanently remove {deleting ? (rowLabel?.(deleting) || "this record") : "this record"}. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1132,6 +1144,7 @@ function RecordDialog({
                     {f.label}
                     {f.required ? <RequiredMark /> : null}
                   </Label>
+                  {f.hint ? <p className="mt-0.5 text-xs text-muted-foreground">{f.hint}</p> : null}
                   {f.type === "image" ? (
                     <ImageUrlField
                       value={String(form[f.key] ?? "")}

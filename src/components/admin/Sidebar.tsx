@@ -1,17 +1,26 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { groupedNav } from "./nav-config";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "./BrandLogo";
-import { X } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 
-function NavBody({ onNavigate }: { onNavigate?: () => void }) {
+const COLLAPSED_KEY = "scopsk-admin-sidebar-collapsed";
+
+function NavBody({
+  onNavigate,
+  collapsed = false,
+}: {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <nav className="flex-1 overflow-y-auto scrollbar-thin px-3 py-4 space-y-5">
+    <nav className={cn("flex-1 overflow-y-auto scrollbar-thin py-4 space-y-5", collapsed ? "px-2" : "px-3")}>
       {Object.entries(groupedNav).map(([group, items]) => (
         <div key={group}>
-          <div className="px-2.5 mb-1.5 label-caps">{group}</div>
+          {collapsed ? null : <div className="px-2.5 mb-1.5 label-caps">{group}</div>}
           <ul className="space-y-0.5">
             {items.map((item) => {
               const active = pathname === item.to || pathname.startsWith(item.to + "/");
@@ -21,14 +30,17 @@ function NavBody({ onNavigate }: { onNavigate?: () => void }) {
                   <Link
                     to={item.to}
                     onClick={onNavigate}
+                    title={item.title}
+                    aria-label={item.title}
                     className={cn(
-                      "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors relative",
+                      "group flex items-center gap-2.5 rounded-lg py-2 text-sm transition-colors relative",
+                      collapsed ? "justify-center px-2" : "px-2.5",
                       active
                         ? "bg-primary/12 text-foreground font-semibold shadow-soft"
                         : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     )}
                   >
-                    {active && (
+                    {active && !collapsed && (
                       <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary" />
                     )}
                     <Icon
@@ -37,8 +49,8 @@ function NavBody({ onNavigate }: { onNavigate?: () => void }) {
                         active ? "text-primary" : "text-muted-foreground group-hover:text-foreground",
                       )}
                     />
-                    <span className="flex-1 truncate">{item.title}</span>
-                    {item.badge && (
+                    {collapsed ? null : <span className="flex-1 truncate">{item.title}</span>}
+                    {!collapsed && item.badge && (
                       <span
                         className={cn(
                           "text-[10px] px-1.5 py-0.5 rounded-md font-semibold",
@@ -62,13 +74,58 @@ function NavBody({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function Sidebar() {
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    setCollapsed(window.localStorage.getItem(COLLAPSED_KEY) === "1");
+  }, []);
+
+  const toggle = () => {
+    setCollapsed((current) => {
+      const next = !current;
+      window.localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
+      return next;
+    });
+  };
+
   return (
-    <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border">
-        <BrandLogo className="h-11 max-w-[168px]" />
-        <span className="label-caps shrink-0 text-muted-foreground">Admin</span>
+    <aside
+      className={cn(
+        "hidden lg:flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width]",
+        collapsed ? "w-[4.5rem]" : "w-64",
+      )}
+    >
+      <div className={cn("flex items-center h-16 border-b border-sidebar-border", collapsed ? "justify-center px-2" : "gap-3 px-4")}>
+        {collapsed ? (
+          <BrandLogo className="h-9 w-11 max-w-none object-contain object-center" />
+        ) : (
+          <>
+            <BrandLogo className="h-11 max-w-[140px]" />
+            <span className="label-caps shrink-0 text-muted-foreground">Admin</span>
+            <button
+              type="button"
+              onClick={toggle}
+              className="ml-auto h-8 w-8 grid place-items-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              aria-label="Show icons only"
+              title="Show icons only"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          </>
+        )}
       </div>
-      <NavBody />
+      {collapsed ? (
+        <button
+          type="button"
+          onClick={toggle}
+          className="mx-auto mt-3 h-8 w-8 grid place-items-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          aria-label="Show menu labels"
+          title="Show menu labels"
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+        </button>
+      ) : null}
+      <NavBody collapsed={collapsed} />
     </aside>
   );
 }

@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { InvoiceDetailView } from "@/components/admin/DetailViews";
 import { Receipt } from "lucide-react";
-import { fetchInvoiceDetail, markInvoicePaid } from "@/lib/api/resources";
+import { fetchAdminDashboard, fetchInvoiceDetail, markInvoicePaid } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -67,12 +67,24 @@ function InvoicesList() {
   const isLoading = list.isLoading;
   const isError = list.isError;
 
-  const outstanding = rows
-    .filter((r) => !["paid", "cancelled"].includes(r.status))
-    .reduce((s, r) => s + r.amount, 0);
-  const paid = rows.filter((r) => r.status === "paid").reduce((s, r) => s + r.amount, 0);
-  const overdue = rows.filter((r) => r.status === "overdue").length;
-  const vat = rows.reduce((s, r) => s + r.vat, 0);
+  const dash = useQuery({
+    queryKey: ["admin", "dashboard"],
+    queryFn: fetchAdminDashboard,
+    staleTime: 30_000,
+  });
+  const totals = (dash.data?.invoices || {}) as Record<string, unknown>;
+  const outstanding = totals.outstandingTotal != null
+    ? num(totals.outstandingTotal)
+    : rows.filter((r) => !["paid", "cancelled"].includes(r.status)).reduce((s, r) => s + r.amount, 0);
+  const paid = totals.paidTotal != null
+    ? num(totals.paidTotal)
+    : rows.filter((r) => r.status === "paid").reduce((s, r) => s + r.amount, 0);
+  const overdue = totals.overdueCount != null
+    ? num(totals.overdueCount)
+    : rows.filter((r) => r.status === "overdue").length;
+  const vat = totals.paidVatTotal != null
+    ? num(totals.paidVatTotal)
+    : rows.reduce((s, r) => s + r.vat, 0);
   const parties = [...suppliers, ...restaurants].map((o) => ({ value: o.label, label: o.label }));
 
   return (

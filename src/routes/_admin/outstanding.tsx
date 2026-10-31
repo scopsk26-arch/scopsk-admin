@@ -1,7 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { Landmark } from "lucide-react";
+import { fetchAdminDashboard } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_admin/outstanding")({
@@ -39,9 +41,15 @@ function OutstandingPage() {
   const isLoading = list.isLoading;
   const isError = list.isError;
 
-  const totalOutstanding = rows.reduce((s, r) => s + r.outstanding, 0);
-  const totalPaid = rows.reduce((s, r) => s + r.paid, 0);
-  const overdueCount = rows.filter((r) => r.overdue).length;
+  const dash = useQuery({
+    queryKey: ["admin", "dashboard"],
+    queryFn: fetchAdminDashboard,
+    staleTime: 30_000,
+  });
+  const totals = (dash.data?.invoices || {}) as Record<string, unknown>;
+  const totalOutstanding = totals.outstandingTotal != null ? num(totals.outstandingTotal) : rows.reduce((s, r) => s + r.outstanding, 0);
+  const totalPaid = totals.paidTotal != null ? num(totals.paidTotal) : rows.reduce((s, r) => s + r.paid, 0);
+  const overdueCount = totals.overdueCount != null ? num(totals.overdueCount) : rows.filter((r) => r.overdue).length;
 
   return (
     <DataPage
@@ -52,9 +60,9 @@ function OutstandingPage() {
       entityName="Outstanding"
       kpis={[
         { label: "Outstanding", value: AED(totalOutstanding), tone: "warning" },
-        { label: "Paid (listed)", value: AED(totalPaid), tone: "success" },
+        { label: "Paid", value: AED(totalPaid), tone: "success" },
         { label: "Overdue", value: String(overdueCount), tone: overdueCount ? "destructive" : "default" },
-        { label: "Invoices", value: String(rows.length) },
+        { label: "Unpaid invoices", value: String(list.total) },
       ]}
       rows={rows}
       serverPagination={pagedListProps(list)}

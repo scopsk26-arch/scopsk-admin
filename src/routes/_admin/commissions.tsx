@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { FolderTree, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { fetchCommissionDetail, fetchCommissions, settleCommission } from "@/lib/api/resources";
+import { fetchAdminDashboard, fetchCommissionDetail, fetchCommissions, settleCommission } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryCommissionsPanel } from "./category-commissions";
@@ -15,6 +15,12 @@ export const Route = createFileRoute("/_admin/commissions")({
   head: () => ({ meta: [{ title: "Commissions — ScopsK" }] }),
   component: CommissionsPage,
 });
+
+function plainRef(value: unknown, empty: string) {
+  const v = str(value, "");
+  if (!v || v === "—" || /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(v)) return empty;
+  return v;
+}
 
 function DocCode({ value }: { value: string }) {
   const v = String(value || "—");
@@ -56,33 +62,43 @@ function CommissionsLedger() {
     onError: (err: Error) => toast.error(err.message || "Failed to settle"),
   });
 
-  const accrued = rows.filter((r: any) => r.status === "pending" || r.status === "approved").reduce((s: number, r: any) => s + num(r.commission), 0);
-  const paid = rows.filter((r: any) => r.status === "settled" || r.status === "paid").reduce((s: number, r: any) => s + num(r.commission), 0);
-  const awaiting = rows.filter((r: any) => r.status === "pending").reduce((s: number, r: any) => s + num(r.commission), 0);
+  const dash = useQuery({
+    queryKey: ["admin", "dashboard"],
+    queryFn: fetchAdminDashboard,
+    staleTime: 30_000,
+  });
+  const totals = (dash.data?.commissions || {}) as Record<string, unknown>;
+  const accrued = totals.pendingTotal != null
+    ? num(totals.pendingTotal)
+    : rows.filter((r: any) => r.status === "pending" || r.status === "approved").reduce((s: number, r: any) => s + num(r.commission), 0);
+  const paid = totals.settledTotal != null
+    ? num(totals.settledTotal)
+    : rows.filter((r: any) => r.status === "settled" || r.status === "paid").reduce((s: number, r: any) => s + num(r.commission), 0);
+  const awaiting = accrued;
   const rates = rows.map((r: any) => parseFloat(String(r.rate).replace("%", ""))).filter((n: number) => Number.isFinite(n) && n > 0);
   const avgRate = rates.length ? (rates.reduce((a: number, b: number) => a + b, 0) / rates.length).toFixed(1) : "—";
 
   return (
     <DataPage
       title="Commissions"
-      description="Your cut on each order. Set rates by category in the other tab."
+      description="The amount ScopsK keeps on each order. Set the percent by category in the other tab."
       icon={<Percent className="h-5 w-5 text-primary" />}
       disableCrud
       entityName="Commission"
+      viewDescription="Who was charged, which order it came from, and how much ScopsK kept. Business code is the short public code for that restaurant or supplier."
       viewFields={[
-        { key: "id", label: "Ref" },
-        { key: "order", label: "Order #" },
-        { key: "po", label: "PO #" },
-        { key: "party", label: "Party" },
-        { key: "organization", label: "Organization" },
-        { key: "organizationCode", label: "Org code" },
+        { key: "party", label: "Charged to" },
+        { key: "organization", label: "Business" },
+        { key: "organizationCode", label: "Business code" },
+        { key: "order", label: "Order number" },
+        { key: "po", label: "Purchase order" },
         { key: "gross", label: "Order subtotal" },
         { key: "orderTotal", label: "Order total (incl. VAT)" },
         { key: "vat", label: "VAT" },
         { key: "rate", label: "Commission rate" },
         { key: "commission", label: "Commission amount" },
         { key: "status", label: "Status" },
-        { key: "settledAt", label: "Settled at" },
+        { key: "settledAt", label: "Settled on" },
         { key: "currency", label: "Currency" },
       ]}
       loadDetail={async (row) => {
@@ -96,11 +112,11 @@ function CommissionsLedger() {
           const vat = num((d as any).vat ?? po.tax ?? order.tax);
           return {
             id: str((d as any).id ?? row.id),
-            order: str((d as any).orderNumber ?? order.number ?? row.order, "—"),
-            po: str((d as any).poNumber ?? po.number ?? row.po, "—"),
+            order: plainRef((d as any).orderNumber ?? order.number ?? row.order, "No order number"),
+            po: plainRef((d as any).poNumber ?? po.number ?? row.po, "No purchase order number"),
             party: str((d as any).partyLabel ?? (d as any).party ?? row.party, "—"),
-            organization: str((d as any).organizationName ?? org.name ?? row.organization, "—"),
-            organizationCode: str((d as any).organizationCode ?? org.publicCode, "—"),
+            organization: plainRef((d as any).organizationName ?? org.name ?? row.organization, "Business no longer on file"),
+            organizationCode: plainRef((d as any).organizationCode ?? org.publicCode ?? (row as any).organizationCode, "Not assigned"),
             gross: subtotal,
             orderTotal: AED(total),
             vat: AED(vat),
@@ -119,7 +135,10 @@ function CommissionsLedger() {
             orderTotal: AED(num((row as any).orderTotal ?? row.gross)),
             vat: AED(num((row as any).vat)),
             commission: num(row.commission),
-            organizationCode: "—",
+            organizationCode: plainRef((row as any).organizationCode, "Not assigned"),
+            order: plainRef(row.order, "No order number"),
+            po: plainRef(row.po, "No purchase order number"),
+            organization: plainRef(row.organization, "Business no longer on file"),
             settledAt: "—",
           };
         }
@@ -139,13 +158,13 @@ function CommissionsLedger() {
           key: "order",
           label: "Order",
           className: "whitespace-nowrap min-w-[11rem]",
-          render: (r) => <DocCode value={r.order} />,
+          render: (r) => <DocCode value={plainRef(r.order, "—")} />,
         },
         {
           key: "po",
-          label: "PO",
+          label: "Purchase order",
           className: "whitespace-nowrap min-w-[9rem]",
-          render: (r) => <DocCode value={r.po} />,
+          render: (r) => <DocCode value={plainRef(r.po, "—")} />,
         },
         { key: "party", label: "Party", className: "whitespace-nowrap", render: (r) => <span className="capitalize">{r.party}</span> },
         { key: "organization", label: "Organization", className: "whitespace-nowrap", render: (r) => <span className="font-medium">{r.organization}</span> },
