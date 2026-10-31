@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PackagePlus } from "lucide-react";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { api, num, str } from "@/lib/api/client";
+import { walkPages } from "@/lib/api/resources";
 
 export const Route = createFileRoute("/_admin/product-requests")({
   head: () => ({ meta: [{ title: "Product requests — ScopsK" }] }),
@@ -32,7 +33,19 @@ function ProductRequestsPage() {
     map: mapRequest,
   });
   const rows = list.rows;
-  const pending = rows.filter((r) => r.status === "pending").length;
+  const summary = useQuery({
+    queryKey: ["product-requests", "summary"],
+    queryFn: async () => {
+      const all = await walkPages("/product-requests");
+      const count = (status: string) => all.rows.filter((row) => String(row.status || "") === status).length;
+      return {
+        pending: count("pending"),
+        sent: count("sent_to_suppliers"),
+        rejected: count("rejected"),
+      };
+    },
+    staleTime: 30_000,
+  });
 
   return (
     <DataPage
@@ -86,16 +99,16 @@ function ProductRequestsPage() {
         );
       }}
       kpis={[
-        { label: "On this page", value: String(rows.length) },
-        { label: "Waiting", value: String(pending), tone: "warning" },
+        { label: "Requests", value: String(list.total) },
+        { label: "Waiting", value: summary.isLoading ? "…" : String(summary.data?.pending ?? 0), tone: "warning" },
         {
           label: "Sent to suppliers",
-          value: String(rows.filter((r) => r.status === "sent_to_suppliers").length),
+          value: summary.isLoading ? "…" : String(summary.data?.sent ?? 0),
           tone: "success",
         },
         {
           label: "Rejected",
-          value: String(rows.filter((r) => r.status === "rejected").length),
+          value: summary.isLoading ? "…" : String(summary.data?.rejected ?? 0),
           tone: "destructive",
         },
       ]}

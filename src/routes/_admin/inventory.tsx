@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView, ProductDetailView } from "@/components/admin/DetailViews";
 import { Warehouse } from "lucide-react";
-import { fetchProductDetail } from "@/lib/api/resources";
+import { fetchProductDetail, walkPages } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import {
@@ -66,8 +67,22 @@ function InventoryPage() {
   const isLoading = list.isLoading;
   const isError = list.isError;
 
-  const lowStock = rows.filter((r) => r.quantity <= 0).length;
-  const totalQty = rows.reduce((s, r) => s + r.quantity, 0);
+  const summary = useQuery({
+    queryKey: ["restaurant-inventory", "summary", orgId],
+    enabled: Boolean(orgId),
+    queryFn: async () => {
+      const all = await walkPages("/restaurant-inventory", undefined, { "X-Organization-Id": orgId });
+      let lowStock = 0;
+      let totalQty = 0;
+      for (const row of all.rows) {
+        const quantity = num(row.quantity ?? row.stock);
+        totalQty += quantity;
+        if (quantity <= 0) lowStock += 1;
+      }
+      return { lowStock, totalQty, items: all.total };
+    },
+    staleTime: 15_000,
+  });
 
   return (
     <DataPage
@@ -119,9 +134,9 @@ function InventoryPage() {
         )
       }
       kpis={[
-        { label: "Items", value: String(rows.length) },
-        { label: "Low stock", value: String(lowStock), tone: lowStock ? "warning" : "success" },
-        { label: "Total qty", value: String(totalQty), tone: "info" },
+        { label: "Items", value: String(summary.data?.items ?? list.total) },
+        { label: "Out of stock", value: summary.isLoading ? "…" : String(summary.data?.lowStock ?? 0), tone: (summary.data?.lowStock ?? 0) ? "warning" : "success" },
+        { label: "Total qty", value: summary.isLoading ? "…" : String(summary.data?.totalQty ?? 0), tone: "info" },
         { label: "Restaurant", value: orgId ? selectedLabel.slice(0, 18) : "—" },
       ]}
       rows={rows}

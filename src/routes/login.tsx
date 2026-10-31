@@ -1,16 +1,27 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff, Moon, Sun } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Mail,
+  Moon,
+  ShieldCheck,
+  Sun,
+  Truck,
+  UtensilsCrossed,
+} from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { login } from "@/lib/api/auth";
 import { ApiError, num } from "@/lib/api/client";
-import { BrandLogo } from "@/components/admin/BrandLogo";
 import { useTheme } from "@/components/admin/ThemeProvider";
+import { BrandLogo } from "@/components/admin/BrandLogo";
+import heroKitchen from "@/assets/login-hero-kitchen.jpg";
+import heroIngredients from "@/assets/login-hero-ingredients.jpg";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — ScopsK Admin" }] }),
@@ -25,8 +36,8 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
 
-  // Show last-known marketplace counts (saved after admin dashboard loads).
   const { data: counts } = useQuery({
     queryKey: ["login", "org-counts"],
     staleTime: Infinity,
@@ -49,6 +60,19 @@ function LoginPage() {
 
   const restaurantCount = counts?.restaurants ?? 0;
   const supplierCount = counts?.suppliers ?? 0;
+  const stats = [
+    {
+      icon: UtensilsCrossed,
+      value: restaurantCount > 0 ? restaurantCount.toLocaleString() : "—",
+      label: "Restaurants",
+    },
+    {
+      icon: Truck,
+      value: supplierCount > 0 ? supplierCount.toLocaleString() : "—",
+      label: "Suppliers",
+    },
+    { icon: Activity, value: "Live", label: "Orders", live: true },
+  ];
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,119 +97,178 @@ function LoginPage() {
     }
   };
 
+  const inputClass =
+    "w-full rounded-xl border border-input bg-background py-2.5 pl-11 pr-11 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-primary/15";
+
   return (
-    <div className="min-h-screen grid bg-[#fff6f3] text-foreground lg:grid-cols-2 dark:bg-background">
-      <div className="relative hidden items-center justify-center overflow-hidden border-r border-black/5 bg-[#ffc4ab] px-16 py-12 lg:flex dark:border-border dark:bg-background">
-        <div className="absolute inset-0 grid-bg" />
+    <div className="flex min-h-screen bg-background text-foreground">
+      <aside className="relative hidden overflow-hidden lg:flex lg:w-[54%] xl:w-[56%]">
+        <img
+          src={heroKitchen}
+          alt=""
+          className="absolute inset-0 size-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/60" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/30" />
+        <div className="relative z-10 flex w-full flex-col justify-between p-10 py-12 xl:p-14">
+          <BrandLogo variant="onDark" className="h-12 max-w-[200px]" />
 
-        <div className="relative w-full max-w-lg">
-          <BrandLogo className="h-12 max-w-[210px]" />
-          <h1 className="mt-10 max-w-md text-[2.5rem] font-display font-semibold leading-[1.12] tracking-[-0.03em]">
-            The control surface for <span className="text-gradient">B2B foodservice</span> procurement.
-          </h1>
-          <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
-            Manage restaurants, suppliers, requests, and orders.
-          </p>
+          <div className="max-w-xl">
+            <h1 className="font-display text-[2.6rem] font-bold leading-[1.08] tracking-tight text-white xl:text-5xl">
+              The control surface for <span className="text-primary">B2B foodservice</span> procurement.
+            </h1>
+            <p className="mt-4 max-w-md text-base leading-relaxed text-white/70">
+              Manage restaurants, suppliers, requests, and orders — from one command center.
+            </p>
+            <div className="mt-9 grid grid-cols-3 gap-3.5">
+              {stats.map((stat) => (
+                <div key={stat.label} className="rounded-2xl border border-white/15 bg-black/30 p-4 backdrop-blur-md">
+                  <div className="flex items-center justify-between">
+                    <stat.icon className="size-4 text-primary" />
+                    {stat.live ? (
+                      <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-primary">
+                        <span className="size-1.5 rounded-full bg-primary" />
+                        Live
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-3 font-display text-3xl font-bold text-white">{stat.value}</p>
+                  <p className="mt-0.5 text-xs font-medium text-white/60">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
 
-          <div className="mt-10 grid max-w-md grid-cols-2 gap-3">
-            {[
-              {
-                v: restaurantCount > 0 ? restaurantCount.toLocaleString() : "—",
-                l: "Restaurants",
-              },
-              {
-                v: supplierCount > 0 ? supplierCount.toLocaleString() : "—",
-                l: "Suppliers",
-              },
-            ].map((s) => (
-              <div key={s.l} className="rounded-2xl border border-black/5 bg-white px-4 py-4 dark:border-border dark:bg-card">
-                <div className="font-display text-[1.65rem] font-semibold leading-none tabular-nums">{s.v}</div>
-                <div className="label-caps mt-2">{s.l}</div>
-              </div>
-            ))}
+          <div className="flex max-w-md items-center gap-4 rounded-2xl border border-white/15 bg-black/30 p-4 backdrop-blur-md">
+            <img
+              src={heroIngredients}
+              alt=""
+              className="size-16 shrink-0 rounded-xl object-cover"
+            />
+            <div className="min-w-0">
+              <p className="truncate font-display text-sm font-semibold text-white">Sourcing made simple</p>
+              <p className="mt-1 text-xs leading-relaxed text-white/60">
+                Requests reach the right supplier in minutes.
+              </p>
+            </div>
+            <ArrowRight className="ml-auto size-4 shrink-0 text-primary" />
           </div>
         </div>
-      </div>
+      </aside>
 
-      <div className="relative flex items-center justify-center px-6 py-16">
-        <Button
+      <main className="relative flex min-h-screen flex-1 items-center justify-center px-6 py-12">
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
           onClick={toggle}
-          aria-label="Toggle theme"
-          className="absolute top-5 right-5 rounded-full"
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          className="absolute right-6 top-6 z-10 flex size-10 items-center justify-center rounded-full border border-border bg-card/70 text-muted-foreground backdrop-blur hover:text-foreground"
         >
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </Button>
+          {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+        </button>
+        <div className="pointer-events-none absolute -top-32 left-1/2 h-80 w-[36rem] max-w-full -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
 
-        <div className="w-full max-w-[420px] rounded-3xl border border-black/5 bg-card px-8 py-9 shadow-elevated dark:border-border">
-          <div className="mb-8 lg:hidden">
-            <BrandLogo className="h-11 max-w-[190px]" />
-          </div>
+        <div className="relative z-10 w-full max-w-[26.5rem]">
+          <div className="rounded-3xl border border-border bg-card p-8 shadow-2xl shadow-black/10">
+            <BrandLogo className="mb-5 h-11 max-w-[180px] lg:hidden" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <ShieldCheck className="size-3.5" />
+              ScopsK Admin
+            </span>
+            <h2 className="mt-4 font-display text-[1.7rem] font-bold tracking-tight">Sign in to your workspace</h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+              Use your admin credentials to access the ScopsK command center.
+            </p>
 
-          <p className="text-xs font-semibold text-primary">ScopsK Admin</p>
-          <h2 className="mt-2 text-[1.65rem] font-display font-semibold tracking-[-0.03em]">
-            Sign in to your workspace
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Use your admin credentials to access the ScopsK command center.
-          </p>
-
-          <form onSubmit={onSubmit} className="mt-7 space-y-4">
-            <div className="space-y-2.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="sarah@primeplate.io"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="login-field h-11 bg-white text-neutral-950 caret-neutral-950 placeholder:text-neutral-500"
-                autoComplete="email"
-                required
-              />
-            </div>
-            <div className="space-y-2.5">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="login-field h-11 bg-white pr-11 text-neutral-950 caret-neutral-950 placeholder:text-neutral-500"
-                  autoComplete="current-password"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((open) => !open)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute top-1/2 right-2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+            <form onSubmit={onSubmit} className="mt-7 space-y-4">
+              <div>
+                <label htmlFor="email" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="sarah@primeplate.io"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className={inputClass}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2.5 pt-1">
-              <Checkbox id="remember" defaultChecked />
-              <Label htmlFor="remember" className="cursor-pointer font-normal leading-none text-muted-foreground">
-                Remember me on this device
-              </Label>
-            </div>
+              <div>
+                <label htmlFor="password" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((open) => !open)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              </div>
 
-            {error && (
-              <p className="text-sm text-destructive" role="alert">{error}</p>
-            )}
+              <button
+                type="button"
+                onClick={() => setRemember((value) => !value)}
+                className="flex cursor-pointer items-center gap-2.5 pt-0.5 text-left"
+              >
+                <span
+                  className={`flex size-5 shrink-0 items-center justify-center rounded-md border ${
+                    remember ? "border-primary bg-primary text-primary-foreground" : "border-input bg-card"
+                  }`}
+                >
+                  {remember ? (
+                    <svg viewBox="0 0 16 16" fill="none" className="size-3.5">
+                      <path d="M3 8.5 6.5 12 13 4.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : null}
+                </span>
+                <span className="text-sm text-muted-foreground">Remember me on this device</span>
+              </button>
 
-            <Button type="submit" className="mt-2 h-11 w-full rounded-xl text-sm font-semibold" disabled={loading}>
-              {loading ? "Signing you in…" : "Sign in"}
-            </Button>
-          </form>
+              {error ? (
+                <p className="text-sm text-destructive" role="alert">{error}</p>
+              ) : null}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 font-display text-[0.95rem] font-semibold text-primary-foreground shadow-lg shadow-primary/25 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-80"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Signing in…
+                  </>
+                ) : (
+                  <>
+                    Sign in
+                    <ArrowRight className="size-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

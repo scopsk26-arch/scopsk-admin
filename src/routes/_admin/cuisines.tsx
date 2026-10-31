@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { UtensilsCrossed } from "lucide-react";
 import { api, num, str } from "@/lib/api/client";
+import { walkPages } from "@/lib/api/resources";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
 
@@ -78,8 +79,23 @@ function CuisinesPage() {
   const isLoading = list.isLoading;
   const isError = list.isError;
 
-  const active = rows.filter((r) => r.status === "active").length;
-  const mapped = rows.filter((r) => r.categoryIds).length;
+  const summary = useQuery({
+    queryKey: ["cuisines", "summary"],
+    queryFn: async () => {
+      const all = await walkPages("/cuisines", { all: "true" });
+      let active = 0;
+      let mapped = 0;
+      let products = 0;
+      for (const row of all.rows) {
+        const mappedRow = mapCuisineRow(row);
+        if (mappedRow.status === "active") active += 1;
+        if (mappedRow.categoryIds) mapped += 1;
+        products += mappedRow.products;
+      }
+      return { active, mapped, products, total: all.total };
+    },
+    staleTime: 30_000,
+  });
 
   const invalidate = async () => {
     await qc.invalidateQueries({ queryKey: ["cuisines"] });
@@ -124,10 +140,10 @@ function CuisinesPage() {
       loadDetail={async (row) => row}
       renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
-        { label: "Total", value: String(rows.length) },
-        { label: "Active", value: String(active), tone: "success" },
-        { label: "With categories", value: String(mapped), tone: "info" },
-        { label: "Products linked", value: String(rows.reduce((s, r) => s + r.products, 0)) },
+        { label: "Total", value: String(summary.data?.total ?? list.total) },
+        { label: "Active", value: summary.isLoading ? "…" : String(summary.data?.active ?? 0), tone: "success" },
+        { label: "With categories", value: summary.isLoading ? "…" : String(summary.data?.mapped ?? 0), tone: "info" },
+        { label: "Products linked", value: summary.isLoading ? "…" : String(summary.data?.products ?? 0) },
       ]}
       rows={rows}
       serverPagination={pagedListProps(list)}

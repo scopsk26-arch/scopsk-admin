@@ -5,7 +5,7 @@ import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { ProductDetailView } from "@/components/admin/DetailViews";
 import { Boxes } from "lucide-react";
-import { fetchList, fetchProductDetail } from "@/lib/api/resources";
+import { fetchList, fetchProductDetail, walkPages } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
@@ -172,8 +172,24 @@ function CatalogPage() {
     return out.sort((a, b) => a.label.localeCompare(b.label));
   }, [rows, unitOptions]);
 
-  const active = rows.filter((r) => r.status === "active").length;
-  const low = rows.filter((r) => r.stock > 0 && r.stock < 100).length;
+  const summary = useQuery({
+    queryKey: ["catalog", "products", "summary"],
+    queryFn: async () => {
+      const [products, categoriesPage] = await Promise.all([
+        walkPages("/catalog/products"),
+        walkPages("/catalog/categories"),
+      ]);
+      let active = 0;
+      let low = 0;
+      for (const row of products.rows) {
+        if (String(row.status || "active") === "active") active += 1;
+        const stock = num(row.stock ?? row.inventoryTotal);
+        if (stock > 0 && stock < 100) low += 1;
+      }
+      return { active, low, categories: categoriesPage.total };
+    },
+    staleTime: 30_000,
+  });
 
   const invalidate = async () => {
     await qc.invalidateQueries({ queryKey: ["catalog", "products"] });
@@ -279,9 +295,9 @@ function CatalogPage() {
       }}
       kpis={[
         { label: "SKUs", value: String(list.total) },
-        { label: "Active", value: String(active), tone: "success" },
-        { label: "Low stock", value: String(low), tone: "warning" },
-        { label: "Categories", value: String(categories.length || "—") },
+        { label: "Active", value: summary.isLoading ? "…" : String(summary.data?.active ?? 0), tone: "success" },
+        { label: "Low stock", value: summary.isLoading ? "…" : String(summary.data?.low ?? 0), tone: "warning" },
+        { label: "Categories", value: summary.isLoading ? "…" : String(summary.data?.categories ?? 0) },
       ]}
       rows={rows}
       serverPagination={pagedListProps(list)}

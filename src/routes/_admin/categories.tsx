@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, FieldLabel, formatStatusLabel } from "@/components/admin/DataPage";
 import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { FolderTree, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fetchCategoryDetail } from "@/lib/api/resources";
+import { fetchCategoryDetail, walkPages } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
 import { Button } from "@/components/ui/button";
@@ -129,8 +129,23 @@ function CategoriesPage() {
     [rows],
   );
 
-  const top = rows.filter((r) => !r.parentId || r.parent === "—" || !r.parent).length;
-  const nested = rows.filter((r) => r.depth > 0).length;
+  const summary = useQuery({
+    queryKey: ["catalog", "categories", "summary"],
+    queryFn: async () => {
+      const all = await walkPages("/catalog/categories");
+      let top = 0;
+      let nested = 0;
+      let active = 0;
+      for (const row of all.rows) {
+        const parentId = str(row.parentId ?? row.parent?.id, "");
+        if (parentId) nested += 1;
+        else top += 1;
+        if (String(row.status || "active") === "active") active += 1;
+      }
+      return { top, nested, active, total: all.total };
+    },
+    staleTime: 30_000,
+  });
   const childCount = useMemo(() => {
     const counts = new Map<string, number>();
     for (const row of rows) {
@@ -175,7 +190,7 @@ function CategoriesPage() {
     <>
       <DataPage
         title="Categories"
-        description="Product groups. Add a subcategory from a row, or set a parent when you create one."
+        description="Product groups. A main category stands alone. A subcategory sits inside one, like Water under Beverages."
         icon={<FolderTree className="h-5 w-5 text-primary" />}
         entityName="Category"
         idKey="id"
@@ -232,14 +247,10 @@ function CategoriesPage() {
         }}
         renderView={(detail) => <GenericJsonDetailView detail={detail} />}
         kpis={[
-          { label: "Top-level", value: String(top) },
-          { label: "Nested", value: String(nested), tone: "info" },
-          { label: "Total", value: String(rows.length) },
-          {
-            label: "Active",
-            value: String(rows.filter((r) => r.status === "active").length),
-            tone: "success",
-          },
+          { label: "Main categories", value: summary.isLoading ? "…" : String(summary.data?.top ?? 0) },
+          { label: "Subcategories", value: summary.isLoading ? "…" : String(summary.data?.nested ?? 0), tone: "info" },
+          { label: "All categories", value: String(summary.data?.total ?? list.total) },
+          { label: "In use", value: summary.isLoading ? "…" : String(summary.data?.active ?? 0), tone: "success" },
         ]}
         rows={rows}
         serverPagination={pagedListProps(list)}
@@ -294,7 +305,7 @@ function CategoriesPage() {
                           ? "1 subcategory"
                           : children > 1
                             ? `${children} subcategories`
-                            : "Top level"}
+                            : "Main category"}
                     </span>
                   </span>
                 </div>

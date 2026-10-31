@@ -49,10 +49,12 @@ import {
   fetchAdminCreditFacilities,
   fetchAdminCreditFacility,
   fetchAdminWalletCreditRequests,
+  fetchAdminDashboard,
   fetchAdminWallets,
   fetchAdminWalletWithdrawals,
   fetchOrgWallet,
   fetchOrgWalletTransactions,
+  fetchPage,
   refundWalletPayment,
   rejectWalletCreditRequest,
   rejectWalletWithdrawRequest,
@@ -1381,55 +1383,216 @@ function WithdrawalsPanel() {
 }
 
 function RefundsPanel() {
-  const [paymentId, setPaymentId] = useState("");
+  const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState("");
   const [reason, setReason] = useState("");
+  const payments = useQuery({
+    queryKey: ["admin", "wallet-refund-payments"],
+    queryFn: () => fetchPage("/payments", { method: "wallet", status: "succeeded", limit: 50, page: 1 }),
+    staleTime: 15_000,
+  });
+  const rows = (payments.data?.rows ?? []).map((r: any) => {
+    const inv = r.invoice || {};
+    return {
+      id: str(r.id),
+      organization: str(r.organization?.name ?? r.organizationName, "Business"),
+      invoice: str(inv.number ?? r.invoiceNumber, ""),
+      amount: num(r.amount),
+      currency: str(r.currency, "AED"),
+      date: r.paidAt ? String(r.paidAt).slice(0, 10) : r.createdAt ? String(r.createdAt).slice(0, 10) : "",
+    };
+  }).filter((row) => row.id);
+  const needle = search.trim().toLowerCase();
+  const visible = needle
+    ? rows.filter((row) => `${row.organization} ${row.invoice}`.toLowerCase().includes(needle))
+    : rows;
+  const selected = rows.find((row) => row.id === selectedId) ?? null;
   const mutate = useMutation({
     mutationFn: () => {
-      if (!paymentId.trim()) throw new Error("Payment id is required");
+      if (!selected) throw new Error("Choose the payment to send back");
       return refundWalletPayment({
-        paymentId: paymentId.trim(),
+        paymentId: selected.id,
         reason: reason.trim() || undefined,
       });
     },
     onSuccess: (result: any) => {
-      toast.success(result?.idempotent ? "Idempotent refund replayed" : "Wallet payment refunded");
-      setPaymentId("");
+      toast.success(result?.idempotent ? "This payment was already sent back" : "Money sent back to the wallet");
+      setSelectedId("");
       setReason("");
+      qc.invalidateQueries({ queryKey: ["admin", "wallet-refund-payments"] });
+      qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
     },
-    onError: (err: Error) => toast.error(err.message || "Refund failed"),
+    onError: (err: Error) => toast.error(err.message || "Could not send the money back"),
   });
 
   return (
-    <div className="max-w-xl space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Refund a wallet-funded payment back to the buyer organization wallet.
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground max-w-2xl">
+        Send a wallet payment back to the restaurant. Choose the business and amount. Cash and card payments are not listed here.
       </p>
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-4">
-        <div>
-          <FieldLabel required className="text-muted-foreground">Payment ID</FieldLabel>
-          <Input
-            value={paymentId}
-            onChange={(e) => setPaymentId(e.target.value)}
-            className="mt-1 font-mono text-xs"
-            placeholder="UUID of the payment"
-          />
-        </div>
-        <div>
-          <Label className="text-xs text-muted-foreground">Reason</Label>
-          <Textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className="mt-1"
-            rows={3}
-            placeholder="Optional refund reason"
-          />
-        </div>
-        <div className="flex justify-end">
-          <Button disabled={mutate.isPending} onClick={() => mutate.mutate()}>
-            {mutate.isPending ? "Refunding…" : "Refund to wallet"}
-          </Button>
-        </div>
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search by business or invoice"
+        className="max-w-sm"
+      />
+      <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden">
+        {payments.isLoading ? (
+          <p className="p-6 text-sm text-muted-foreground">Loading wallet payments…</p>
+        ) : payments.isError ? (
+          <p className="p-6 text-sm text-muted-foreground">Wallet payments are not available right now.</p>
+        ) : visible.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">No wallet payments are ready to send back.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="text-xs text-muted-foreground">
+              <tr className="border-b border-border">
+                <th className="px-4 py-3 text-left font-medium">Business</th>
+                <th className="px-4 py-3 text-left font-medium">Invoice</th>
+                <th className="px-4 py-3 text-left font-medium">Paid</th>
+                <th className="px-4 py-3 text-right font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((row) => {
+                const active = row.id === selectedId;
+                return (
+                  <tr
+                    key={row.id}
+                    className={cn("border-b border-border last:border-0 cursor-pointer", active && "bg-primary/10")}
+                    onClick={() => setSelectedId(row.id)}
+                  >
+                    <td className="px-4 py-3 font-medium">{row.organization}</td>
+                    <td className="px-4 py-3">{row.invoice || "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{row.date || "—"}</td>
+                    <td className="px-4 py-3 text-right">{AED(row.amount)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
+      {selected ? (
+        <div className="max-w-xl rounded-2xl border border-border bg-card p-5 shadow-soft space-y-3">
+          <p className="text-sm">
+            Send <span className="font-semibold">{AED(selected.amount)}</span> back to{" "}
+            <span className="font-semibold">{selected.organization}</span>
+            {selected.invoice ? ` for invoice ${selected.invoice}` : ""}.
+          </p>
+          <div>
+            <Label className="text-xs text-muted-foreground">Note for the record</Label>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="mt-1"
+              rows={2}
+              placeholder="Optional. Example: order cancelled"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setSelectedId("")}>Cancel</Button>
+            <Button disabled={mutate.isPending} onClick={() => mutate.mutate()}>
+              {mutate.isPending ? "Sending…" : "Send back to wallet"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PlatformAccountPanel() {
+  const account = useQuery({
+    queryKey: ["admin", "platform-account"],
+    queryFn: async () => {
+      const [wallets, dash] = await Promise.all([
+        fetchAdminWallets({ type: "all", search: "ScopsK", limit: 20, page: 1 }),
+        fetchAdminDashboard(),
+      ]);
+      const platform = wallets.rows.find((row) => row.organization.trim().toLowerCase() === "scopsk") ?? null;
+      const history = platform
+        ? await fetchOrgWalletTransactions(platform.organizationId, 20)
+        : { transactions: [] as Awaited<ReturnType<typeof fetchOrgWalletTransactions>>["transactions"] };
+      const commissions = (dash.commissions || {}) as Record<string, unknown>;
+      return { platform, transactions: history.transactions, commissions };
+    },
+    staleTime: 15_000,
+  });
+  const data = account.data;
+  const wallet = data?.platform;
+  const currency = wallet?.currency || "AED";
+  const movements = data?.transactions ?? [];
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground max-w-2xl">
+        ScopsK’s own money. Restaurant and supplier wallets stay on Accounts.
+      </p>
+      {account.isError ? (
+        <p className="text-sm text-muted-foreground">ScopsK’s account could not be loaded. Refresh the page.</p>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
+              <div className="label-caps">Cash on hand</div>
+              <div className="mt-1 text-2xl font-display font-semibold text-success">
+                {account.isLoading ? "…" : `${currency} ${num(wallet?.availableBalance).toLocaleString()}`}
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
+              <div className="label-caps">On hold</div>
+              <div className="mt-1 text-2xl font-display font-semibold">
+                {account.isLoading ? "…" : `${currency} ${num(wallet?.heldBalance).toLocaleString()}`}
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
+              <div className="label-caps">Commission kept</div>
+              <div className="mt-1 text-2xl font-display font-semibold text-success">
+                {account.isLoading ? "…" : AED(num(data?.commissions?.settledTotal))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
+              <div className="label-caps">Commission waiting</div>
+              <div className="mt-1 text-2xl font-display font-semibold">
+                {account.isLoading ? "…" : AED(num(data?.commissions?.pendingTotal))}
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden">
+            <div className="border-b border-border px-4 py-3 text-sm font-medium">Recent movements</div>
+            {account.isLoading ? (
+              <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+            ) : movements.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">
+                No money has moved into ScopsK’s wallet yet. It is credited when a restaurant repays a credit loan.
+              </p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="text-xs text-muted-foreground">
+                  <tr className="border-b border-border">
+                    <th className="px-4 py-3 text-left font-medium">When</th>
+                    <th className="px-4 py-3 text-left font-medium">What</th>
+                    <th className="px-4 py-3 text-right font-medium">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movements.map((row) => (
+                    <tr key={row.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                        {row.createdAt ? String(row.createdAt).replace("T", " ").slice(0, 16) : "—"}
+                      </td>
+                      <td className="px-4 py-3">{row.description || "Wallet movement"}</td>
+                      <td className="px-4 py-3 text-right">{AED(num(row.amount))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1511,12 +1674,7 @@ export function WalletsManagement({
           <RefundsPanel />
         </TabsContent>
         <TabsContent value="platform" className="mt-0">
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Full platform wallet register — restaurants, suppliers, and other org types.
-            </p>
-            <BalancesPanel orgTypeFilter="all" />
-          </div>
+          <PlatformAccountPanel />
         </TabsContent>
       </Tabs>
     </div>
