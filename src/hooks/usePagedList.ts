@@ -82,6 +82,43 @@ export function usePagedList<T>(options: {
     isFetching: result.isFetching,
     isError: result.isError,
     refetch: result.refetch,
+    loadAll: async () => {
+      const size = 100;
+      const collected: T[] = [];
+      let pageNum = 1;
+      let total = Number.POSITIVE_INFINITY;
+      while (collected.length < total && pageNum <= 50) {
+        const batch = options.load
+          ? await options.load({
+              page: pageNum,
+              pageSize: size,
+              search: debouncedSearch,
+              sort,
+              status,
+            })
+          : await (async () => {
+              const fetched = await fetchPage(options.path, {
+                ...options.query,
+                page: pageNum,
+                limit: size,
+                search: debouncedSearch || undefined,
+                sortBy: options.query?.sortBy ?? "createdAt",
+                sortOrder: sort === "oldest" ? "ASC" : "DESC",
+                ...(status !== "all" ? { status } : {}),
+              }, options.headers);
+              const rows = options.prepare
+                ? options.prepare(fetched.rows)
+                : fetched.rows.map(options.map ?? ((row) => row as T));
+              return { rows, total: fetched.total };
+            })();
+        total = batch.total;
+        if (!batch.rows.length) break;
+        collected.push(...batch.rows);
+        if (batch.rows.length < size) break;
+        pageNum += 1;
+      }
+      return collected;
+    },
   };
 }
 
@@ -96,6 +133,7 @@ export function pagedListProps(list: {
   setSort: (value: string) => void;
   status: string;
   setStatus: (value: string) => void;
+  loadAll?: () => Promise<unknown[]>;
 }) {
   return {
     page: list.page,
@@ -108,5 +146,6 @@ export function pagedListProps(list: {
     onSortChange: list.setSort,
     status: list.status,
     onStatusChange: list.setStatus,
+    loadAll: list.loadAll,
   };
 }

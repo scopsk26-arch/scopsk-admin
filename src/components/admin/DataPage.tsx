@@ -252,6 +252,8 @@ export function DataPage<T extends Record<string, any>>({
     onSortChange?: (value: string) => void;
     status?: string;
     onStatusChange?: (value: string) => void;
+    /** Every row matching the current search, sort, and status. */
+    loadAll?: () => Promise<T[]>;
   };
 }) {
   // Prefer an explicit singular name so View titles stay "View Purchase Order", not "View ords (purchase orders)".
@@ -575,9 +577,19 @@ export function DataPage<T extends Record<string, any>>({
       toast.error("Nothing to export");
       return;
     }
+    let source = filtered;
+    if (serverPagination?.loadAll) {
+      toast.message("Preparing the full list…");
+      try {
+        source = await serverPagination.loadAll();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Could not load every row");
+        return;
+      }
+    }
     const searchText = (serverPagination ? serverPagination.search : q).trim();
     const meta = [
-      `${filtered.length} row${filtered.length === 1 ? "" : "s"}`,
+      `${source.length} row${source.length === 1 ? "" : "s"}`,
       `Sort: ${sortValue === "oldest" ? "Oldest" : "Newest"}`,
       statusChoices.length ? (statusValue === "all" ? "All statuses" : `Status: ${formatStatusLabel(statusValue)}`) : null,
       searchText ? `Search: ${searchText}` : null,
@@ -590,7 +602,7 @@ export function DataPage<T extends Record<string, any>>({
         description,
         filename,
         columns: exportColumns,
-        rows: filtered.map((row) => {
+        rows: source.map((row) => {
           const record: Record<string, unknown> = {};
           for (const column of exportColumns) {
             const value = (row as Record<string, unknown>)[column.key];
@@ -601,7 +613,7 @@ export function DataPage<T extends Record<string, any>>({
         meta,
         kpis: kpis.map((kpi) => ({ label: kpi.label, value: String(kpi.value) })),
       });
-      toast.success("PDF exported", { description: `${filtered.length} rows · ${title}` });
+      toast.success("PDF exported", { description: `${source.length} rows · ${title}` });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Export failed");
     }
