@@ -533,6 +533,25 @@ export type PagedRows = {
   pageSize: number;
 };
 
+/** Loads every page of a list so card totals are not limited to the rows on screen. */
+export async function walkPages(
+  path: string,
+  query?: Record<string, string | number | boolean | undefined | null>,
+  headers?: Record<string, string>,
+) {
+  const rows: any[] = [];
+  let page = 1;
+  let total = 0;
+  do {
+    const fetched = await fetchPage(path, { ...query, page, limit: 100 }, headers);
+    total = fetched.total;
+    rows.push(...fetched.rows);
+    if (!fetched.rows.length || fetched.rows.length < 100) break;
+    page += 1;
+  } while ((page - 1) * 100 < total && page <= 20);
+  return { rows, total };
+}
+
 /** Counts every KYC application and every document still waiting, not just one table page. */
 export async function fetchKycWaitingCounts() {
   const pageSize = 100;
