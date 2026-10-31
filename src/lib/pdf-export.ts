@@ -37,7 +37,7 @@ function plainCell(value: unknown): string {
   }
   const text = String(value).replace(/\s+/g, " ").trim();
   if (!text) return "—";
-  return text.length > 160 ? `${text.slice(0, 157)}…` : text;
+  return text.length > 72 ? `${text.slice(0, 69)}…` : text;
 }
 
 function drawFirstHeader(doc: jsPDF, input: PdfExportInput) {
@@ -141,13 +141,16 @@ export function downloadTablePdf(input: PdfExportInput) {
   const columns = input.columns.filter((column) => column.key && column.label);
   if (!columns.length) throw new Error("Nothing to export");
 
+  const columnWidth = 92;
+  const pageHeight = columns.length > 6 ? 595 : 842;
+  const pageWidth = Math.max(columns.length > 6 ? 842 : 595, MARGIN * 2 + columns.length * columnWidth);
   const doc = new jsPDF({
-    orientation: columns.length > 6 ? "landscape" : "portrait",
+    orientation: pageWidth > pageHeight ? "landscape" : "portrait",
     unit: "pt",
-    format: "a4",
+    format: [pageWidth, pageHeight],
   });
   const startY = drawFirstHeader(doc, input);
-  const fontSize = columns.length > 8 ? 7.5 : 9;
+  const fontSize = 8;
   const body = input.rows.length
     ? input.rows.map((row) => columns.map((column) => plainCell(row[column.key])))
     : [[
@@ -165,15 +168,17 @@ export function downloadTablePdf(input: PdfExportInput) {
     body,
     theme: "plain",
     showHead: "everyPage",
+    rowPageBreak: "avoid",
     styles: {
       font: "helvetica",
       fontSize,
       textColor: INK,
-      cellPadding: 5,
+      cellPadding: 4,
       overflow: "linebreak",
       valign: "middle",
       lineColor: LINE,
       lineWidth: 0.4,
+      cellWidth: columnWidth,
     },
     headStyles: {
       fillColor: BRAND,
