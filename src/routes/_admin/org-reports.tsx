@@ -195,8 +195,9 @@ function OrgReportsPage() {
         { key: "resolution", label: "Resolution", type: "textarea" },
         {
           key: "blockForReporter",
-          label: "Block for reporter",
+          label: "Restrict reported account",
           type: "select",
+          hint: "Yes, with status Resolved, suspends that business. They cannot order, quote, or stay signed in. They also stay hidden from the reporter.",
           options: ["no", "yes"],
         },
       ]}

@@ -265,27 +265,47 @@ function CatalogPage() {
           options: ["active", "inactive", "draft", "archived"],
         },
       ]}
+      viewDescription="The product, its price range, and who has it in stock."
       viewFields={[
+        { key: "imageUrl", label: "Picture", type: "image" },
+        { key: "productName", label: "Name" },
         { key: "sku", label: "Item code" },
-        { key: "name", label: "Product" },
-        { key: "imageUrl", label: "Picture" },
         { key: "category", label: "Category" },
         { key: "brand", label: "Brand" },
         { key: "unit", label: "Unit" },
-        { key: "priceLabel", label: "Supplier price range" },
-        { key: "supplier", label: "Supplier" },
-        { key: "stock", label: "Supplier stock" },
-        { key: "exciseApplicable", label: "Excise applicable" },
-        { key: "vatRate", label: "VAT % override" },
+        { key: "priceLabel", label: "Price range" },
+        { key: "stock", label: "Total stock" },
+        { key: "exciseApplicable", label: "Excise" },
+        { key: "vatRate", label: "VAT %" },
         { key: "description", label: "Description" },
         { key: "status", label: "Status" },
       ]}
       loadDetail={async (row) => {
-        try {
-          return await fetchProductDetail(row.id);
-        } catch {
-          return row;
-        }
+        const detail = await fetchProductDetail(row.id).catch(() => ({} as Record<string, unknown>));
+        const firstImage = Array.isArray(detail.images) ? detail.images[0] : undefined;
+        const picture =
+          row.imageUrl
+          || (firstImage && typeof firstImage === "object"
+            ? String((firstImage as { file?: { cdnUrl?: string }; cdnUrl?: string }).file?.cdnUrl
+              || (firstImage as { cdnUrl?: string }).cdnUrl
+              || "")
+            : "")
+          || String(detail.imageUrl || "");
+        return {
+          ...detail,
+          imageUrl: picture,
+          productName: row.name,
+          sku: row.sku,
+          category: row.category,
+          brand: row.brand || "None",
+          unit: row.unit,
+          priceLabel: row.priceLabel,
+          stock: row.stock ?? 0,
+          exciseApplicable: row.exciseApplicable,
+          vatRate: row.vatRate ?? detail.vatRate ?? "None",
+          description: detail.description || row.description || "None",
+          status: row.status,
+        };
       }}
       renderView={(detail) => <ProductDetailView detail={detail} />}
       lookups={{

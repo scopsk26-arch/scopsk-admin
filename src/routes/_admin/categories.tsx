@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, FieldLabel, formatStatusLabel } from "@/components/admin/DataPage";
-import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { FolderTree, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchCategoryDetail, walkPages } from "@/lib/api/resources";
@@ -227,25 +226,41 @@ function CategoriesPage() {
           { key: "exciseRate", label: "Excise % default", type: "number" },
         ]}
         lookups={{ parent: parentOptions, parentId: parentOptions }}
+        viewDescription="Where this category sits, and how many products use it."
         viewFields={[
           { key: "imageUrl", label: "Picture", type: "image" },
-          { key: "name", label: "Category" },
-          { key: "parent", label: "Parent" },
-          { key: "depth", label: "Level" },
+          { key: "categoryName", label: "Name" },
+          { key: "kind", label: "Type" },
+          { key: "parentName", label: "Inside" },
+          { key: "subcategoryNames", label: "Subcategories" },
           { key: "products", label: "Products" },
           { key: "suppliers", label: "Suppliers" },
           { key: "status", label: "Status" },
-          { key: "vatRate", label: "VAT % default" },
-          { key: "exciseRate", label: "Excise % default" },
+          { key: "vatRate", label: "VAT %" },
+          { key: "exciseRate", label: "Excise %" },
         ]}
         loadDetail={async (row) => {
-          try {
-            return await fetchCategoryDetail(row.id);
-          } catch {
-            return row;
-          }
+          const detail = await fetchCategoryDetail(row.id).catch(() => row as Record<string, unknown>);
+          const parent = detail.parent;
+          const parentName =
+            parent && typeof parent === "object" && parent !== null && "name" in parent
+              ? String((parent as { name?: string }).name || "")
+              : String(detail.parentName || row.parent || "");
+          const children = Array.isArray(detail.children) ? detail.children : [];
+          const names = children
+            .map((child) => (child && typeof child === "object" && "name" in child ? String((child as { name?: string }).name || "") : ""))
+            .filter(Boolean);
+          return {
+            ...detail,
+            imageUrl: detail.imageUrl || row.imageUrl,
+            categoryName: String(detail.name || row.name || ""),
+            kind: parentName ? "Subcategory" : "Main category",
+            parentName: parentName || "None. This is a main category.",
+            subcategoryNames: names.length ? names.join(", ") : "None",
+            products: detail.products ?? row.products ?? 0,
+            suppliers: detail.suppliers ?? row.suppliers ?? 0,
+          };
         }}
-        renderView={(detail) => <GenericJsonDetailView detail={detail} />}
         kpis={[
           { label: "Main categories", value: summary.isLoading ? "…" : String(summary.data?.top ?? 0) },
           { label: "Subcategories", value: summary.isLoading ? "…" : String(summary.data?.nested ?? 0), tone: "info" },

@@ -4,7 +4,7 @@ import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { RfqDetailView } from "@/components/admin/DetailViews";
 import { FileText } from "lucide-react";
-import { fetchRfqDetail } from "@/lib/api/resources";
+import { fetchPage, fetchRfqDetail } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -43,6 +43,9 @@ function mapRfqRow(r: any) {
     number: str(r.number ?? r.id),
     title: str(r.title, ""),
     restaurant: str(r.organization?.name ?? r.title, "—"),
+    awardedSupplier: str(r.awardedSupplier, "—"),
+    poTotal: r.poTotal != null && r.poTotal !== "" ? num(r.poTotal) : null,
+    poCount: num(r.poCount),
     category: isCk ? "Cloud Kitchen" : str(r.visibility ?? r.metadata?.category, "—"),
     quantity: quantityLabel,
     itemCount,
@@ -66,6 +69,51 @@ function RfqsPage() {
     queryKey: ["rfqs"],
     path: "/rfqs",
     map: mapRfqRow,
+    load: async ({ page, pageSize, search, sort, status }) => {
+      const fetched = await fetchPage("/rfqs", {
+        page,
+        limit: pageSize,
+        search: search || undefined,
+        sortBy: "createdAt",
+        sortOrder: sort === "oldest" ? "ASC" : "DESC",
+        ...(status !== "all" ? { status } : {}),
+      });
+      const rows = fetched.rows.map(mapRfqRow);
+      await Promise.all(
+        rows.map(async (row) => {
+          if (row.awardedSupplier !== "—" && row.poCount > 0) return;
+          if (!["awarded", "closed", "completed"].includes(row.status)) return;
+          try {
+            const detail = await fetchRfqDetail(row.id);
+            const orders = (Array.isArray(detail?.purchaseOrders) ? detail.purchaseOrders : []).filter(
+              (order: { status?: string }) =>
+                !["cancelled", "draft"].includes(String(order.status || "").toLowerCase()),
+            );
+            const names = [
+              ...new Set(
+                orders
+                  .map((order: { supplierName?: string; supplierOrg?: { name?: string } }) =>
+                    order.supplierName || order.supplierOrg?.name || "",
+                  )
+                  .map((name: string) => name.trim())
+                  .filter(Boolean),
+              ),
+            ];
+            if (names.length) row.awardedSupplier = names.join(", ");
+            if (orders.length) {
+              row.poCount = orders.length;
+              row.poTotal = orders.reduce(
+                (sum: number, order: { total?: unknown }) => sum + num(order.total),
+                0,
+              );
+            }
+          } catch {
+            /* The list still shows the request when one detail call fails. */
+          }
+        }),
+      );
+      return { rows, total: fetched.total };
+    },
   });
   const rows = list.rows;
   const isLoading = list.isLoading;
@@ -116,6 +164,7 @@ function RfqsPage() {
         { key: "quantity", label: "Quantity" },
         { key: "itemCount", label: "Line items" },
         { key: "deliveryDate", label: "Delivery date" },
+        { key: "deliveryStatusLabel", label: "Delivery status" },
         { key: "created", label: "Created" },
         { key: "creator", label: "Creator" },
         { key: "status", label: "Status" },
@@ -159,6 +208,13 @@ function RfqsPage() {
               ) : null}
             </span>
           ),
+        },
+        { key: "awardedSupplier", label: "Awarded supplier" },
+        {
+          key: "poTotal",
+          label: "Total PO",
+          className: "whitespace-nowrap w-[1%]",
+          render: (r) => (r.poTotal != null && r.poCount > 0 ? AED(r.poTotal) : "—"),
         },
         { key: "quantity", label: "Quantity", className: "whitespace-nowrap w-[1%]" },
         { key: "created", label: "Created", className: "whitespace-nowrap w-[1%]" },

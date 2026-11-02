@@ -8,6 +8,7 @@ import { TagListDropdown } from "@/components/admin/TagListDropdown";
 import { AccountReviewDialog, needsAccountReview, type AccountReviewRow } from "@/components/admin/AccountReviewDialog";
 import { Store } from "lucide-react";
 import {
+  fetchAdminWalletCreditRequests,
   fetchOrganizationDetail,
   mapOrgRow,
   deleteOrganization,
@@ -178,9 +179,27 @@ function RestaurantsPage() {
             .filter((o) => names.includes(o.label.toLowerCase()))
             .map((o) => o.value);
         }
+        let requestedCreditLimit = Number(mapped.requestedCreditLimit) || 0;
+        if (requestedCreditLimit <= 0) {
+          try {
+            const page = await fetchAdminWalletCreditRequests({
+              organizationId: row.id,
+              category: "credit_limit",
+              limit: 20,
+            });
+            const amounts = page.rows
+              .filter((item) => item.kind === "credit_limit" && item.organizationId === row.id)
+              .map((item) => Number(item.amount) || 0)
+              .filter((amount) => amount > 0);
+            if (amounts.length) requestedCreditLimit = amounts[0];
+          } catch {
+            // The settings amount is enough when the request list is unavailable.
+          }
+        }
         return {
           ...mapped,
           cuisineIds,
+          requestedCreditLimit,
           creditPeriod: mapped.creditPeriod === "week" ? "week" : "month",
         };
       }}

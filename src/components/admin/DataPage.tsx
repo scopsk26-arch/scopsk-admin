@@ -858,7 +858,11 @@ export function DataPage<T extends Record<string, any>>({
                   const col = columns.find((c) => String(c.key) === f.key);
                   let display: ReactNode = "—";
                   if (raw != null && raw !== "") {
-                    if (col?.render && viewing && (typeof raw !== "object" || Array.isArray(raw))) {
+                    if (f.type === "image" && typeof raw === "string") {
+                      display = (
+                        <img src={raw} alt="" className="h-20 w-20 rounded-lg border border-border object-cover" />
+                      );
+                    } else if (col?.render && viewing && (typeof raw !== "object" || Array.isArray(raw))) {
                       try {
                         display = col.render({ ...viewing, [f.key]: raw } as T);
                       } catch {
@@ -1044,37 +1048,50 @@ function RecordDialog({
   const savingRef = useRef(false);
   const wasOpenRef = useRef(false);
 
-  // Reset form only when the dialog opens (not on every fields/lookups identity change).
+  // Fill the form when the dialog opens, then fill any still-empty fields
+  // when the full record arrives. Do not wipe values the user already typed.
   useEffect(() => {
+    const read = (raw: unknown, field: FormField) => {
+      if (field.type === "multiselect") {
+        if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+        if (raw == null || raw === "" || raw === "—") return [] as string[];
+        return String(raw).split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+      }
+      if (Array.isArray(raw)) return raw[0] != null ? String(raw[0]) : "";
+      if (raw == null || raw === "—") {
+        return field.type === "number" ? (field.required ? "" : 0) : "";
+      }
+      return raw;
+    };
+    const blank = (value: unknown, field: FormField) => {
+      if (field.type === "multiselect") return !Array.isArray(value) || value.length === 0;
+      if (field.type === "number") {
+        return value === "" || value == null || Number(value) === 0;
+      }
+      return value == null || value === "";
+    };
     if (open && !wasOpenRef.current) {
       const init: Record<string, any> = {};
       fields.forEach((f) => {
-        const raw = initial?.[f.key];
-        if (f.type === "multiselect") {
-          if (Array.isArray(raw)) {
-            init[f.key] = raw.map(String).filter(Boolean);
-          } else if (raw == null || raw === "" || raw === "—") {
-            init[f.key] = [] as string[];
-          } else {
-            init[f.key] = String(raw)
-              .split(/[,;|]/)
-              .map((s) => s.trim())
-              .filter(Boolean);
-          }
-        } else if (Array.isArray(raw)) {
-          init[f.key] = raw[0] != null ? String(raw[0]) : "";
-        } else if (raw == null) {
-          // Required numbers start blank so validation catches "not filled";
-          // optional numbers still default to 0 for convenience.
-          init[f.key] = f.type === "number" ? (f.required ? "" : 0) : "";
-        } else {
-          init[f.key] = raw;
-        }
+        init[f.key] = read(initial?.[f.key], f);
       });
       setForm(init);
       setErrors({});
       setSaving(false);
       savingRef.current = false;
+    } else if (open && initial) {
+      setForm((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const field of fields) {
+          if (!blank(prev[field.key], field)) continue;
+          const incoming = read(initial[field.key], field);
+          if (blank(incoming, field)) continue;
+          next[field.key] = incoming;
+          changed = true;
+        }
+        return changed ? next : prev;
+      });
     }
     wasOpenRef.current = open;
   }, [open, initial, fields]);

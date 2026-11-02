@@ -16,14 +16,22 @@ export const Route = createFileRoute("/_admin/purchase-orders")({
   component: PurchaseOrdersPage,
 });
 
-const PO_STATUSES = [
-  "draft",
-  "confirmed",
-  "in_progress",
-  "delivered",
-  "completed",
-  "cancelled",
+/** Stages an admin can set. These match the supplier order steps and save successfully. */
+const PO_STATUS_OPTIONS = [
+  { value: "confirmed", label: "Confirmed" },
+  { value: "in_progress", label: "Packed" },
+  { value: "delivered", label: "Delivered" },
 ] as const;
+
+const PO_STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  pending_approval: "Waiting",
+  confirmed: "Confirmed",
+  in_progress: "Packed",
+  delivered: "Delivered",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
 
 function mapPo(r: any) {
   const items = Array.isArray(r.items) ? r.items : [];
@@ -97,8 +105,9 @@ function PurchaseOrdersPage() {
           key: "status",
           label: "Status",
           required: true,
-          type: "select",
-          options: [...PO_STATUSES],
+          type: "searchable",
+          allowClear: false,
+          selectOptions: [...PO_STATUS_OPTIONS],
         },
       ]}
       viewFields={[
@@ -186,7 +195,9 @@ function PurchaseOrdersPage() {
           key: "status",
           label: "Status",
           className: "whitespace-nowrap w-[1%]",
-          render: (r) => <StatusBadge status={r.status} />,
+          render: (r) => (
+            <StatusBadge status={PO_STATUS_LABEL[r.status] ?? r.status} />
+          ),
         },
       ]}
       onUpdate={async (id, data, row) => {
