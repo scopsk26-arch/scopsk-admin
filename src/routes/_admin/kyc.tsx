@@ -55,7 +55,7 @@ function KycPage() {
         return {
           id: str(r.id),
           entity: str(r.organization?.name ?? r.organizationId, "—"),
-          type: str(r.type, "—"),
+          type: String(r.type || "").toLowerCase() === "supplier" ? "supplier" : "restaurant",
           submitted: r.submittedAt
             ? String(r.submittedAt).slice(0, 10)
             : r.createdAt
@@ -96,7 +96,12 @@ function KycPage() {
       icon={<ShieldCheck className="h-5 w-5 text-primary" />}
       formFields={[
         { key: "entity", label: "Entity", type: "text" },
-        { key: "type", label: "Type", type: "text" },
+        {
+          key: "type",
+          label: "Type",
+          type: "select",
+          options: ["restaurant", "supplier"],
+        },
         {
           key: "status",
           label: "Decision",

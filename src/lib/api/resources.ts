@@ -237,8 +237,13 @@ export function mapOrgRow(r: any, type: "restaurant" | "supplier") {
       ? (meta.workingHours as { days?: unknown; open?: unknown; close?: unknown })
       : {};
   const address = organizationStreet({ ...r, metadata: meta });
-  const city = str(r.city ?? profile.businessCity, "");
-  const country = str(r.country ?? profile.businessCountry, "");
+  const branchList = Array.isArray(r.branches) ? r.branches : [];
+  const branch =
+    branchList.find((item: { isPrimary?: boolean; name?: string }) => item?.isPrimary && item?.name)
+    || branchList.find((item: { name?: string }) => item?.name)
+    || null;
+  const city = str(r.city ?? profile.businessCity ?? branch?.city, "");
+  const country = str(r.country ?? profile.businessCountry ?? branch?.country, "");
   return {
     id: str(r.id),
     name: str(r.name, "Untitled"),
@@ -262,7 +267,7 @@ export function mapOrgRow(r: any, type: "restaurant" | "supplier") {
     workingDays: Array.isArray(hours.days) ? hours.days.map((d) => String(d)) : [],
     workingOpen: str(hours.open, ""),
     workingClose: str(hours.close, ""),
-    branchName: str(r.branches?.[0]?.name ?? meta.branchName, ""),
+    branchName: str(branch?.name ?? meta.branchName, ""),
     revenue: num(r.metadata?.revenue ?? r.revenue),
     winRate: num(r.metadata?.winRate),
     rating: num(r.rating ?? r.metadata?.rating),

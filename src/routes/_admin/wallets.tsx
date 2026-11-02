@@ -294,7 +294,6 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="frozen">Frozen</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
@@ -642,17 +641,13 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
   };
 
   const acceptM = useMutation({
-    mutationFn: (row: WalletCreditRequestRow) => {
-      const chosen = Number(giveAmount);
-      return acceptWalletCreditRequest(
-        row.id,
-        isCredit && Number.isFinite(chosen) && chosen > 0 ? chosen : undefined,
-      );
+    mutationFn: (input: { row: WalletCreditRequestRow; amount?: number }) => {
+      return acceptWalletCreditRequest(input.row.id, input.amount);
     },
-    onSuccess: async (_data, row) => {
+    onSuccess: async (_data, input) => {
+      const row = input.row;
       const time = formatDecisionTime();
-      const chosen = Number(giveAmount);
-      const granted = isCredit && Number.isFinite(chosen) && chosen > 0 ? chosen : row.amount;
+      const granted = input.amount && input.amount > 0 ? input.amount : row.amount;
       const amount = granted > 0 ? AED(granted) : "";
       setDecision({
         title: isCredit ? "Credit request approved" : "Wallet request approved",
@@ -696,8 +691,8 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         {isCredit
-          ? "Credit requests raise the restaurant credit limit. They do not add cash to the wallet. After you approve one, the limit shows under Credit limits."
-          : "Wallet requests add cash to the restaurant wallet. After you approve one, the amount shows under Accounts."}
+          ? "Credit requests from restaurants and suppliers. Approving raises that business credit limit. It does not add cash. The limit then shows under Credit limits."
+          : "Wallet requests add cash to the business wallet. After you approve one, the amount shows under Accounts."}
       </p>
       <div className="rounded-xl border border-border bg-card shadow-soft overflow-hidden">
         <div className="p-4 flex flex-wrap gap-2 border-b border-border bg-muted/20">
@@ -706,7 +701,7 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
             <Input
               value={list.search}
               onChange={(e) => list.setSearch(e.target.value)}
-              placeholder="Search ticket, restaurant…"
+              placeholder="Search ticket or business…"
               className="pl-9 h-9 bg-card"
             />
           </div>
@@ -758,7 +753,14 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                       setReview(r);
                     }}
                   >
-                    <td className="px-4 py-3 font-medium whitespace-nowrap">{r.organization}</td>
+                    <td className="px-4 py-3 font-medium whitespace-nowrap">
+                      {r.organization}
+                      {r.orgType && r.orgType !== "—" ? (
+                        <span className="ml-2 text-xs font-normal text-muted-foreground capitalize">
+                          {r.orgType}
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">
                       {r.amount > 0 ? AED(r.amount) : "—"}
                     </td>
@@ -846,12 +848,12 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                 <>
                   {isCredit ? (
                     <div>
-                      <div className="text-xs text-muted-foreground">Credit to give (AED)</div>
-                      <div className="mt-1 flex items-center gap-2">
+                      <div className="text-xs text-muted-foreground">Approved amount (AED)</div>
+                      <div className="mt-1 grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] gap-2">
                         <Button
                           type="button"
                           variant="outline"
-                          className="h-9 w-9 px-0"
+                          className="h-10 w-10 px-0"
                           onClick={() =>
                             setGiveAmount((current) =>
                               String(Math.max(0, (Number(current) || 0) - 100)),
@@ -866,12 +868,12 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                           step={100}
                           value={giveAmount}
                           onChange={(event) => setGiveAmount(event.target.value)}
-                          className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          className="h-10 min-w-0 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
                         <Button
                           type="button"
                           variant="outline"
-                          className="h-9 w-9 px-0"
+                          className="h-10 w-10 px-0"
                           onClick={() =>
                             setGiveAmount((current) => String((Number(current) || 0) + 100))
                           }
@@ -880,7 +882,9 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                         </Button>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        This is the amount added to the restaurant credit limit. It can be less or more than they asked for.
+                        They asked for {review.amount > 0 ? AED(review.amount) : "an amount"}.
+                        {" "}You are approving {Number(giveAmount) > 0 ? AED(Number(giveAmount)) : "—"}.
+                        This is the limit you set. It does not have to match the request.
                       </p>
                     </div>
                   ) : null}
@@ -892,7 +896,13 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                   <div className="flex flex-wrap gap-2">
                     <Button
                       disabled={busy || (isCredit && !(Number(giveAmount) > 0))}
-                      onClick={() => acceptM.mutate(review)}
+                      onClick={() => {
+                        const chosen = Number(giveAmount);
+                        acceptM.mutate({
+                          row: review,
+                          amount: isCredit && Number.isFinite(chosen) && chosen > 0 ? chosen : undefined,
+                        });
+                      }}
                     >
                       {isCredit ? "Approve credit" : "Approve wallet"}
                     </Button>

@@ -279,10 +279,11 @@ export function RfqDetailView({
       <DetailSection title="Summary">
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
           <div><span className="text-muted-foreground">Title: </span>{str(detail.title, "—")}</div>
-          <div><span className="text-muted-foreground">Delivery: </span>{iso(detail.deliveryDate ?? detail.neededBy)}</div>
+          <div><span className="text-muted-foreground">Delivery date: </span>{iso(detail.deliveryDate ?? detail.neededBy)}</div>
+          <div><span className="text-muted-foreground">Delivery status: </span>{str(detail.deliveryStatusLabel, "—")}</div>
           <div className="sm:col-span-2"><span className="text-muted-foreground">Notes: </span>{str(detail.notes ?? detail.description, "—")}</div>
           <div><span className="text-muted-foreground">Creator: </span>{str(detail.creator?.email ?? [detail.creator?.firstName, detail.creator?.lastName].filter(Boolean).join(" "), "—")}</div>
-          <div><span className="text-muted-foreground">Org: </span>{str(detail.organization?.name, "—")}</div>
+          <div><span className="text-muted-foreground">Restaurant: </span>{str(detail.organization?.name, "—")}</div>
           {isCk ? (
             <div className="sm:col-span-2 text-muted-foreground">
               Fulfillment: Admin serves this request directly — suppliers are not invited.
@@ -1243,127 +1244,82 @@ export function KycDetailView({ detail }: { detail: any }) {
   );
 }
 
+function stockAmount(value: unknown) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "—";
+  return new Intl.NumberFormat("en-AE", { maximumFractionDigits: 0 }).format(amount);
+}
+
+function businessKind(value: unknown) {
+  const kind = String(value || "").toLowerCase();
+  if (kind === "supplier") return "Supplier";
+  if (kind === "restaurant") return "Restaurant";
+  if (!kind) return "—";
+  return kind.charAt(0).toUpperCase() + kind.slice(1);
+}
+
+function stockUnit(value: unknown) {
+  const unit = String(value || "").toLowerCase();
+  if (!unit) return "—";
+  if (unit === "pcs" || unit === "pc" || unit === "piece") return "Piece";
+  return String(value);
+}
+
 export function ProductDetailView({ detail }: { detail: any }) {
-  const variants = Array.isArray(detail?.variants) ? detail.variants : [];
-  const images = Array.isArray(detail?.images) ? detail.images : [];
   const inventory = Array.isArray(detail?.inventoryItems) ? detail.inventoryItems : [];
+  if (!inventory.length) return null;
 
   return (
-    <>
-      <DetailSection title="Catalog">
-        <div className="grid gap-3 sm:grid-cols-2 text-sm">
-          <div><span className="text-muted-foreground">Item code: </span>{str(detail.sku ?? detail.productCode, "—")}</div>
-          <div><span className="text-muted-foreground">Category: </span>{str(detail.category?.name, "—")}</div>
-          <div><span className="text-muted-foreground">Brand: </span>{str(detail.brand?.name, "—")}</div>
-          <div><span className="text-muted-foreground">Unit: </span>{str(detail.unit?.name ?? detail.unit?.symbol, "—")}</div>
-          <div><span className="text-muted-foreground">Org: </span>{str(detail.organization?.name, "—")}</div>
-          <div><span className="text-muted-foreground">Price: </span>{money(detail.price ?? detail.unitPrice)}</div>
-          <div><span className="text-muted-foreground">Excise applicable: </span>{detail.exciseApplicable ? "Yes" : "No"}</div>
-          <div><span className="text-muted-foreground">Picture: </span>
-            {(() => {
-              const url =
-                detail.images?.[0]?.file?.cdnUrl ||
-                detail.images?.[0]?.cdnUrl ||
-                detail.imageUrl;
-              if (!url) return "—";
-              return (
-                <span className="inline-flex items-center gap-3 align-middle">
-                  <img src={String(url)} alt="" className="h-16 w-16 rounded object-cover border border-border" />
-                  <a href={String(url)} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline truncate">
-                    Open CDN URL
-                  </a>
-                </span>
-              );
-            })()}
-          </div>
-          <div className="sm:col-span-2"><span className="text-muted-foreground">Description: </span>{str(detail.description, "—")}</div>
-        </div>
-      </DetailSection>
-      {variants.length > 0 && (
-        <DetailSection title="Variants">
-          <DetailTable
-            rows={variants}
-            columns={[
-              { key: "name", label: "Name", render: (r) => str(r.name, "—") },
-              { key: "sku", label: "SKU", render: (r) => str(r.sku, "—") },
-              { key: "price", label: "Price", render: (r) => money(r.price) },
-            ]}
-          />
-        </DetailSection>
-      )}
-      {images.length > 0 && (
-        <DetailSection title="Images">
-          <DetailTable
-            rows={images}
-            columns={[
-              { key: "name", label: "File", render: (r) => str(r.file?.originalName ?? r.alt, "—") },
-              {
-                key: "url",
-                label: "Link",
-                render: (r) => {
-                  const url = r.file?.cdnUrl ?? r.file?.url ?? r.url;
-                  return url ? (
-                    <a href={String(url)} target="_blank" rel="noreferrer" className="text-primary hover:underline text-xs">Open</a>
-                  ) : "—";
-                },
-              },
-            ]}
-          />
-        </DetailSection>
-      )}
-      {inventory.length > 0 && (
-        <DetailSection title="Supplier stock">
-          <DetailTable
-            rows={[...inventory].sort((a, b) => num(b.stock) - num(a.stock))}
-            columns={[
-              {
-                key: "org",
-                label: "Organization",
-                render: (r) =>
-                  str(
-                    r.organizationName ??
-                      r.organization?.name ??
-                      r.Organization?.name ??
-                      r.orgName,
-                    "—",
-                  ),
-              },
-              {
-                key: "type",
-                label: "Type",
-                render: (r) => str(r.organization?.type ?? r.Organization?.type, "—"),
-              },
-              {
-                key: "stock",
-                label: "Stock",
-                render: (r) => str(r.stock ?? r.quantity ?? r.onHand, "—"),
-              },
-              {
-                key: "unit",
-                label: "Unit",
-                render: (r) => str(r.unit, "—"),
-              },
-              {
-                key: "unitPrice",
-                label: "Price",
-                render: (r) => money(r.unitPrice),
-              },
-              {
-                key: "warehouse",
-                label: "Warehouse",
-                render: (r) =>
-                  str(r.warehouseName ?? r.warehouse?.name ?? r.location, "—"),
-              },
-              {
-                key: "status",
-                label: "Status",
-                render: (r) => statusCell(r.status),
-              },
-            ]}
-          />
-        </DetailSection>
-      )}
-    </>
+    <DetailSection title="Who has this in stock">
+      <DetailTable
+        rows={[...inventory].sort((a, b) => num(b.stock) - num(a.stock))}
+        columns={[
+          {
+            key: "org",
+            label: "Business",
+            render: (r) =>
+              str(
+                r.organizationName ??
+                  r.organization?.name ??
+                  r.Organization?.name ??
+                  r.orgName,
+                "—",
+              ),
+          },
+          {
+            key: "type",
+            label: "Business type",
+            render: (r) => businessKind(r.organization?.type ?? r.Organization?.type),
+          },
+          {
+            key: "stock",
+            label: "In stock",
+            render: (r) => stockAmount(r.stock ?? r.quantity ?? r.onHand),
+          },
+          {
+            key: "unit",
+            label: "Unit",
+            render: (r) => stockUnit(r.unit),
+          },
+          {
+            key: "unitPrice",
+            label: "Price",
+            render: (r) => money(r.unitPrice),
+          },
+          {
+            key: "warehouse",
+            label: "Warehouse",
+            render: (r) =>
+              str(r.warehouseName ?? r.warehouse?.name ?? r.location, "—"),
+          },
+          {
+            key: "status",
+            label: "Status",
+            render: (r) => statusCell(r.status),
+          },
+        ]}
+      />
+    </DetailSection>
   );
 }
 

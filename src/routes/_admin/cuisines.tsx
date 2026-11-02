@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
-import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { UtensilsCrossed } from "lucide-react";
 import { api, num, str } from "@/lib/api/client";
 import { walkPages } from "@/lib/api/resources";
@@ -128,17 +127,21 @@ function CuisinesPage() {
         },
       ]}
       lookups={{ categoryIds: categories, categories }}
+      viewDescription="The cuisine name, the categories it covers, and how many products use it."
       viewFields={[
-        { key: "name", label: "Cuisine" },
-        { key: "slug", label: "Slug" },
+        { key: "name", label: "Name" },
         { key: "description", label: "Description" },
         { key: "categories", label: "Categories" },
         { key: "products", label: "Products" },
-        { key: "sortOrder", label: "Sort order" },
         { key: "status", label: "Status" },
       ]}
-      loadDetail={async (row) => row}
-      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
+      loadDetail={async (row) => ({
+        name: row.name,
+        description: row.description || "None",
+        categories: row.categories || "None",
+        products: row.products ?? 0,
+        status: row.status,
+      })}
       kpis={[
         { label: "Total", value: String(summary.data?.total ?? list.total) },
         { label: "Active", value: summary.isLoading ? "…" : String(summary.data?.active ?? 0), tone: "success" },
