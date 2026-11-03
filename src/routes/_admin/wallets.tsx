@@ -623,7 +623,7 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
   });
   const rows = list.rows.filter((row) => row.kind === kind);
 
-  const patchRequestStatus = (ticketId: string, next: string) => {
+  const patchRequestStatus = (ticketId: string, next: string, approvedAmount?: number) => {
     qc.setQueriesData(
       { queryKey: ["admin", "wallet-credit-requests"] },
       (prev: unknown) => {
@@ -633,7 +633,16 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
         return {
           ...page,
           rows: page.rows.map((row) =>
-            row.id === ticketId ? { ...row, status: next } : row,
+            row.id === ticketId
+              ? {
+                  ...row,
+                  status: next,
+                  approvedAmount:
+                    approvedAmount != null && approvedAmount > 0
+                      ? approvedAmount
+                      : row.approvedAmount,
+                }
+              : row,
           ),
         };
       },
@@ -656,7 +665,7 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
           : `${row.organization}${amount ? ` · ${amount}` : ""} was approved. The cash shows under Accounts.`,
         time,
       });
-      patchRequestStatus(row.id, "resolved");
+      patchRequestStatus(row.id, "resolved", granted);
       setReview(null);
       setReason("");
       await qc.invalidateQueries({ queryKey: ["admin", "wallets"] });
@@ -762,7 +771,12 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                       ) : null}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">
-                      {r.amount > 0 ? AED(r.amount) : "—"}
+                      <div>{r.amount > 0 ? AED(r.amount) : "—"}</div>
+                      {r.status === "resolved" && r.approvedAmount != null && r.approvedAmount > 0 ? (
+                        <div className="text-xs font-normal text-muted-foreground">
+                          Approved {AED(r.approvedAmount)}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 max-w-[240px] truncate" title={r.subject}>{r.subject}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{r.requester}</td>
@@ -833,6 +847,16 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                   <div className="text-xs text-muted-foreground">Requested</div>
                   <div className="mt-1 font-medium">{review.amount > 0 ? AED(review.amount) : "—"}</div>
                 </div>
+                {review.status === "resolved" ? (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Approved</div>
+                    <div className="mt-1 font-medium">
+                      {review.approvedAmount != null && review.approvedAmount > 0
+                        ? AED(review.approvedAmount)
+                        : "—"}
+                    </div>
+                  </div>
+                ) : null}
                 <div>
                   <div className="text-xs text-muted-foreground">Status</div>
                   <div className="mt-1">
@@ -1088,11 +1112,11 @@ function CreditFacilityPanel() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        After you accept a credit request, the restaurant owes ScopsK via a repayment invoice. This
-        tab shows facility size, how much they paid from wallet, and what is still remaining.
+        After you accept a credit request, the approved amount is the credit limit. This tab lists
+        restaurants and suppliers, the approved limit, what they have used, and what is still unpaid.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
-        <Kpi label="Facility (page)" value={AED(totals.facility)} />
+        <Kpi label="Approved (page)" value={AED(totals.facility)} />
         <Kpi label="Paid (page)" value={AED(totals.paid)} tone="success" />
         <Kpi
           label="Remaining (page)"
@@ -1128,8 +1152,8 @@ function CreditFacilityPanel() {
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 {[
-                  "Restaurant",
-                  "Facility",
+                  "Business",
+                  "Approved limit",
                   "Invoiced",
                   "Paid (wallet)",
                   "Remaining",
