@@ -220,6 +220,7 @@ const SETTING_KEYS = [
   "email_provider",
   "sms_provider",
   "min_rfq_value_aed",
+  "supplier_accept_hours",
   "matching_min_stock_pct",
   "default_po_approval_levels",
   "delivery_options",
@@ -283,6 +284,7 @@ function SettingsPage() {
     next.email_provider = next.email_provider || "Postmark";
     next.sms_provider = next.sms_provider || "Unifonic";
     next.min_rfq_value_aed = next.min_rfq_value_aed || "500";
+    next.supplier_accept_hours = next.supplier_accept_hours || "24";
     next.matching_min_stock_pct = next.matching_min_stock_pct || "20";
     next.default_po_approval_levels = next.default_po_approval_levels || "0";
     next.delivery_options = next.delivery_options
@@ -413,6 +415,7 @@ function SettingsPage() {
       description: "Quote request minimums, matching, order approvals, and delivery options.",
       fields: [
         { key: "min_rfq_value_aed", label: "Min RFQ value (AED)" },
+        { key: "supplier_accept_hours", label: "Supplier accept window (hours)" },
         { key: "matching_min_stock_pct", label: "Matching min stock %" },
         { key: "default_po_approval_levels", label: "Default PO approval levels", options: APPROVAL_LEVELS },
         { key: "delivery_options", label: "Delivery options", options: DELIVERY_OPTIONS, multiple: true },
