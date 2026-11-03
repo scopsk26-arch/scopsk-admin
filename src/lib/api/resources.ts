@@ -1601,6 +1601,7 @@ export type WalletCreditRequestRow = {
   relatedCode: string;
   kind: "wallet_topup" | "credit_limit";
   amount: number;
+  approvedAmount: number | null;
   currency: string;
   period: "week" | "month" | null;
   status: string;
@@ -1651,6 +1652,7 @@ export async function fetchAdminWalletCreditRequests(query?: {
     const relatedCode = str(r.relatedCode, "");
     const subject = str(r.subject, "—");
     const parsed = parseTopUpFromTicket(relatedCode, subject);
+    const approvedFromCode = relatedCode.match(/:APPROVED:(\d+(?:\.\d+)?)/i);
     const category = str(r.category, parsed.kind);
     return {
       id: str(r.id),
@@ -1663,6 +1665,12 @@ export async function fetchAdminWalletCreditRequests(query?: {
       relatedCode: relatedCode || "—",
       kind: category === "credit_limit" ? "credit_limit" : "wallet_topup",
       amount: parsed.amount,
+      approvedAmount:
+        r.approvedAmount != null && r.approvedAmount !== ""
+          ? num(r.approvedAmount)
+          : approvedFromCode
+            ? num(approvedFromCode[1])
+            : null,
       currency: parsed.currency,
       period: parsed.period,
       status: str(r.status, "open"),

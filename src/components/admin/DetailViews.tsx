@@ -88,39 +88,11 @@ export function FinanceBreakdownSection({
   );
 }
 
-function hopLabel(row: any) {
-  // Prefer API enum `leg` — never trust list-row display strings stored as `hop`
-  const raw = row?.leg ?? row?.phase ?? row?.fulfillmentPhase ?? "";
-  const hop = String(raw).toLowerCase().replace(/\s+/g, "_");
-  const notes = String(row?.notes || "").toLowerCase();
-  const displayHint = String(row?.hopDisplay || row?.hop || "").toLowerCase();
-  if (
-    hop === "to_warehouse"
-    || hop === "inbound"
-    || hop === "warehouse"
-    || hop === "1"
-    || hop.includes("warehouse")
-    || notes.includes("hop 1")
-    || notes.includes("to warehouse")
-    || displayHint.includes("warehouse")
-  ) {
-    return "Hop 1 · To warehouse";
-  }
-  if (
-    hop === "to_restaurant"
-    || hop === "outbound"
-    || hop === "restaurant"
-    || hop === "2"
-    || hop.includes("restaurant")
-    || notes.includes("hop 2")
-    || notes.includes("to restaurant")
-    || displayHint.includes("restaurant")
-  ) {
-    return "Hop 2 · To restaurant";
-  }
-  // Default when leg missing but delivery exists
-  if (row?.status || row?.number) return "Hop 2 · To restaurant";
-  return "—";
+function buyerNote(value: unknown) {
+  const text = str(value, "");
+  if (!text || text === "—") return "";
+  if (/hop\s*\d|warehouse|outbound to buyer/i.test(text)) return "";
+  return text;
 }
 
 function deliveryItemQty(r: any) {
@@ -279,7 +251,7 @@ export function RfqDetailView({
       <DetailSection title="Summary">
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
           <div><span className="text-muted-foreground">Title: </span>{str(detail.title, "—")}</div>
-          <div><span className="text-muted-foreground">Delivery date: </span>{iso(detail.deliveryDate ?? detail.neededBy)}</div>
+          <div><span className="text-muted-foreground">Delivery date: </span>{String(detail.deliveryDateLabel || detail.deliveryDate || "").includes(" to ") ? str(detail.deliveryDateLabel || detail.deliveryDate) : iso(detail.deliveryDateLabel || detail.deliveryDate || detail.neededBy)}</div>
           <div><span className="text-muted-foreground">Delivery status: </span>{str(detail.deliveryStatusLabel, "—")}</div>
           <div className="sm:col-span-2"><span className="text-muted-foreground">Notes: </span>{str(detail.notes ?? detail.description, "—")}</div>
           <div><span className="text-muted-foreground">Creator: </span>{str(detail.creator?.email ?? [detail.creator?.firstName, detail.creator?.lastName].filter(Boolean).join(" "), "—")}</div>
@@ -569,14 +541,10 @@ export function PurchaseOrderDetailView({ detail }: { detail: any }) {
       </DetailSection>
       {deliveries.length > 0 && (
         <DetailSection title="Deliveries">
-          <p className="text-xs text-muted-foreground mb-2">
-            Each purchase order has two hops: supplier → warehouse, then warehouse → restaurant.
-          </p>
           <DetailTable
             rows={deliveries}
             columns={[
               { key: "number", label: "Delivery", render: (r) => str(r.number, "—") },
-              { key: "hop", label: "Hop", render: (r) => hopLabel(r) },
               { key: "status", label: "Status", render: (r) => statusCell(r.status) },
               { key: "eta", label: "ETA", render: (r) => iso(r.etaAt ?? r.scheduledAt) },
             ]}
@@ -623,7 +591,6 @@ export function DeliveryDetailView({ detail }: { detail: any }) {
           <div><span className="text-muted-foreground">Driver: </span>{str(detail.driverName ?? ([detail.driver?.firstName, detail.driver?.lastName].filter(Boolean).join(" ") || detail.driver?.email), "—")}</div>
           <div><span className="text-muted-foreground">Scheduled: </span>{iso(detail.scheduledAt)}</div>
           <div><span className="text-muted-foreground">ETA: </span>{iso(detail.etaAt ?? detail.scheduledAt ?? detail.deliveredAt)}</div>
-          <div><span className="text-muted-foreground">Hop: </span>{hopLabel(detail)}</div>
           <div><span className="text-muted-foreground">Address: </span>{str(detail.address, "—")}</div>
           <div className="sm:col-span-2">
             <span className="text-muted-foreground">Proof: </span>
@@ -635,8 +602,8 @@ export function DeliveryDetailView({ detail }: { detail: any }) {
               "Not uploaded"
             )}
           </div>
-          {detail.notes ? (
-            <div className="sm:col-span-2"><span className="text-muted-foreground">Notes: </span>{str(detail.notes)}</div>
+          {buyerNote(detail.notes) ? (
+            <div className="sm:col-span-2"><span className="text-muted-foreground">Notes: </span>{buyerNote(detail.notes)}</div>
           ) : null}
         </div>
       </DetailSection>
@@ -990,9 +957,7 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
   const isSupplier = type === "supplier";
   const cuisines = namesOf(detail?.cuisines ?? detail?.cuisineNames ?? row?.cuisines);
   const categories = namesOf(detail?.metadata?.categories ?? row?.categories);
-  const deliveryOptions = namesOf(settings.deliveryOptions);
   const rating = num(detail?.rating ?? detail?.metadata?.rating ?? row?.rating);
-  const anonymous = settings.anonymousMarketplace !== false;
   const meta = {
     ...((detail?.metadata && typeof detail.metadata === "object" ? detail.metadata : {}) as Record<string, unknown>),
     ...((settings.metadata && typeof settings.metadata === "object" ? settings.metadata : {}) as Record<string, unknown>),
@@ -1092,8 +1057,7 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
                 ["PO approval levels", str(settings.poApprovalLevels ?? row?.poApprovalLevels, "0")],
                 ["Minimum RFQ", money(minRfqShown)],
                 ["Stock match minimum", `${num(settings.matchingMinStockPct)}%`],
-                ["Delivery options", deliveryOptions],
-                ["Anonymous marketplace", anonymous ? "On" : "Off"],
+                ["Delivery fee", feeLabel(settings.deliveryFeeMode ?? row?.deliveryFeeMode, settings.deliveryFeeValue ?? row?.deliveryFeeValue)],
                 ["Win rate", row?.winRate != null ? `${num(row.winRate)}%` : "—"],
                 ["Revenue (90d)", row?.revenue != null ? money(row.revenue) : "—"],
               ]
@@ -1105,7 +1069,6 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
                 ["Credit limit", money(settings.creditLimit ?? row?.creditLimit)],
                 ["Payment terms", `${num(settings.paymentTermsDays ?? row?.paymentTermsDays)} days`],
                 ["Discount", feeLabel(settings.discountMode ?? row?.discountMode, settings.discountValue ?? row?.discountValue)],
-                ["Anonymous marketplace", anonymous ? "On" : "Off"],
                 ["Rating", rating > 0 ? `${rating} / 5` : "—"],
                 ["Branches", String(branches.length)],
               ]
