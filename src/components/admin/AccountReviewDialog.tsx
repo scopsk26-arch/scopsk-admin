@@ -264,6 +264,7 @@ function KycDocList({
   onChange: (documents: KycDoc[]) => void;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<"approved" | "rejected" | null>(null);
   if (!documents.length) return null;
 
   const review = async (id: string, status: "approved" | "rejected") => {
@@ -278,6 +279,7 @@ function KycDocList({
       }
     }
     setBusyId(id);
+    setBusyAction(status);
     try {
       await reviewKycDocument(id, status, notes);
       onChange(documents.map((doc) => (doc.id === id ? { ...doc, status } : doc)));
@@ -285,6 +287,7 @@ function KycDocList({
       toast.error(err instanceof Error ? err.message : "Could not update the document");
     } finally {
       setBusyId(null);
+      setBusyAction(null);
     }
   };
 
@@ -306,11 +309,11 @@ function KycDocList({
             ) : null}
             {pending && doc.id ? (
               <>
-                <Button type="button" size="sm" className="h-7 px-2" disabled={busyId === doc.id} onClick={() => void review(doc.id, "approved")}>
-                  Approve
+                <Button type="button" size="sm" className="h-7 px-2" disabled={busyId != null} onClick={() => void review(doc.id, "approved")}>
+                  {busyId === doc.id && busyAction === "approved" ? "Approving…" : "Approve"}
                 </Button>
-                <Button type="button" size="sm" variant="destructive" className="h-7 px-2" disabled={busyId === doc.id} onClick={() => void review(doc.id, "rejected")}>
-                  Reject
+                <Button type="button" size="sm" variant="destructive" className="h-7 px-2" disabled={busyId != null} onClick={() => void review(doc.id, "rejected")}>
+                  {busyId === doc.id && busyAction === "rejected" ? "Rejecting…" : "Reject"}
                 </Button>
               </>
             ) : null}
@@ -400,7 +403,13 @@ export function AccountReviewDialog({
   const showCredit = snap ? selectedCredit(snap) : false;
   const credit = snap && showCredit ? creditPhase(snap) : "none";
   const kycOpen = OPEN_KYC.has(snap?.kycApplicationStatus.toLowerCase() || "");
-  const canApproveKyc = Boolean(snap?.kycApplicationId) && kycOpen && (snap?.documentCount || 0) > 0;
+  const rejectedDoc = docs.some((doc) => String(doc.status || "").toLowerCase() === "rejected");
+  const canApproveKyc =
+    Boolean(snap?.kycApplicationId) &&
+    kycOpen &&
+    docs.length > 0 &&
+    !rejectedDoc &&
+    docs.every((doc) => String(doc.status || "").toLowerCase() !== "rejected");
   const askedAmount = snap?.ticket?.amount || snap?.requestedCreditLimit || 0;
   const docs = snap?.documents ?? [];
   const docsAllApproved = docs.length > 0 && docs.every((doc) => doc.status === "approved");
@@ -488,7 +497,7 @@ export function AccountReviewDialog({
                         })
                       }
                     >
-                      Approve KYC
+                      {busy === "kyc-approve" ? "Approving…" : "Approve KYC"}
                     </Button>
                     <Button
                       variant="destructive"
@@ -505,8 +514,13 @@ export function AccountReviewDialog({
                         })
                       }
                     >
-                      Reject KYC
+                      {busy === "kyc-reject" ? "Rejecting…" : "Reject KYC"}
                     </Button>
+                    {rejectedDoc ? (
+                      <p className="w-full text-xs text-muted-foreground">
+                        Approve KYC stays off until the user uploads the rejected document again.
+                      </p>
+                    ) : null}
                   </div>
                 </>
               ) : null}
