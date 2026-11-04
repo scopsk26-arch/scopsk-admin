@@ -338,6 +338,7 @@ export function AccountReviewDialog({
   const [error, setError] = useState("");
   const [kycReason, setKycReason] = useState("");
   const [suspendReason, setSuspendReason] = useState("");
+  const [accountReason, setAccountReason] = useState("");
   const [creditReason, setCreditReason] = useState("");
   const [giveAmount, setGiveAmount] = useState("");
 
@@ -535,22 +536,46 @@ export function AccountReviewDialog({
                     ? "The account is suspended. Activate it to let them work again."
                     : accountStatus === "rejected"
                       ? "The account is closed."
-                      : "The account is submitted and still pending. Open it when you are ready."
+                      : "The account is submitted and still pending. Activate it or reject it."
               }
             >
               {accountStatus === "pending" ? (
-                <Button
-                  disabled={busy !== null}
-                  onClick={() =>
-                    void run("activate", async () => {
-                      await api.post(`/organizations/${snap.id}/activate`, {});
-                      await refresh(snap.id, snap.type);
-                      toast.success("Account is now active.");
-                    })
-                  }
-                >
-                  Open account
-                </Button>
+                <>
+                  <Textarea
+                    value={accountReason}
+                    onChange={(event) => setAccountReason(event.target.value)}
+                    placeholder="Reason, required if you reject"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      disabled={busy !== null}
+                      onClick={() =>
+                        void run("activate", async () => {
+                          await api.post(`/organizations/${snap.id}/activate`, {});
+                          await refresh(snap.id, snap.type);
+                          toast.success("Account is now active.");
+                        })
+                      }
+                    >
+                      Active
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      disabled={busy !== null}
+                      onClick={() =>
+                        void run("reject-account", async () => {
+                          const reason = accountReason.trim();
+                          if (!reason) throw new Error("A reason is required to reject the account.");
+                          await api.post(`/organizations/${snap.id}/reject`, { reason });
+                          await refresh(snap.id, snap.type);
+                          toast.success("Account rejected.");
+                        })
+                      }
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </>
               ) : null}
               {accountStatus === "active" ? (
                 <>
