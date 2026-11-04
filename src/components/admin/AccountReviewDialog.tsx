@@ -155,7 +155,7 @@ function creditPhase(snap: Snapshot): "none" | "pending" | "approved" | "rejecte
     return "pending";
   }
   if (snap.type === "supplier") return "none";
-  const decision = snap.creditRequestStatus.toLowerCase();
+  const decision = String(snap.creditRequestStatus || "").toLowerCase();
   if (decision === "approved" || (snap.requestedCreditLimit > 0 && snap.creditLimit > 0)) return "approved";
   if (decision === "rejected") return "rejected";
   if (snap.requestedCreditLimit > 0 && snap.creditLimit <= 0) return "pending";
@@ -402,7 +402,8 @@ export function AccountReviewDialog({
   const accountOpen = accountStatus === "active" || accountStatus === "suspended";
   const showCredit = snap ? selectedCredit(snap) : false;
   const credit = snap && showCredit ? creditPhase(snap) : "none";
-  const kycOpen = OPEN_KYC.has(snap?.kycApplicationStatus.toLowerCase() || "");
+  const kycOpen = OPEN_KYC.has(String(snap?.kycApplicationStatus || "").toLowerCase());
+  const docs = snap?.documents ?? [];
   const rejectedDoc = docs.some((doc) => String(doc.status || "").toLowerCase() === "rejected");
   const canApproveKyc =
     Boolean(snap?.kycApplicationId) &&
@@ -411,7 +412,6 @@ export function AccountReviewDialog({
     !rejectedDoc &&
     docs.every((doc) => String(doc.status || "").toLowerCase() !== "rejected");
   const askedAmount = snap?.ticket?.amount || snap?.requestedCreditLimit || 0;
-  const docs = snap?.documents ?? [];
   const docsAllApproved = docs.length > 0 && docs.every((doc) => doc.status === "approved");
   const docsStillWaiting = docs.some((doc) => doc.status !== "approved");
 
