@@ -35,6 +35,19 @@ function personName(user: any) {
   return name || str(user.email, "");
 }
 
+function organizationLabel(org: unknown) {
+  if (org && typeof org === "object") {
+    const row = org as { name?: string; publicCode?: string; type?: string };
+    const name = str(row.name, "");
+    const code = str(row.publicCode, "");
+    const type = str(row.type, "").replace(/[_-]+/g, " ");
+    const head = [name, code ? `(${code})` : ""].filter(Boolean).join(" ");
+    const label = [head, type].filter(Boolean).join(" · ");
+    return label || "—";
+  }
+  return str(org, "—");
+}
+
 function mapTicket(r: any) {
   const messages = Array.isArray(r.messages) ? r.messages : [];
   return {
@@ -45,15 +58,10 @@ function mapTicket(r: any) {
       personName(r.creator) || r.requester?.email || r.user?.email || r.createdBy,
       "—",
     ),
-    organization: str(
-      r.organization?.name ?? r.organization?.publicCode ?? r.organizationName,
-      "—",
-    ),
+    organization: organizationLabel(r.organization ?? r.organizationName),
     relatedCode: str(r.relatedCode ?? r.related_code, "—"),
     category: categoryLabel(r.category),
-    agent: str(personName(r.assignee) || r.assignedTo, "—"),
     priority: str(r.priority, "medium"),
-    sla: str(r.slaDueAt ? String(r.slaDueAt).slice(0, 16) : r.sla, "—"),
     status: str(r.status, "open"),
     messages,
   };
@@ -68,7 +76,7 @@ function TicketDetail({ detail }: { detail: Record<string, unknown> }) {
           [
             ["Ticket", detail.number],
             ["Subject", detail.subject],
-            ["Organization", detail.organization],
+            ["Restaurant / supplier", detail.organization],
             ["Requester", detail.requester],
             ["Order / PO", detail.relatedCode],
             ["Category", detail.category],
@@ -226,19 +234,23 @@ function SupportPage() {
         { key: "subject", label: "Subject" },
         { key: "relatedCode", label: "Order / PO codes" },
         { key: "category", label: "Category" },
-        { key: "organization", label: "Organization" },
+        { key: "organization", label: "Restaurant / supplier" },
         { key: "requester", label: "Requester" },
-        { key: "agent", label: "Agent" },
         { key: "priority", label: "Priority" },
-        { key: "sla", label: "SLA" },
         { key: "status", label: "Status" },
       ]}
       loadDetail={async (row) => {
         try {
           const d = await fetchSupportTicketDetail(row.id);
+          const mapped = mapTicket({ ...row, ...d });
           return {
-            ...mapTicket({ ...row, ...d }),
+            ...mapped,
             ...d,
+            organization: organizationLabel((d as any).organization ?? row.organization),
+            requester: mapped.requester,
+            category: mapped.category,
+            priority: mapped.priority,
+            status: mapped.status,
             relatedCode: str(
               (d as any).relatedCode ?? (d as any).related_code ?? row.relatedCode,
               "—",
@@ -270,7 +282,6 @@ function SupportPage() {
         "number",
         "subject",
         "requester",
-        "agent",
         "relatedCode",
         "organization",
         "category",
