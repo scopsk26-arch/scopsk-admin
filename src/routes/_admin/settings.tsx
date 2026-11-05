@@ -204,6 +204,46 @@ const WEEKDAYS = [
 
 const DEFAULT_BUSINESS_DAYS = ["mon", "tue", "wed", "thu", "fri"];
 
+type AcceptUnit = "minutes" | "hours" | "days";
+
+const ACCEPT_UNITS: { value: AcceptUnit; label: string }[] = [
+  { value: "minutes", label: "Minutes" },
+  { value: "hours", label: "Hours" },
+  { value: "days", label: "Days" },
+];
+
+const ACCEPT_LIMITS: Record<AcceptUnit, { min: number; max: number }> = {
+  minutes: { min: 1, max: 14 * 24 * 60 },
+  hours: { min: 1, max: 14 * 24 },
+  days: { min: 1, max: 14 },
+};
+
+function readAcceptWindow(raw: unknown): { amount: string; unit: AcceptUnit } {
+  const obj = raw && typeof raw === "object" ? (raw as { value?: unknown; unit?: unknown }) : null;
+  const nested = obj && "value" in obj ? obj.value : raw;
+  const unitText = String(obj?.unit || "hours").toLowerCase();
+  const unit: AcceptUnit = unitText.startsWith("min")
+    ? "minutes"
+    : unitText.startsWith("day")
+      ? "days"
+      : "hours";
+  const amount = Number(nested);
+  if (!Number.isFinite(amount) || amount <= 0) return { amount: "24", unit: "hours" };
+  return { amount: String(Math.round(amount)), unit };
+}
+
+function acceptWindowError(amount: string, unit: AcceptUnit): string | null {
+  const text = amount.trim();
+  if (!text) return "Supplier accept window is required";
+  if (!/^\d+$/.test(text)) return "Enter a whole number of minutes, hours, or days";
+  const n = Number(text);
+  const limits = ACCEPT_LIMITS[unit];
+  const noun = unit;
+  if (n < limits.min) return `Enter at least ${limits.min} ${noun}`;
+  if (n > limits.max) return `${noun[0].toUpperCase()}${noun.slice(1)} can be at most ${limits.max}`;
+  return null;
+}
+
 const SETTING_KEYS = [
   "marketplace_name",
   "default_currency",
@@ -262,6 +302,8 @@ function SettingsPage() {
   const [businessDays, setBusinessDays] = useState<string[]>([...DEFAULT_BUSINESS_DAYS]);
   const [businessOpen, setBusinessOpen] = useState("08:00");
   const [businessClose, setBusinessClose] = useState("18:00");
+  const [acceptAmount, setAcceptAmount] = useState("24");
+  const [acceptUnit, setAcceptUnit] = useState<AcceptUnit>("hours");
 
   useEffect(() => {
     const next: Record<string, string> = {};
@@ -284,7 +326,10 @@ function SettingsPage() {
     next.email_provider = next.email_provider || "Postmark";
     next.sms_provider = next.sms_provider || "Unifonic";
     next.min_rfq_value_aed = next.min_rfq_value_aed || "500";
-    next.supplier_accept_hours = next.supplier_accept_hours || "24";
+    const accept = readAcceptWindow(settingMap.supplier_accept_hours);
+    setAcceptAmount(accept.amount);
+    setAcceptUnit(accept.unit);
+    next.supplier_accept_hours = accept.amount;
     next.matching_min_stock_pct = next.matching_min_stock_pct || "20";
     next.default_po_approval_levels = next.default_po_approval_levels || "0";
     next.delivery_options = next.delivery_options
@@ -335,6 +380,8 @@ function SettingsPage() {
           throw new Error(`${r.label} is required`);
         }
       }
+      const acceptError = acceptWindowError(acceptAmount, acceptUnit);
+      if (acceptError) throw new Error(acceptError);
       const payload: Record<string, string> = {
         ...form,
         anonymous_marketplace_default: anonymousDefault ? "true" : "false",
@@ -350,6 +397,15 @@ function SettingsPage() {
         }
         if (key === "anonymous_marketplace_default") {
           value = anonymousDefault;
+        }
+        if (key === "supplier_accept_hours") {
+          value = Number(acceptAmount);
+          await api.put("/admin/settings", {
+            key,
+            scope: "platform",
+            value: { value: Number(acceptAmount), unit: acceptUnit },
+          });
+          continue;
         }
         await api.put("/admin/settings", {
           key,
@@ -415,7 +471,7 @@ function SettingsPage() {
       description: "Quote request minimums, matching, order approvals, and delivery options.",
       fields: [
         { key: "min_rfq_value_aed", label: "Min RFQ value (AED)" },
-        { key: "supplier_accept_hours", label: "Supplier accept window (hours)" },
+        { key: "supplier_accept_hours", label: "Supplier accept window", duration: true },
         { key: "matching_min_stock_pct", label: "Matching min stock %" },
         { key: "default_po_approval_levels", label: "Default PO approval levels", options: APPROVAL_LEVELS },
         { key: "delivery_options", label: "Delivery options", options: DELIVERY_OPTIONS, multiple: true },
@@ -477,6 +533,45 @@ function SettingsPage() {
                   options && !multiple && current && !options.some((option) => option.value === current)
                     ? [{ value: current, label: current }, ...options]
                     : options;
+                if ("duration" in f && f.duration) {
+                  const limits = ACCEPT_LIMITS[acceptUnit];
+                  return (
+                    <div key={f.key}>
+                      <FieldLabel className="text-sm font-medium text-foreground/90">
+                        {f.label}
+                      </FieldLabel>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        How long the supplier has to accept an awarded order. Minutes, hours, and days are separate. 1 day is 24 hours, not 1 hour.
+                      </p>
+                      <div className="mt-1 grid grid-cols-[1fr_9rem] gap-2">
+                        <Input
+                          inputMode="numeric"
+                          value={acceptAmount}
+                          placeholder={String(limits.min)}
+                          onChange={(e) => setAcceptAmount(e.target.value.replace(/[^\d]/g, ""))}
+                        />
+                        <Select
+                          value={acceptUnit}
+                          onValueChange={(value) => setAcceptUnit(value as AcceptUnit)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ACCEPT_UNITS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Whole number from {limits.min} to {limits.max} {acceptUnit}.
+                      </p>
+                    </div>
+                  );
+                }
                 return (
                   <div key={f.key}>
                     <FieldLabel
