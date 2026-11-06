@@ -46,6 +46,7 @@ import { Route as AdminOrgReportsRouteImport } from './routes/_admin/org-reports
 import { Route as AdminOutstandingRouteImport } from './routes/_admin/outstanding'
 import { Route as AdminPaymentsRouteImport } from './routes/_admin/payments'
 import { Route as AdminProductRequestsRouteImport } from './routes/_admin/product-requests'
+import { Route as AdminProductReviewRouteImport } from './routes/_admin/product-review'
 import { Route as AdminPurchaseOrdersRouteImport } from './routes/_admin/purchase-orders'
 import { Route as AdminQualitiesRouteImport } from './routes/_admin/qualities'
 import { Route as AdminQuotationsRouteImport } from './routes/_admin/quotations'
@@ -250,6 +251,11 @@ const AdminProductRequestsRoute = AdminProductRequestsRouteImport.update({
   path: '/product-requests',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminProductReviewRoute = AdminProductReviewRouteImport.update({
+  id: '/product-review',
+  path: '/product-review',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPurchaseOrdersRoute = AdminPurchaseOrdersRouteImport.update({
   id: '/purchase-orders',
   path: '/purchase-orders',
@@ -379,6 +385,7 @@ export interface FileRoutesByFullPath {
   '/outstanding': typeof AdminOutstandingRoute
   '/payments': typeof AdminPaymentsRoute
   '/product-requests': typeof AdminProductRequestsRoute
+  '/product-review': typeof AdminProductReviewRoute
   '/purchase-orders': typeof AdminPurchaseOrdersRoute
   '/qualities': typeof AdminQualitiesRoute
   '/quotations': typeof AdminQuotationsRoute
@@ -435,6 +442,7 @@ export interface FileRoutesByTo {
   '/outstanding': typeof AdminOutstandingRoute
   '/payments': typeof AdminPaymentsRoute
   '/product-requests': typeof AdminProductRequestsRoute
+  '/product-review': typeof AdminProductReviewRoute
   '/purchase-orders': typeof AdminPurchaseOrdersRoute
   '/qualities': typeof AdminQualitiesRoute
   '/quotations': typeof AdminQuotationsRoute
@@ -493,6 +501,7 @@ export interface FileRoutesById {
   '/_admin/outstanding': typeof AdminOutstandingRoute
   '/_admin/payments': typeof AdminPaymentsRoute
   '/_admin/product-requests': typeof AdminProductRequestsRoute
+  '/_admin/product-review': typeof AdminProductReviewRoute
   '/_admin/purchase-orders': typeof AdminPurchaseOrdersRoute
   '/_admin/qualities': typeof AdminQualitiesRoute
   '/_admin/quotations': typeof AdminQuotationsRoute
@@ -551,6 +560,7 @@ export interface FileRouteTypes {
     | '/outstanding'
     | '/payments'
     | '/product-requests'
+    | '/product-review'
     | '/purchase-orders'
     | '/qualities'
     | '/quotations'
@@ -607,6 +617,7 @@ export interface FileRouteTypes {
     | '/outstanding'
     | '/payments'
     | '/product-requests'
+    | '/product-review'
     | '/purchase-orders'
     | '/qualities'
     | '/quotations'
@@ -664,6 +675,7 @@ export interface FileRouteTypes {
     | '/_admin/outstanding'
     | '/_admin/payments'
     | '/_admin/product-requests'
+    | '/_admin/product-review'
     | '/_admin/purchase-orders'
     | '/_admin/qualities'
     | '/_admin/quotations'
@@ -951,6 +963,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProductRequestsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/product-review': {
+      id: '/_admin/product-review'
+      path: '/product-review'
+      fullPath: '/product-review'
+      preLoaderRoute: typeof AdminProductReviewRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/purchase-orders': {
       id: '/_admin/purchase-orders'
       path: '/purchase-orders'
@@ -1115,6 +1134,7 @@ interface AdminRouteChildren {
   AdminOutstandingRoute: typeof AdminOutstandingRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminProductRequestsRoute: typeof AdminProductRequestsRoute
+  AdminProductReviewRoute: typeof AdminProductReviewRoute
   AdminPurchaseOrdersRoute: typeof AdminPurchaseOrdersRoute
   AdminQualitiesRoute: typeof AdminQualitiesRoute
   AdminQuotationsRoute: typeof AdminQuotationsRoute
@@ -1170,6 +1190,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminOutstandingRoute: AdminOutstandingRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminProductRequestsRoute: AdminProductRequestsRoute,
+  AdminProductReviewRoute: AdminProductReviewRoute,
   AdminPurchaseOrdersRoute: AdminPurchaseOrdersRoute,
   AdminQualitiesRoute: AdminQualitiesRoute,
   AdminQuotationsRoute: AdminQuotationsRoute,
