@@ -9,8 +9,7 @@ import { fetchList, fetchProductDetail, walkPages } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { ProductReviewDialog, type ProductReviewRow } from "@/components/admin/ProductReviewDialog";
 
 export const Route = createFileRoute("/_admin/catalog")({
   head: () => ({ meta: [{ title: "Products — ScopsK" }] }),
@@ -36,6 +35,8 @@ type ProductRow = {
   stock: number;
   description: string;
   status: string;
+  reviewReasons: string[];
+  halal: boolean;
   imageUrl: string;
   imageFileId: string;
   exciseApplicable: string;
@@ -62,6 +63,11 @@ function mapProductRow(r: any): ProductRow {
   const priceMin = num(r.priceMin ?? attrs.priceMin);
   const priceMax = num(r.priceMax ?? attrs.priceMax);
   const priceAvg = num(r.priceAvg ?? attrs.priceAvg ?? r.price ?? attrs.price);
+  const review = (attrs.review && typeof attrs.review === "object" ? attrs.review : {}) as {
+    state?: string;
+    reasons?: unknown;
+  };
+  const waiting = String(review.state || "") === "pending" || String(r.status || "") === "pending";
   const hasMin = Number.isFinite(priceMin) && priceMin > 0;
   const hasMax = Number.isFinite(priceMax) && priceMax > 0;
   let priceLabel = "—";
@@ -91,7 +97,9 @@ function mapProductRow(r: any): ProductRow {
     organizationId: str(r.organizationId ?? r.organization?.id, ""),
     stock: num(r.stock ?? inventoryTotal ?? attrs.stock),
     description: str(r.description ?? attrs.description, ""),
-    status: str(r.status, "active"),
+    status: waiting ? "pending" : str(r.status, "active"),
+    reviewReasons: Array.isArray(review.reasons) ? review.reasons.map((line) => String(line)) : [],
+    halal: attrs.halal === true,
     // Preview only — API resolves from product_images (never products.image_url)
     imageUrl: str(primaryImage || r.imageUrl, ""),
     imageFileId: primaryFileId,
@@ -132,20 +140,7 @@ function toProductPayload(data: Record<string, any>) {
 
 function CatalogPage() {
   const qc = useQueryClient();
-  const reviews = useQuery({
-    queryKey: ["catalog", "product-reviews"],
-    queryFn: () => api.get<Array<{
-      id: string;
-      name: string;
-      sku?: string | null;
-      category?: string | null;
-      halal?: boolean;
-      reasons?: string[];
-      supplierOrgId?: string | null;
-    }>>("/catalog/product-reviews"),
-  });
-  const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
-  const [reviewBusy, setReviewBusy] = useState<string | null>(null);
+  const [review, setReview] = useState<ProductReviewRow | null>(null);
   const { categories, suppliers } = useAdminLookups(["categories", "suppliers"]);
 
   const list = usePagedList({
@@ -213,67 +208,10 @@ function CatalogPage() {
     await qc.invalidateQueries({ queryKey: ["catalog", "category-product-totals"] });
     await qc.invalidateQueries({ queryKey: ["cuisines"] });
     await qc.invalidateQueries({ queryKey: ["lookups", "categories"] });
-    await qc.invalidateQueries({ queryKey: ["catalog", "product-reviews"] });
   };
-
-  const decide = async (id: string, decision: "approve" | "reject") => {
-    const reason = (rejectReason[id] || "").trim();
-    if (decision === "reject" && reason.length < 3) {
-      toast.error("Write a reason for the rejection");
-      return;
-    }
-    setReviewBusy(id);
-    try {
-      await api.post(`/catalog/products/${id}/review`, { decision, reason });
-      toast.success(decision === "approve" ? "Product is live" : "Product rejected");
-      await invalidate();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save the review");
-    } finally {
-      setReviewBusy(null);
-    }
-  };
-
-  const pending = reviews.data || [];
 
   return (
-    <div className="space-y-4">
-    {pending.length ? (
-      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-        <div>
-          <h2 className="font-semibold">Products waiting for review</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            These supplier products are hidden from restaurants. Approve puts the product on the live list. Reject keeps it off and needs a reason.
-          </p>
-        </div>
-        {pending.map((item) => (
-          <div key={item.id} className="rounded-xl border border-border p-3 space-y-2">
-            <div className="font-medium">{item.name}</div>
-            <div className="text-sm text-muted-foreground">
-              {item.category || "No category"} · {item.halal ? "Marked Halal" : "Not marked Halal"}
-              {item.sku ? ` · ${item.sku}` : ""}
-            </div>
-            <ul className="text-sm text-destructive list-disc pl-4">
-              {(item.reasons || []).map((reason) => <li key={reason}>{reason}</li>)}
-            </ul>
-            <textarea
-              value={rejectReason[item.id] || ""}
-              onChange={(event) => setRejectReason((prev) => ({ ...prev, [item.id]: event.target.value }))}
-              placeholder="Reason, required only when you reject"
-              className="min-h-16 w-full rounded-md border border-border bg-background p-2 text-sm"
-            />
-            <div className="flex gap-2">
-              <Button type="button" disabled={reviewBusy === item.id} onClick={() => decide(item.id, "approve")}>
-                {reviewBusy === item.id ? "Saving…" : "Approve"}
-              </Button>
-              <Button type="button" variant="outline" disabled={reviewBusy === item.id} onClick={() => decide(item.id, "reject")}>
-                Reject
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : null}
+    <>
     <DataPage
       title="Products"
       description="The product list used by restaurants and suppliers."
@@ -385,6 +323,18 @@ function CatalogPage() {
         };
       }}
       renderView={(detail) => <ProductDetailView detail={detail} />}
+      onRowClick={(row) => {
+        if (row.status !== "pending") return false;
+        setReview({
+          id: row.id,
+          name: row.name,
+          sku: row.sku,
+          category: row.category,
+          halal: row.halal,
+          reasons: row.reviewReasons,
+        });
+        return true;
+      }}
       lookups={{
         categoryId: categories,
         organizationId: suppliers,
@@ -475,6 +425,14 @@ function CatalogPage() {
         await invalidate();
       }}
     />
-    </div>
+    <ProductReviewDialog
+      row={review}
+      open={review !== null}
+      onOpenChange={(open) => {
+        if (!open) setReview(null);
+      }}
+      onDone={invalidate}
+    />
+    </>
   );
 }

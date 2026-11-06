@@ -38,6 +38,7 @@ export const navItems: NavItem[] = [
   { group: "Finance", title: "Referrals", to: "/referrals", icon: Share2 },
 
   { group: "Catalog", title: "Products", to: "/catalog", icon: Boxes },
+  { group: "Catalog", title: "Product review", to: "/product-review", icon: ClipboardCheck },
   { group: "Catalog", title: "Product requests", to: "/product-requests", icon: PackagePlus },
   { group: "Catalog", title: "Categories", to: "/categories", icon: FolderTree },
   { group: "Catalog", title: "Cuisines", to: "/cuisines", icon: UtensilsCrossed },

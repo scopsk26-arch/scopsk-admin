@@ -4,14 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { KpiCard } from "@/components/admin/KpiCard";
 import {
   Store, Truck, FileText, ClipboardList,
-  ShieldCheck, Building2, PackagePlus, Wallet, LifeBuoy, Scale, ChevronRight,
+  ShieldCheck, Building2, PackagePlus, Wallet, LifeBuoy, Scale, ChevronRight, ClipboardCheck,
 } from "lucide-react";
 import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
 } from "recharts";
 import { StatusBadge } from "@/components/admin/DataPage";
 import { cn } from "@/lib/utils";
-import { asArray, num, str } from "@/lib/api/client";
+import { api, asArray, num, str } from "@/lib/api/client";
 import {
   fetchAccountReviewQueue,
   fetchAdminDashboard,
@@ -97,6 +97,13 @@ function Dashboard() {
   });
   const walletTab =
     (walletWaiting.data ?? 0) > (creditWaiting.data ?? 0) ? "wallet-requests" : "credit-requests";
+  const productReview = useQuery({
+    queryKey: ["catalog", "product-reviews"],
+    queryFn: () => api.get<unknown[]>("/catalog/product-reviews"),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+
   const accountReview = useQuery({
     queryKey: ["organizations", "both", "pendingApproval"],
     queryFn: () => fetchAccountReviewQueue("both"),
@@ -135,6 +142,13 @@ function Dashboard() {
         : num(pending.orgApprovals ?? d.orgsPendingApproval),
       to: "/restaurant-approvals" as const,
       icon: Building2,
+    },
+    {
+      key: "productReview",
+      label: "Product review",
+      count: productReview.isSuccess ? productReview.data.length : 0,
+      to: "/product-review" as const,
+      icon: ClipboardCheck,
     },
     {
       key: "products",
@@ -275,7 +289,7 @@ function Dashboard() {
           <div>
             <h2 className="font-display font-semibold text-lg">Needs attention</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Documents, account reviews, wallet and credit requests, tickets, and disputes waiting on you.
+              Documents, account reviews, product reviews, wallet and credit requests, tickets, and disputes waiting on you.
             </p>
           </div>
           <div className="text-sm font-medium tabular-nums text-muted-foreground">
