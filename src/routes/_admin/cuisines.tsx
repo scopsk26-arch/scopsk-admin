@@ -67,6 +67,30 @@ function resolveCategoryIds(raw: unknown, options: SelectOption[]): string[] {
 function CuisinesPage() {
   const qc = useQueryClient();
   const { categories } = useAdminLookups(["categories"]);
+  const catalogTotals = useQuery({
+    queryKey: ["catalog", "category-product-totals"],
+    queryFn: async () => {
+      const [products, categoryRows] = await Promise.all([
+        walkPages("/catalog/products"),
+        walkPages("/catalog/categories"),
+      ]);
+      const direct = new Map<string, number>();
+      for (const product of products.rows) {
+        const categoryId = str(product.categoryId ?? product.category?.id, "");
+        if (!categoryId) continue;
+        direct.set(categoryId, (direct.get(categoryId) ?? 0) + 1);
+      }
+      const childrenOf = new Map<string, string[]>();
+      for (const category of categoryRows.rows) {
+        const id = str(category.id, "");
+        const parentId = str(category.parentId ?? category.parent?.id, "");
+        if (!id || !parentId) continue;
+        childrenOf.set(parentId, [...(childrenOf.get(parentId) ?? []), id]);
+      }
+      return { direct, childrenOf };
+    },
+    staleTime: 15_000,
+  });
 
   const list = usePagedList({
     queryKey: ["cuisines"],
@@ -98,6 +122,7 @@ function CuisinesPage() {
 
   const invalidate = async () => {
     await qc.invalidateQueries({ queryKey: ["cuisines"] });
+    await qc.invalidateQueries({ queryKey: ["catalog", "category-product-totals"] });
   };
 
   return (
@@ -168,7 +193,28 @@ function CuisinesPage() {
         },
         { key: "slug", label: "Slug", className: "font-mono text-xs" },
         { key: "categories", label: "Categories" },
-        { key: "products", label: "Products" },
+        {
+          key: "products",
+          label: "Products",
+          render: (r) => {
+            const totals = catalogTotals.data;
+            if (!totals) return String(r.products);
+            const ids = String(r.categoryIds || "")
+              .split(",")
+              .map((id) => id.trim())
+              .filter(Boolean);
+            const seen = new Set<string>();
+            let count = 0;
+            const add = (id: string) => {
+              if (!id || seen.has(id)) return;
+              seen.add(id);
+              count += totals.direct.get(id) ?? 0;
+              for (const childId of totals.childrenOf.get(id) ?? []) add(childId);
+            };
+            ids.forEach(add);
+            return String(Math.max(count, r.products));
+          },
+        },
         { key: "sortOrder", label: "Order" },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}

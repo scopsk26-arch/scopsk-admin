@@ -119,14 +119,50 @@ function CategoriesPage() {
   const parentOptions: SelectOption[] = useMemo(
     () =>
       rows
-        .filter((r) => r.id && r.name && r.name !== "—")
-        .map((r) => ({
-          value: r.id,
-          label: r.parent && r.parent !== "—" ? `${r.parent} › ${r.name}` : r.name,
-        }))
+        .filter((r) => r.id && r.name && r.name !== "—" && !r.parentId)
+        .map((r) => ({ value: r.id, label: r.name }))
         .sort((a, b) => a.label.localeCompare(b.label)),
     [rows],
   );
+
+  const productTotals = useQuery({
+    queryKey: ["catalog", "category-product-totals"],
+    queryFn: async () => {
+      const [products, categories] = await Promise.all([
+        walkPages("/catalog/products"),
+        walkPages("/catalog/categories"),
+      ]);
+      const direct = new Map<string, number>();
+      for (const product of products.rows) {
+        const categoryId = str(product.categoryId ?? product.category?.id, "");
+        if (!categoryId) continue;
+        direct.set(categoryId, (direct.get(categoryId) ?? 0) + 1);
+      }
+      const childrenOf = new Map<string, string[]>();
+      for (const category of categories.rows) {
+        const id = str(category.id, "");
+        const parentId = str(category.parentId ?? category.parent?.id, "");
+        if (!id || !parentId) continue;
+        childrenOf.set(parentId, [...(childrenOf.get(parentId) ?? []), id]);
+      }
+      const totals = new Map<string, number>();
+      const visit = (id: string, seen: Set<string>): number => {
+        if (seen.has(id)) return 0;
+        seen.add(id);
+        let count = direct.get(id) ?? 0;
+        for (const childId of childrenOf.get(id) ?? []) count += visit(childId, seen);
+        return count;
+      };
+      const ids = new Set<string>([...direct.keys(), ...childrenOf.keys()]);
+      for (const category of categories.rows) ids.add(str(category.id, ""));
+      for (const id of ids) {
+        if (!id) continue;
+        totals.set(id, visit(id, new Set()));
+      }
+      return totals;
+    },
+    staleTime: 15_000,
+  });
 
   const summary = useQuery({
     queryKey: ["catalog", "categories", "summary"],
@@ -156,6 +192,8 @@ function CategoriesPage() {
 
   const invalidate = async () => {
     await qc.invalidateQueries({ queryKey: ["catalog", "categories"] });
+    await qc.invalidateQueries({ queryKey: ["catalog", "category-product-totals"] });
+    await qc.invalidateQueries({ queryKey: ["cuisines"] });
     await qc.invalidateQueries({ queryKey: ["lookups", "categories"] });
   };
 
@@ -337,13 +375,17 @@ function CategoriesPage() {
                 <span className="text-muted-foreground">—</span>
               ),
           },
-          { key: "products", label: "Products" },
+          {
+            key: "products",
+            label: "Products",
+            render: (r) => String(productTotals.data?.get(r.id) ?? r.products),
+          },
           { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
           {
             key: "addSub",
             label: "",
             className: "whitespace-nowrap w-[1%]",
-            render: (r) => (
+            render: (r) => r.parentId ? null : (
               <Button
                 size="sm"
                 variant="outline"
@@ -365,6 +407,9 @@ function CategoriesPage() {
         onCreate={async (data) => {
           const payload = toCategoryPayload(data);
           if (!payload.name) throw new Error("Category name is required");
+          if (payload.parentId && rows.some((row) => row.id === payload.parentId && row.parentId)) {
+            throw new Error("Add a subcategory under a main category");
+          }
           const created = await api.post<any>("/catalog/categories", payload, { toastOnSuccess: true });
           await invalidate();
           return mapCategoryRow(created);
@@ -372,6 +417,12 @@ function CategoriesPage() {
         onUpdate={async (id, data) => {
           const payload = toCategoryPayload(data);
           if (!payload.name) throw new Error("Category name is required");
+          if (payload.parentId && rows.some((row) => row.id === payload.parentId && row.parentId)) {
+            throw new Error("Add a subcategory under a main category");
+          }
+          if (payload.parentId && (childCount.get(id) ?? 0) > 0) {
+            throw new Error("This category already has subcategories, so it stays a main category");
+          }
           const updated = await api.patch<any>(`/catalog/categories/${id}`, payload);
           await invalidate();
           return mapCategoryRow(updated);
