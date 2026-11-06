@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
@@ -9,6 +9,8 @@ import { fetchList, fetchProductDetail, walkPages } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 import type { SelectOption } from "@/components/admin/SearchableSelect";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/catalog")({
   head: () => ({ meta: [{ title: "Products — ScopsK" }] }),
@@ -130,6 +132,20 @@ function toProductPayload(data: Record<string, any>) {
 
 function CatalogPage() {
   const qc = useQueryClient();
+  const reviews = useQuery({
+    queryKey: ["catalog", "product-reviews"],
+    queryFn: () => api.get<Array<{
+      id: string;
+      name: string;
+      sku?: string | null;
+      category?: string | null;
+      halal?: boolean;
+      reasons?: string[];
+      supplierOrgId?: string | null;
+    }>>("/catalog/product-reviews"),
+  });
+  const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
+  const [reviewBusy, setReviewBusy] = useState<string | null>(null);
   const { categories, suppliers } = useAdminLookups(["categories", "suppliers"]);
 
   const list = usePagedList({
@@ -193,10 +209,71 @@ function CatalogPage() {
 
   const invalidate = async () => {
     await qc.invalidateQueries({ queryKey: ["catalog", "products"] });
+    await qc.invalidateQueries({ queryKey: ["catalog", "categories"] });
+    await qc.invalidateQueries({ queryKey: ["catalog", "category-product-totals"] });
+    await qc.invalidateQueries({ queryKey: ["cuisines"] });
     await qc.invalidateQueries({ queryKey: ["lookups", "categories"] });
+    await qc.invalidateQueries({ queryKey: ["catalog", "product-reviews"] });
   };
 
+  const decide = async (id: string, decision: "approve" | "reject") => {
+    const reason = (rejectReason[id] || "").trim();
+    if (decision === "reject" && reason.length < 3) {
+      toast.error("Write a reason for the rejection");
+      return;
+    }
+    setReviewBusy(id);
+    try {
+      await api.post(`/catalog/products/${id}/review`, { decision, reason });
+      toast.success(decision === "approve" ? "Product is live" : "Product rejected");
+      await invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save the review");
+    } finally {
+      setReviewBusy(null);
+    }
+  };
+
+  const pending = reviews.data || [];
+
   return (
+    <div className="space-y-4">
+    {pending.length ? (
+      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <div>
+          <h2 className="font-semibold">Products waiting for review</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            These supplier products are hidden from restaurants. Approve puts the product on the live list. Reject keeps it off and needs a reason.
+          </p>
+        </div>
+        {pending.map((item) => (
+          <div key={item.id} className="rounded-xl border border-border p-3 space-y-2">
+            <div className="font-medium">{item.name}</div>
+            <div className="text-sm text-muted-foreground">
+              {item.category || "No category"} · {item.halal ? "Marked Halal" : "Not marked Halal"}
+              {item.sku ? ` · ${item.sku}` : ""}
+            </div>
+            <ul className="text-sm text-destructive list-disc pl-4">
+              {(item.reasons || []).map((reason) => <li key={reason}>{reason}</li>)}
+            </ul>
+            <textarea
+              value={rejectReason[item.id] || ""}
+              onChange={(event) => setRejectReason((prev) => ({ ...prev, [item.id]: event.target.value }))}
+              placeholder="Reason, required only when you reject"
+              className="min-h-16 w-full rounded-md border border-border bg-background p-2 text-sm"
+            />
+            <div className="flex gap-2">
+              <Button type="button" disabled={reviewBusy === item.id} onClick={() => decide(item.id, "approve")}>
+                {reviewBusy === item.id ? "Saving…" : "Approve"}
+              </Button>
+              <Button type="button" variant="outline" disabled={reviewBusy === item.id} onClick={() => decide(item.id, "reject")}>
+                Reject
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : null}
     <DataPage
       title="Products"
       description="The product list used by restaurants and suppliers."
@@ -398,5 +475,6 @@ function CatalogPage() {
         await invalidate();
       }}
     />
+    </div>
   );
 }
