@@ -169,6 +169,7 @@ export function DataPage<T extends Record<string, any>>({
   loadDetail,
   loadEdit,
   renderView,
+  extraRowActions,
   lookups,
   idKey = "id",
   entityName: entityNameProp,
@@ -208,6 +209,8 @@ export function DataPage<T extends Record<string, any>>({
   loadEdit?: (row: T) => Promise<Partial<T> | Record<string, any>>;
   /** Extra nested sections under the field grid (items, docs, timeline). */
   renderView?: (detail: Record<string, any>, row: T) => ReactNode;
+  /** Extra buttons in the row action cell. Does not run on refresh. */
+  extraRowActions?: (row: T) => ReactNode;
   /** Prefetched dropdown options keyed by form field name (e.g. category, parent, supplier). */
   lookups?: Record<string, SelectOption[]>;
   idKey?: string;
@@ -508,7 +511,7 @@ export function DataPage<T extends Record<string, any>>({
   const canUpdate = Boolean(onUpdate) && !disableCrud;
   const canDelete = Boolean(onDelete) && !disableCrud;
   const canView = !hideView;
-  const showRowActions = canUpdate || canDelete || canView;
+  const showRowActions = canUpdate || canDelete || canView || Boolean(extraRowActions);
 
   const handleSave = async (data: Record<string, any>, isNew: boolean) => {
     try {
@@ -775,6 +778,7 @@ export function DataPage<T extends Record<string, any>>({
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
                           )}
+                          {extraRowActions?.(row)}
                         </div>
                       </td>
                     )}

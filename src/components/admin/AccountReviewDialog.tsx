@@ -666,15 +666,16 @@ export function AccountReviewDialog({
                         variant="outline"
                         className="h-9 w-9 px-0"
                         onClick={() =>
-                          setGiveAmount((current) => String(Math.max(0, (Number(current) || 0) - 100)))
+                          setGiveAmount((current) => String(Math.max(10, (Number(current) || 10) - 10)))
                         }
                       >
                         −
                       </Button>
                       <Input
                         type="number"
-                        min={0}
-                        step={100}
+                        min={10}
+                        max={20000}
+                        step={10}
                         value={giveAmount}
                         onChange={(event) => setGiveAmount(event.target.value)}
                         className="text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -683,7 +684,9 @@ export function AccountReviewDialog({
                         type="button"
                         variant="outline"
                         className="h-9 w-9 px-0"
-                        onClick={() => setGiveAmount((current) => String((Number(current) || 0) + 100))}
+                        onClick={() =>
+                          setGiveAmount((current) => String(Math.min(20000, (Number(current) || 0) + 10)))
+                        }
                       >
                         +
                       </Button>
@@ -696,11 +699,13 @@ export function AccountReviewDialog({
                   />
                   <div className="flex flex-wrap gap-2">
                     <Button
-                      disabled={busy !== null || !(Number(giveAmount) > 0)}
+                      disabled={busy !== null || !(Number(giveAmount) >= 10 && Number(giveAmount) <= 20000)}
                       onClick={() =>
                         void run("credit-approve", async () => {
                           const chosen = Number(giveAmount);
-                          if (!(chosen > 0)) throw new Error("Enter the credit amount to give");
+                          if (chosen < 10 || chosen > 20000) {
+                            throw new Error("Credit must be from AED 10 to AED 20,000");
+                          }
                           if (snap.ticket && creditIsOpen(snap.ticket)) {
                             await acceptWalletCreditRequest(snap.ticket.id, chosen);
                           } else {
