@@ -33,6 +33,7 @@ export type ProductReviewRow = {
   category?: string;
   halal?: boolean;
   reasons?: string[];
+  variants?: Array<{ name: string; unitPrice?: number | null }>;
 };
 
 export function ProductReviewDialog({

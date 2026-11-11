@@ -1230,9 +1230,31 @@ function stockUnit(value: unknown) {
 
 export function ProductDetailView({ detail }: { detail: any }) {
   const inventory = Array.isArray(detail?.inventoryItems) ? detail.inventoryItems : [];
-  if (!inventory.length) return null;
+  const variants = Array.isArray(detail?.variants) ? detail.variants : [];
+  if (!inventory.length && !variants.length) return null;
+
+  const variantPrice = (row: any) => {
+    const attrs = row?.attributes || {};
+    const raw = attrs.unitPrice ?? attrs.price ?? attrs.listPrice;
+    return raw != null && raw !== "" ? money(raw) : "—";
+  };
 
   return (
+    <>
+    {variants.length ? (
+      <DetailSection title="Sizes">
+        <DetailTable
+          rows={variants}
+          columns={[
+            { key: "name", label: "Size", render: (r) => str(r.name || r.sku, "—") },
+            { key: "price", label: "Price", render: variantPrice },
+            { key: "sku", label: "Code", render: (r) => str(r.sku, "—") },
+            { key: "status", label: "Status", render: (r) => statusCell(r.status) },
+          ]}
+        />
+      </DetailSection>
+    ) : null}
+    {inventory.length ? (
     <DetailSection title="Who has this in stock">
       <DetailTable
         rows={[...inventory].sort((a, b) => num(b.stock) - num(a.stock))}
@@ -1283,6 +1305,8 @@ export function ProductDetailView({ detail }: { detail: any }) {
         ]}
       />
     </DetailSection>
+    ) : null}
+    </>
   );
 }
 

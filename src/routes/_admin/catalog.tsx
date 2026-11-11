@@ -135,7 +135,22 @@ function toProductPayload(data: Record<string, any>) {
     exciseRate: data.exciseRate === "" || data.exciseRate == null ? null : Number(data.exciseRate),
     vatRate: data.vatRate === "" || data.vatRate == null ? null : Number(data.vatRate),
     ...imagePatch,
+    ...parseVariantLines(data.variants),
   };
+}
+
+function parseVariantLines(raw: unknown) {
+  if (!Array.isArray(raw) || raw.length === 0) return {};
+  const variants = raw
+    .map((row) => ({
+      name: String(row?.name || "").trim(),
+      unitPrice: Number(String(row?.price ?? row?.unitPrice ?? "").trim()),
+    }))
+    .filter((row) => row.name || Number.isFinite(row.unitPrice));
+  if (!variants.length) return {};
+  const bad = variants.find((row) => !row.name || !(row.unitPrice > 0));
+  if (bad) throw new Error("Each variant needs a name and a price greater than 0.");
+  return { variants };
 }
 
 function CatalogPage() {
@@ -272,6 +287,12 @@ function CatalogPage() {
         },
         { key: "exciseRate", label: "Excise % override", type: "number" },
         { key: "vatRate", label: "VAT % override", type: "number" },
+        {
+          key: "variants",
+          label: "Variants",
+          type: "variants",
+          hint: "Optional. Add a name and a price for each variant, such as Small and 2.50.",
+        },
         {
           key: "status",
           label: "Status",
