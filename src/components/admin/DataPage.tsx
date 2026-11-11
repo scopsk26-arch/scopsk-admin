@@ -55,7 +55,7 @@ export type Kpi = { label: string; value: string; hint?: string; tone?: "default
 export type FormField = {
   key: string;
   label: string;
-  type?: "text" | "number" | "select" | "searchable" | "multiselect" | "image" | "readonly";
+  type?: "text" | "number" | "textarea" | "variants" | "select" | "searchable" | "multiselect" | "image" | "readonly";
   /** Plain select options (string values). */
   options?: string[];
   /** Searchable dropdown options (value/label). */
@@ -1031,6 +1031,62 @@ function isFieldEmpty(field: FormField, value: unknown): boolean {
   return value == null || value === "";
 }
 
+function VariantListField({
+  rows,
+  onChange,
+  disabled,
+}: {
+  rows: Array<{ name: string; price: string }>;
+  onChange: (rows: Array<{ name: string; price: string }>) => void;
+  disabled?: boolean;
+}) {
+  const update = (index: number, patch: Partial<{ name: string; price: string }>) => {
+    onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  };
+  return (
+    <div className="mt-1 space-y-2">
+      {rows.map((row, index) => (
+        <div key={index} className="flex items-center gap-2">
+          <Input
+            value={row.name}
+            disabled={disabled}
+            placeholder="Variant name"
+            onChange={(event) => update(index, { name: event.target.value })}
+          />
+          <Input
+            value={row.price}
+            disabled={disabled}
+            type="number"
+            min={0}
+            placeholder="Price"
+            onChange={(event) => update(index, { price: event.target.value })}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={disabled}
+            onClick={() => onChange(rows.filter((_, i) => i !== index))}
+            aria-label="Remove variant"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={disabled}
+        onClick={() => onChange([...rows, { name: "", price: "" }])}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add variant
+      </Button>
+    </div>
+  );
+}
+
 function RecordDialog({
   open, onOpenChange, entity, fields, initial, onSubmit,
 }: {
@@ -1052,6 +1108,13 @@ function RecordDialog({
   // when the full record arrives. Do not wipe values the user already typed.
   useEffect(() => {
     const read = (raw: unknown, field: FormField) => {
+      if (field.type === "variants") {
+        if (!Array.isArray(raw)) return [] as Array<{ name: string; price: string }>;
+        return raw.map((row) => ({
+          name: String(row?.name || ""),
+          price: row?.price != null ? String(row.price) : row?.unitPrice != null ? String(row.unitPrice) : "",
+        }));
+      }
       if (field.type === "multiselect") {
         if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
         if (raw == null || raw === "" || raw === "—") return [] as string[];
@@ -1064,6 +1127,7 @@ function RecordDialog({
       return raw;
     };
     const blank = (value: unknown, field: FormField) => {
+      if (field.type === "variants") return !Array.isArray(value) || value.length === 0;
       if (field.type === "multiselect") return !Array.isArray(value) || value.length === 0;
       if (field.type === "number") {
         return value === "" || value == null || Number(value) === 0;
@@ -1166,7 +1230,7 @@ function RecordDialog({
                 <div
                   key={f.key}
                   className={cn(
-                    (fields.length === 1 || f.type === "image" || f.type === "multiselect") && "sm:col-span-2",
+                    (fields.length === 1 || f.type === "image" || f.type === "multiselect" || f.type === "textarea" || f.type === "variants") && "sm:col-span-2",
                   )}
                 >
                   <Label htmlFor={f.key} className="text-xs">
@@ -1229,6 +1293,22 @@ function RecordDialog({
                         ))}
                       </SelectContent>
                     </Select>
+                  ) : f.type === "variants" ? (
+                    <VariantListField
+                      rows={Array.isArray(form[f.key]) ? form[f.key] : []}
+                      onChange={(rows) => setField(f.key, rows)}
+                      disabled={saving}
+                    />
+                  ) : f.type === "textarea" ? (
+                    <textarea
+                      id={f.key}
+                      placeholder={f.placeholder}
+                      required={f.required}
+                      value={form[f.key] ?? ""}
+                      onChange={(e) => setField(f.key, e.target.value)}
+                      rows={4}
+                      className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
                   ) : (
                     <Input
                       id={f.key}

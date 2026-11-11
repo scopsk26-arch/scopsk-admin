@@ -415,29 +415,34 @@ export function AccountReviewDialog({
   const docsAllApproved = docs.length > 0 && docs.every((doc) => doc.status === "approved");
   const docsStillWaiting = docs.some((doc) => doc.status !== "approved");
 
+  const kycReady = kyc === "approved" && docsAllApproved && !rejectedDoc;
+  const accountStep: "current" | "done" | "locked" = !kycReady
+    ? "locked"
+    : accountStatus === "active" || accountStatus === "suspended" || accountStatus === "rejected"
+      ? "done"
+      : "current";
+  const creditStep: "current" | "done" | "locked" =
+    !kycReady || accountStatus !== "active"
+      ? "locked"
+      : credit === "pending"
+        ? "current"
+        : "done";
+
   const waiting = !snap
     ? ""
-    : accountStatus === "active"
-      ? credit === "pending"
-        ? "The account is active. Approve or reject the credit request."
-        : "The account is active."
-      : accountStatus === "suspended"
-        ? "The account is suspended. Activate it when it should work again."
-      : docsStillWaiting
-      ? "A document is still waiting. The account stays pending until you open it."
-      : kyc === "pending"
-      ? "KYC is waiting for a decision. Approving KYC does not open the account."
-      : kyc === "rejected" || accountStatus === "rejected"
-        ? "KYC was rejected, so this account is closed."
-        : accountStatus === "pending"
-          ? "KYC is approved. Open the account to continue."
-          : credit === "pending"
-            ? accountStatus === "suspended"
-              ? "The account is suspended. You can still approve or reject the credit request, or activate the account again."
-              : "The account is active. Approve or reject the credit request. You can suspend the account if you need to."
+    : !kycReady
+      ? "KYC is first. Account and credit stay pending until KYC is approved."
+      : accountStatus === "pending"
+        ? "KYC is approved. Open the account next. Credit stays pending until the account is active."
+        : accountStatus === "active" && credit === "pending"
+          ? "The account is active. Decide the credit request."
+          : accountStatus === "active"
+            ? "The account is active."
             : accountStatus === "suspended"
               ? "The account is suspended. Activate it when it should work again."
-              : "Nothing else is waiting on this account.";
+              : accountStatus === "rejected"
+                ? "This account is closed."
+                : "Nothing else is waiting on this account.";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -462,15 +467,13 @@ export function AccountReviewDialog({
             <Step
               index={1}
               title="KYC"
-              state={docsStillWaiting || kyc === "pending" ? "current" : "done"}
+              state={kycReady ? "done" : "current"}
               summary={
-                docsStillWaiting
-                  ? accountOpen
-                    ? "One document is still not approved. The account is already open."
-                    : "Approve every document, or open the account from the restaurant edit when you are ready."
-                  : kyc === "rejected"
-                    ? "KYC is rejected. The account stays closed."
-                    : "Every document is approved. Open the account in the next step."
+                kycReady
+                  ? "KYC is approved. Open the account in the next step."
+                  : rejectedDoc || kyc === "rejected"
+                    ? "A document was rejected. The user must upload it again. Account and credit stay pending."
+                    : "Approve every document, then approve KYC. Account and credit stay pending until then."
               }
             >
               <KycDocList
@@ -529,31 +532,31 @@ export function AccountReviewDialog({
             <Step
               index={2}
               title="Account"
-              state={
-                accountStatus === "active" || accountStatus === "suspended" || accountStatus === "rejected"
-                  ? "done"
-                  : "current"
-              }
+              state={accountStep}
               badge={
-                accountStatus === "active"
-                  ? "Active"
-                  : accountStatus === "suspended"
-                    ? "Suspended"
-                    : accountStatus === "rejected"
-                      ? "Closed"
-                      : "Submitted"
+                !kycReady
+                  ? "Pending"
+                  : accountStatus === "active"
+                    ? "Active"
+                    : accountStatus === "suspended"
+                      ? "Suspended"
+                      : accountStatus === "rejected"
+                        ? "Closed"
+                        : "Pending"
               }
               summary={
-                accountStatus === "active"
-                  ? "This account is already active."
-                  : accountStatus === "suspended"
-                    ? "The account is suspended. Activate it to let them work again."
-                    : accountStatus === "rejected"
-                      ? "The account is closed."
-                      : "The account is submitted and still pending. Activate it or reject it."
+                !kycReady
+                  ? "Pending until KYC is approved."
+                  : accountStatus === "active"
+                    ? "This account is active. Credit is the next step."
+                    : accountStatus === "suspended"
+                      ? "The account is suspended. Activate it to let them work again."
+                      : accountStatus === "rejected"
+                        ? "The account is closed."
+                        : "KYC is approved. Activate the account or reject it."
               }
             >
-              {accountStatus === "pending" ? (
+              {kycReady && accountStatus === "pending" ? (
                 <>
                   <Textarea
                     value={accountReason}
@@ -591,7 +594,7 @@ export function AccountReviewDialog({
                   </div>
                 </>
               ) : null}
-              {accountStatus === "active" ? (
+              {kycReady && accountStatus === "active" ? (
                 <>
                   <Textarea
                     value={suspendReason}
@@ -615,7 +618,7 @@ export function AccountReviewDialog({
                   </Button>
                 </>
               ) : null}
-              {accountStatus === "suspended" ? (
+              {kycReady && accountStatus === "suspended" ? (
                 <Button
                   disabled={busy !== null}
                   onClick={() =>
@@ -635,29 +638,25 @@ export function AccountReviewDialog({
             <Step
               index={3}
               title="Credit request"
-              state={!accountOpen ? "locked" : credit === "pending" ? "current" : "done"}
-              badge={
-                !accountOpen
-                  ? credit === "none"
-                    ? "None"
-                    : "Submitted"
-                  : undefined
-              }
+              state={creditStep}
+              badge={creditStep === "locked" ? "Pending" : undefined}
               summary={
-                credit === "none"
-                  ? "This account did not ask for credit."
-                  : !accountOpen
-                    ? `Already submitted${askedAmount > 0 ? ` for ${AED(askedAmount)}` : ""}. Approve or reject it after the account is open.`
-                    : credit === "approved"
-                      ? `Credit approved${snap.creditLimit > 0 ? ` · live limit ${AED(snap.creditLimit)}` : ""}.`
-                      : credit === "rejected"
-                        ? "Credit request was rejected."
-                        : `They asked for ${AED(askedAmount)}${
-                            snap.paymentTermsDays > 0 ? ` over ${snap.paymentTermsDays} days` : ""
-                          }.`
+                !kycReady
+                  ? "Pending until KYC is approved and the account is active."
+                  : accountStatus !== "active"
+                    ? "Pending until the account is active."
+                    : credit === "none"
+                      ? "This account did not ask for credit."
+                      : credit === "approved"
+                        ? `Credit approved${snap.creditLimit > 0 ? ` · live limit ${AED(snap.creditLimit)}` : ""}.`
+                        : credit === "rejected"
+                          ? "Credit request was rejected."
+                          : `They asked for ${AED(askedAmount)}${
+                              snap.paymentTermsDays > 0 ? ` over ${snap.paymentTermsDays} days` : ""
+                            }.`
               }
             >
-              {accountOpen && credit === "pending" ? (
+              {kycReady && accountStatus === "active" && credit === "pending" ? (
                 <>
                   <div>
                     <div className="text-xs text-muted-foreground">Credit to give (AED)</div>

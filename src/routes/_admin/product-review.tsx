@@ -36,6 +36,7 @@ function ProductReviewPage() {
       };
       return known[line] || line;
     }).join(" ") || "—",
+    sizes: (item.variants || []).map((variant) => variant.name).filter(Boolean).join(", ") || "—",
     status: "pending",
   }));
 
@@ -75,6 +76,7 @@ function ProductReviewPage() {
             render: (row) => <span className="font-medium">{row.name}</span>,
           },
           { key: "category", label: "Category", className: "whitespace-nowrap" },
+          { key: "sizes", label: "Sizes", className: "whitespace-nowrap" },
           { key: "halalLabel", label: "Halal", className: "whitespace-nowrap w-[1%]" },
           { key: "reason", label: "Reason" },
           {
