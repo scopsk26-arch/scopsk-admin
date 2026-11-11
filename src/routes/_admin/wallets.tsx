@@ -880,7 +880,7 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                           className="h-10 w-10 px-0"
                           onClick={() =>
                             setGiveAmount((current) =>
-                              String(Math.max(0, (Number(current) || 0) - 100)),
+                              String(Math.max(10, (Number(current) || 10) - 10)),
                             )
                           }
                         >
@@ -888,8 +888,9 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                         </Button>
                         <Input
                           type="number"
-                          min={0}
-                          step={100}
+                          min={10}
+                          max={20000}
+                          step={10}
                           value={giveAmount}
                           onChange={(event) => setGiveAmount(event.target.value)}
                           className="h-10 min-w-0 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -899,7 +900,9 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                           variant="outline"
                           className="h-10 w-10 px-0"
                           onClick={() =>
-                            setGiveAmount((current) => String((Number(current) || 0) + 100))
+                            setGiveAmount((current) =>
+                              String(Math.min(20000, (Number(current) || 0) + 10)),
+                            )
                           }
                         >
                           +
@@ -908,7 +911,7 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                       <p className="mt-1 text-xs text-muted-foreground">
                         They asked for {review.amount > 0 ? AED(review.amount) : "an amount"}.
                         {" "}You are approving {Number(giveAmount) > 0 ? AED(Number(giveAmount)) : "—"}.
-                        This is the limit you set. It does not have to match the request.
+                        Approve between AED 10 and AED 20,000. Amounts below AED 10 are not accepted.
                       </p>
                     </div>
                   ) : null}
@@ -919,12 +922,17 @@ function CreditRequestsPanel({ kind }: { kind: "credit_limit" | "wallet_topup" }
                   />
                   <div className="flex flex-wrap gap-2">
                     <Button
-                      disabled={busy || (isCredit && !(Number(giveAmount) > 0))}
+                      disabled={
+                        busy ||
+                        (isCredit &&
+                          !(Number(giveAmount) >= 10 && Number(giveAmount) <= 20000))
+                      }
                       onClick={() => {
                         const chosen = Number(giveAmount);
+                        if (isCredit && (chosen < 10 || chosen > 20000)) return;
                         acceptM.mutate({
                           row: review,
-                          amount: isCredit && Number.isFinite(chosen) && chosen > 0 ? chosen : undefined,
+                          amount: isCredit ? chosen : undefined,
                         });
                       }}
                     >

@@ -1,15 +1,23 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
 import { PurchaseOrderDetailView } from "@/components/admin/DetailViews";
-import { ClipboardList } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ClipboardList, Loader2, Printer } from "lucide-react";
+import { toast } from "sonner";
 import {
   fetchPurchaseOrderDetail,
   updatePurchaseOrderStatus,
 } from "@/lib/api/resources";
-import { num, str } from "@/lib/api/client";
+import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
+import {
+  PopupBlockedError,
+  buildStaffReceiptPayload,
+  printOrderReceipt,
+} from "@/lib/receipt/orderReceipt";
 
 export const Route = createFileRoute("/_admin/purchase-orders")({
   head: () => ({ meta: [{ title: "Orders — ScopsK" }] }),
@@ -69,6 +77,37 @@ function mapPo(r: any) {
 function PurchaseOrdersPage() {
   const { restaurants, suppliers } = useAdminLookups(["restaurants", "suppliers"]);
   const queryClient = useQueryClient();
+  const [printingId, setPrintingId] = useState<string | null>(null);
+
+  const printReceipt = async (id: string, detail?: Record<string, any>) => {
+    if (printingId) return;
+    setPrintingId(id);
+    try {
+      const full = detail ?? (await fetchPurchaseOrderDetail(id));
+      const payload = buildStaffReceiptPayload(full || { id });
+      const orgId = String(full?.buyerOrgId || full?.buyerOrg?.id || "");
+      if (orgId) {
+        try {
+          const barcode = await api.get<{ publicId?: string }>(`/auth/customer-barcode/org/${orgId}`);
+          payload.public_id = barcode?.publicId || null;
+        } catch {
+          payload.public_id = null;
+        }
+      } else {
+        payload.public_id = null;
+      }
+      printOrderReceipt(payload);
+      toast.success("Receipt is ready to print");
+    } catch (err) {
+      if (err instanceof PopupBlockedError) {
+        toast.error("Allow popups to print the receipt");
+      } else {
+        toast.error(err instanceof Error ? err.message : "Could not print the receipt");
+      }
+    } finally {
+      setPrintingId(null);
+    }
+  };
 
   const list = usePagedList({
     queryKey: ["purchase-orders"],
@@ -128,7 +167,29 @@ function PurchaseOrdersPage() {
         { key: "status", label: "Status" },
       ]}
       loadDetail={async (row) => fetchPurchaseOrderDetail(row.id)}
-      renderView={(detail) => <PurchaseOrderDetailView detail={detail} />}
+      renderView={(detail) => (
+        <PurchaseOrderDetailView
+          detail={detail}
+          printing={printingId === str(detail.id)}
+          onPrint={() => void printReceipt(str(detail.id), detail)}
+        />
+      )}
+      extraRowActions={(row) => (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 px-2"
+          disabled={printingId === row.id}
+          onClick={() => void printReceipt(row.id)}
+        >
+          {printingId === row.id ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Printer className="h-3.5 w-3.5" />
+          )}
+          Print Receipt
+        </Button>
+      )}
       kpis={[
         { label: "Open POs", value: String(open) },
         {

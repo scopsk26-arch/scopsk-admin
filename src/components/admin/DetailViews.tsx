@@ -487,7 +487,15 @@ export function QuotationDetailView({ detail }: { detail: any }) {
   );
 }
 
-export function PurchaseOrderDetailView({ detail }: { detail: any }) {
+export function PurchaseOrderDetailView({
+  detail,
+  onPrint,
+  printing = false,
+}: {
+  detail: any;
+  onPrint?: () => void;
+  printing?: boolean;
+}) {
   const items = Array.isArray(detail?.items) ? detail.items : [];
   const deliveries = Array.isArray(detail?.deliveries) ? detail.deliveries : [];
   const invoices = Array.isArray(detail?.invoices) ? detail.invoices : [];
@@ -504,6 +512,18 @@ export function PurchaseOrderDetailView({ detail }: { detail: any }) {
 
   return (
     <>
+      {onPrint ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onPrint}
+            disabled={printing}
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60"
+          >
+            {printing ? "Printing…" : "Print Receipt"}
+          </button>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-1 text-sm">
         {steps.map((step, index) => (
           <span key={step.name} className="inline-flex items-center gap-1">
