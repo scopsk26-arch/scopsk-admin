@@ -840,7 +840,7 @@ function namesOf(value: unknown): string {
   return "—";
 }
 
-function OrgDocumentsTable({ documents }: { documents: any[] }) {
+function OrgDocumentsTable({ documents, accountVerified = false }: { documents: any[]; accountVerified?: boolean }) {
   const [docs, setDocs] = useState(documents);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -886,7 +886,15 @@ function OrgDocumentsTable({ documents }: { documents: any[] }) {
           render: (r) => kycDocTypeLabel(r.documentType ?? r.type),
         },
         { key: "name", label: "File", render: (r) => str(r.fileName ?? r.file?.originalName, "—") },
-        { key: "status", label: "Status", render: (r) => statusCell(r.status || "pending") },
+        {
+          key: "status",
+          label: "Status",
+          render: (r) => {
+            const raw = String(r.status || "pending").toLowerCase();
+            const shown = raw === "rejected" ? "rejected" : accountVerified ? "approved" : raw;
+            return statusCell(shown);
+          },
+        },
         {
           key: "url",
           label: "Link",
@@ -1168,7 +1176,12 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
       </DetailSection>
 
       <DetailSection title="Documents">
-        <OrgDocumentsTable documents={docs} />
+        <OrgDocumentsTable
+          documents={docs}
+          accountVerified={["verified", "approved"].includes(
+            String(detail?.verificationStatus ?? row?.verificationStatus ?? "").toLowerCase(),
+          )}
+        />
       </DetailSection>
     </>
   );

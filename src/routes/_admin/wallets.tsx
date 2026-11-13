@@ -66,6 +66,7 @@ import {
   type WalletWithdrawalRow,
 } from "@/lib/api/resources";
 import { num, str } from "@/lib/api/client";
+import { formatDubaiDate, formatDubaiDateTime } from "@/lib/dubai-time";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -539,15 +540,7 @@ function BalancesPanel({ orgTypeFilter }: { orgTypeFilter: "restaurant" | "all" 
 }
 
 function formatDecisionTime(value?: string | Date | null) {
-  const date = value ? new Date(value) : new Date();
-  if (Number.isNaN(date.getTime())) return new Date().toLocaleString();
-  return date.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDubaiDateTime(value ?? new Date(), formatDubaiDateTime(new Date()));
 }
 
 function DecisionResultDialog({
@@ -1442,7 +1435,7 @@ function RefundsPanel() {
       invoice: str(inv.number ?? r.invoiceNumber, ""),
       amount: num(r.amount),
       currency: str(r.currency, "AED"),
-      date: r.paidAt ? String(r.paidAt).slice(0, 10) : r.createdAt ? String(r.createdAt).slice(0, 10) : "",
+      date: formatDubaiDate(r.paidAt || r.createdAt),
     };
   }).filter((row) => row.id);
   const needle = search.trim().toLowerCase();
@@ -1623,7 +1616,7 @@ function PlatformAccountPanel() {
                   {movements.map((row) => (
                     <tr key={row.id} className="border-b border-border last:border-0">
                       <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                        {row.createdAt ? String(row.createdAt).replace("T", " ").slice(0, 16) : "—"}
+                        {formatDubaiDateTime(row.createdAt)}
                       </td>
                       <td className="px-4 py-3">{row.description || "Wallet movement"}</td>
                       <td className="px-4 py-3 text-right">{AED(num(row.amount))}</td>

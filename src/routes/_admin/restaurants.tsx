@@ -10,6 +10,7 @@ import { Store } from "lucide-react";
 import {
   fetchAdminWalletCreditRequests,
   fetchOrganizationDetail,
+  fetchPage,
   mapOrgRow,
   deleteOrganization,
   updateOrganization,
@@ -63,8 +64,18 @@ function RestaurantsPage() {
   const isLoading = list.isLoading;
   const isError = list.isError;
 
-  const active = rows.filter((r) => r.status === "active").length;
-  const pending = rows.filter((r) => r.status === "pending").length;
+  const summary = useQuery({
+    queryKey: ["organizations", "restaurant", "summary"],
+    queryFn: async () => {
+      const [activePage, pendingPage] = await Promise.all([
+        fetchPage("/organizations", { type: "restaurant", status: "active", page: 1, limit: 1 }),
+        fetchPage("/organizations", { type: "restaurant", status: "pending", page: 1, limit: 1 }),
+      ]);
+      return { active: activePage.total, pending: pendingPage.total };
+    },
+  });
+  const active = summary.data?.active ?? 0;
+  const pending = summary.data?.pending ?? 0;
   const spend = rows.reduce((s, r) => s + (r.spend || 0), 0);
 
   return (
@@ -277,7 +288,12 @@ function RestaurantsPage() {
             if (!count) {
               return <span className="text-xs text-muted-foreground">None</span>;
             }
-            const pending = docs.filter((d) => !d.status || d.status === "pending").length;
+            const accountVerified = ["verified", "approved"].includes(
+              String(r.verificationStatus || "").toLowerCase(),
+            );
+            const pending = accountVerified
+              ? 0
+              : docs.filter((d) => !d.status || d.status === "pending").length;
             const rejected = docs.filter((d) => d.status === "rejected").length;
             const tone = rejected ? "rejected" : pending ? "pending" : "approved";
             return (
@@ -295,10 +311,10 @@ function RestaurantsPage() {
           className: "whitespace-nowrap",
           render: (r) => {
             const key = String(r.purchasingTerms || "").toLowerCase();
-            if (key === "cash_only") return "Cash";
+            if (key === "cash_only") return "Bank Transfer";
             if (key === "credit_only") return "Credit";
-            if (key === "cash_or_credit") return "Cash & credit";
-            return r.paymentTermsDays > 0 ? "Cash & credit" : "Cash";
+            if (key === "cash_or_credit") return "Bank Transfer & credit";
+            return r.paymentTermsDays > 0 ? "Bank Transfer & credit" : "Bank Transfer";
           },
         },
         {

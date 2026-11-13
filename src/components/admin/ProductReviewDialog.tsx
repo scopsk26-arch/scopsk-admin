@@ -26,12 +26,19 @@ function reviewReason(reason: string) {
   return known[reason] || reason;
 }
 
+function approvalBlocked(row: ProductReviewRow | null): boolean {
+  if (!row) return false;
+  if (row.aiHalal === false) return true;
+  return (row.reasons || []).some((line) => /non-?\s*halal|alcohol|pork/i.test(line));
+}
+
 export type ProductReviewRow = {
   id: string;
   name: string;
   sku?: string;
   category?: string;
   halal?: boolean;
+  aiHalal?: boolean | null;
   reasons?: string[];
   variants?: Array<{ name: string; unitPrice?: number | null }>;
 };
@@ -49,6 +56,7 @@ export function ProductReviewDialog({
 }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
+  const blocked = approvalBlocked(row);
 
   const decide = async (decision: "approve" | "reject") => {
     if (!row) return;
@@ -99,8 +107,13 @@ export function ProductReviewDialog({
               onChange={(event) => setReason(event.target.value)}
               placeholder="Reason, only needed if you reject"
             />
+            {blocked ? (
+              <p className="text-sm text-destructive">
+                Flagged non-Halal. Approve is disabled. Reject this product.
+              </p>
+            ) : null}
             <div className="flex gap-2">
-              <Button type="button" disabled={Boolean(busy)} onClick={() => decide("approve")}>
+              <Button type="button" disabled={Boolean(busy) || blocked} onClick={() => decide("approve")}>
                 {busy === "approve" ? "Approving…" : "Approve"}
               </Button>
               <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => decide("reject")}>

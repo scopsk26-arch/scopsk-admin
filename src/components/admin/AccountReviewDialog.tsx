@@ -259,9 +259,11 @@ function Step({
 function KycDocList({
   documents,
   onChange,
+  accountVerified = false,
 }: {
   documents: KycDoc[];
   onChange: (documents: KycDoc[]) => void;
+  accountVerified?: boolean;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<"approved" | "rejected" | null>(null);
@@ -294,14 +296,20 @@ function KycDocList({
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       {documents.map((doc) => {
-        const pending = doc.status !== "approved" && doc.status !== "rejected";
+        const shown =
+          doc.status === "rejected"
+            ? "rejected"
+            : accountVerified || doc.status === "approved"
+              ? "approved"
+              : doc.status || "pending";
+        const pending = shown !== "approved" && shown !== "rejected";
         return (
           <div key={doc.id || doc.fileName} className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 last:border-0">
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium capitalize">{doc.type}</div>
               <div className="truncate text-xs text-muted-foreground">{doc.fileName}</div>
             </div>
-            <StatusBadge status={doc.status || "pending"} />
+            <StatusBadge status={shown} />
             {doc.url ? (
               <a href={doc.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
                 Open
@@ -412,8 +420,13 @@ export function AccountReviewDialog({
     !rejectedDoc &&
     docs.every((doc) => String(doc.status || "").toLowerCase() !== "rejected");
   const askedAmount = snap?.ticket?.amount || snap?.requestedCreditLimit || 0;
-  const docsAllApproved = docs.length > 0 && docs.every((doc) => doc.status === "approved");
-  const docsStillWaiting = docs.some((doc) => doc.status !== "approved");
+  const accountVerified = ["verified", "approved"].includes(
+    String(snap?.verificationStatus || "").toLowerCase(),
+  );
+  const docSettled = (status: string) =>
+    status === "approved" || (accountVerified && status !== "rejected");
+  const docsAllApproved = docs.length > 0 && docs.every((doc) => docSettled(doc.status));
+  const docsStillWaiting = docs.some((doc) => !docSettled(doc.status));
 
   const kycReady = kyc === "approved" && docsAllApproved && !rejectedDoc;
   const accountStep: "current" | "done" | "locked" = !kycReady
@@ -478,6 +491,9 @@ export function AccountReviewDialog({
             >
               <KycDocList
                 documents={snap.documents}
+                accountVerified={["verified", "approved"].includes(
+                  String(snap.verificationStatus || "").toLowerCase(),
+                )}
                 onChange={(documents) => setSnap({ ...snap, documents })}
               />
               {docsStillWaiting || kyc === "pending" ? (
