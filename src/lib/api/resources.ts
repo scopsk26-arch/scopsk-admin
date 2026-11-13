@@ -1,4 +1,5 @@
 import { api, asArray, num, str } from "@/lib/api/client";
+import { formatDubaiDate, formatDubaiDateTime } from "@/lib/dubai-time";
 
 /** Stable empty list for useQuery defaults (avoids re-render loops). */
 export const EMPTY_LIST: any[] = [];
@@ -261,7 +262,11 @@ export function mapOrgRow(r: any, type: "restaurant" | "supplier") {
     status: str(r.status || r.verificationStatus, "pending"),
     verificationStatus: str(r.verificationStatus, "—"),
     categories: Array.isArray(meta.categories) ? meta.categories : [],
-    coverageAreas: Array.isArray(meta.coverageAreas) ? meta.coverageAreas : [],
+    coverageAreas: Array.isArray(r.coverageAreas)
+      ? r.coverageAreas
+      : Array.isArray(meta.coverageAreas)
+        ? meta.coverageAreas
+        : [],
     dubaiArea: str(meta.dubaiArea ?? meta.neighborhood, ""),
     workingHours: meta.workingHours ?? null,
     workingDays: Array.isArray(hours.days) ? hours.days.map((d) => String(d)) : [],
@@ -1230,7 +1235,7 @@ export async function fetchAdminWallets(query?: {
       pendingBalance: num(r.pendingBalance ?? r.heldBalance),
       currency: str(r.currency, "AED"),
       status: str(r.status, "active"),
-      updated: r.updatedAt ? String(r.updatedAt).replace("T", " ").slice(0, 16) : "—",
+      updated: formatDubaiDateTime(r.updatedAt),
     };
   }),
   };
@@ -1270,7 +1275,7 @@ export async function fetchOrgWalletTransactions(orgId: string, limit = 50) {
         : "—",
       description: str(t.description, "—"),
       status: str(t.status, "posted"),
-      createdAt: t.createdAt ? String(t.createdAt).replace("T", " ").slice(0, 16) : "—",
+      createdAt: formatDubaiDateTime(t.createdAt),
       orderNumber: t.orderNumber ? str(t.orderNumber) : null,
       purchaseOrderId: t.purchaseOrderId ? str(t.purchaseOrderId) : null,
       orderId: t.orderId ? str(t.orderId) : null,
@@ -1570,7 +1575,7 @@ export async function fetchAdminWalletWithdrawals(query?: {
         bankAccountName: str(meta.bankAccountName, "—"),
         bankAccountNumber: str(meta.bankAccountNumber, "—"),
         bankIban: str(meta.bankIban, "—"),
-        createdAt: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 16) : "—",
+        createdAt: formatDubaiDateTime(r.createdAt),
         actor: [user.firstName, user.lastName].filter(Boolean).join(" ") || str(user.email, "—"),
       };
     });
@@ -1675,7 +1680,7 @@ export async function fetchAdminWalletCreditRequests(query?: {
       period: parsed.period,
       status: str(r.status, "open"),
       priority: str(r.priority, "medium"),
-      createdAt: r.createdAt ? String(r.createdAt).replace("T", " ").slice(0, 16) : "—",
+      createdAt: formatDubaiDateTime(r.createdAt),
       requester: [user.firstName, user.lastName].filter(Boolean).join(" ") || str(user.email, "—"),
     };
   }),
@@ -1782,12 +1787,10 @@ export async function fetchAdminCreditFacility(orgId: string) {
         remaining: num(l.remaining),
         currency: str(l.currency, "AED"),
         status: str(l.status, "issued"),
-        dueDate: l.dueDate ? String(l.dueDate).slice(0, 10) : null,
-        paidAt: l.paidAt ? String(l.paidAt).replace("T", " ").slice(0, 16) : null,
+        dueDate: l.dueDate ? formatDubaiDate(l.dueDate) : null,
+        paidAt: l.paidAt ? formatDubaiDateTime(l.paidAt) : null,
         ticketNumber: l.ticketNumber ? String(l.ticketNumber) : null,
-        createdAt: l.createdAt
-          ? String(l.createdAt).replace("T", " ").slice(0, 16)
-          : "—",
+        createdAt: formatDubaiDateTime(l.createdAt),
       }),
     ),
   };
