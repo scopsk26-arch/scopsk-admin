@@ -265,6 +265,7 @@ const SETTING_KEYS = [
   "default_po_approval_levels",
   "delivery_options",
   "anonymous_marketplace_default",
+  "consultancy_whatsapp",
 ] as const;
 
 function settingText(value: unknown, fallback: string): string {
@@ -323,6 +324,7 @@ function SettingsPage() {
     next.min_payout = next.min_payout || "500";
     next.sender_email = next.sender_email || "no-reply@primeplate.ae";
     next.sms_sender = next.sms_sender || "PrimePlate";
+    next.consultancy_whatsapp = next.consultancy_whatsapp || "0566703090";
     next.email_provider = next.email_provider || "Postmark";
     next.sms_provider = next.sms_provider || "Unifonic";
     next.min_rfq_value_aed = next.min_rfq_value_aed || "500";
@@ -447,6 +449,7 @@ function SettingsPage() {
       description: "Name, currency, language, and timezone.",
       fields: [
         { key: "marketplace_name", label: "Marketplace name", required: true },
+        { key: "consultancy_whatsapp", label: "Consultancy WhatsApp number" },
         { key: "default_currency", label: "Default currency", required: true, options: CURRENCIES },
         { key: "default_timezone", label: "Default timezone", required: true, options: TIMEZONES },
         { key: "default_locale", label: "Default locale", required: true, options: LOCALES },

@@ -59,6 +59,7 @@ import { Route as AdminRestaurantsRouteImport } from './routes/_admin/restaurant
 import { Route as AdminRewardsRouteImport } from './routes/_admin/rewards'
 import { Route as AdminRfqsRouteImport } from './routes/_admin/rfqs'
 import { Route as AdminRolesRouteImport } from './routes/_admin/roles'
+import { Route as AdminSafetyLibraryRouteImport } from './routes/_admin/safety-library'
 import { Route as AdminSettingsRouteImport } from './routes/_admin/settings'
 import { Route as AdminSubscriptionsRouteImport } from './routes/_admin/subscriptions'
 import { Route as AdminSupplierApprovalsRouteImport } from './routes/_admin/supplier-approvals'
@@ -317,6 +318,11 @@ const AdminRolesRoute = AdminRolesRouteImport.update({
   path: '/roles',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminSafetyLibraryRoute = AdminSafetyLibraryRouteImport.update({
+  id: '/safety-library',
+  path: '/safety-library',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -398,6 +404,7 @@ export interface FileRoutesByFullPath {
   '/rewards': typeof AdminRewardsRoute
   '/rfqs': typeof AdminRfqsRoute
   '/roles': typeof AdminRolesRoute
+  '/safety-library': typeof AdminSafetyLibraryRoute
   '/settings': typeof AdminSettingsRoute
   '/subscriptions': typeof AdminSubscriptionsRoute
   '/supplier-approvals': typeof AdminSupplierApprovalsRoute
@@ -455,6 +462,7 @@ export interface FileRoutesByTo {
   '/rewards': typeof AdminRewardsRoute
   '/rfqs': typeof AdminRfqsRoute
   '/roles': typeof AdminRolesRoute
+  '/safety-library': typeof AdminSafetyLibraryRoute
   '/settings': typeof AdminSettingsRoute
   '/subscriptions': typeof AdminSubscriptionsRoute
   '/supplier-approvals': typeof AdminSupplierApprovalsRoute
@@ -514,6 +522,7 @@ export interface FileRoutesById {
   '/_admin/rewards': typeof AdminRewardsRoute
   '/_admin/rfqs': typeof AdminRfqsRoute
   '/_admin/roles': typeof AdminRolesRoute
+  '/_admin/safety-library': typeof AdminSafetyLibraryRoute
   '/_admin/settings': typeof AdminSettingsRoute
   '/_admin/subscriptions': typeof AdminSubscriptionsRoute
   '/_admin/supplier-approvals': typeof AdminSupplierApprovalsRoute
@@ -573,6 +582,7 @@ export interface FileRouteTypes {
     | '/rewards'
     | '/rfqs'
     | '/roles'
+    | '/safety-library'
     | '/settings'
     | '/subscriptions'
     | '/supplier-approvals'
@@ -630,6 +640,7 @@ export interface FileRouteTypes {
     | '/rewards'
     | '/rfqs'
     | '/roles'
+    | '/safety-library'
     | '/settings'
     | '/subscriptions'
     | '/supplier-approvals'
@@ -688,6 +699,7 @@ export interface FileRouteTypes {
     | '/_admin/rewards'
     | '/_admin/rfqs'
     | '/_admin/roles'
+    | '/_admin/safety-library'
     | '/_admin/settings'
     | '/_admin/subscriptions'
     | '/_admin/supplier-approvals'
@@ -1054,6 +1066,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRolesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/safety-library': {
+      id: '/_admin/safety-library'
+      path: '/safety-library'
+      fullPath: '/safety-library'
+      preLoaderRoute: typeof AdminSafetyLibraryRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/settings': {
       id: '/_admin/settings'
       path: '/settings'
@@ -1147,6 +1166,7 @@ interface AdminRouteChildren {
   AdminRewardsRoute: typeof AdminRewardsRoute
   AdminRfqsRoute: typeof AdminRfqsRoute
   AdminRolesRoute: typeof AdminRolesRoute
+  AdminSafetyLibraryRoute: typeof AdminSafetyLibraryRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute
   AdminSupplierApprovalsRoute: typeof AdminSupplierApprovalsRoute
@@ -1203,6 +1223,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminRewardsRoute: AdminRewardsRoute,
   AdminRfqsRoute: AdminRfqsRoute,
   AdminRolesRoute: AdminRolesRoute,
+  AdminSafetyLibraryRoute: AdminSafetyLibraryRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSubscriptionsRoute: AdminSubscriptionsRoute,
   AdminSupplierApprovalsRoute: AdminSupplierApprovalsRoute,
