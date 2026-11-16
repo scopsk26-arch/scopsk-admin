@@ -975,10 +975,22 @@ export function OrganizationDetailView({ detail, row }: { detail: any; row?: any
   const docs = Array.isArray(detail?.documents) ? detail.documents : [];
   const members = Array.isArray(detail?.members) ? detail.members : [];
   const branches = Array.isArray(detail?.branches) ? detail.branches : [];
-  const addresses = Array.isArray(detail?.addresses)
+  const addressRows = Array.isArray(detail?.addresses)
     ? detail.addresses
     : [detail?.profile?.businessAddress, detail?.profile?.receivingAddress, detail?.profile?.warehouseAddress]
         .filter(Boolean);
+  const seenAddress = new Set<string>();
+  const addresses = addressRows.filter((row: any) => {
+    const line = [row?.line1, row?.line2, row?.city, row?.state, row?.country, row?.postalCode, row?.addressLine1, row?.address]
+      .filter(Boolean)
+      .join(", ")
+      .trim()
+      .toLowerCase();
+    const key = line || String(row?.id || row?.label || "");
+    if (!key || seenAddress.has(key)) return false;
+    seenAddress.add(key);
+    return true;
+  });
   const profile = detail?.profile ?? {};
   const settings = detail?.settings ?? detail?.orgSettings ?? {};
   const type = String(detail?.type || row?.type || "");
