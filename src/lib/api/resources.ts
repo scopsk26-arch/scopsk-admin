@@ -1621,7 +1621,7 @@ function parseTopUpFromTicket(relatedCode: string, subject: string): {
   period: "week" | "month" | null;
   kind: "wallet_topup" | "credit_limit";
 } {
-  const credit = relatedCode.match(/^CREDIT_LIMIT:([A-Z]{3}):(\d+(?:\.\d+)?)(?::(week|month))?$/i);
+  const credit = relatedCode.match(/^CREDIT_LIMIT:([A-Z]{3}):(\d+(?:\.\d+)?)(?::(week|month))?(?::D\d+)?$/i);
   if (credit) {
     return {
       currency: credit[1].toUpperCase(),

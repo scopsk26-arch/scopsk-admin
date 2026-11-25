@@ -264,6 +264,7 @@ const SETTING_KEYS = [
   "matching_min_stock_pct",
   "default_po_approval_levels",
   "delivery_options",
+  "delivery_otp_min_aed",
   "anonymous_marketplace_default",
   "consultancy_whatsapp",
 ] as const;
@@ -318,6 +319,7 @@ function SettingsPage() {
     const legacyCommission = getSetting("default_commission", "4.5") || "4.5";
     next.restaurant_commission = next.restaurant_commission || legacyCommission;
     next.supplier_commission = next.supplier_commission || legacyCommission;
+    next.delivery_otp_min_aed = next.delivery_otp_min_aed || "500";
     next.vat_rate = next.vat_rate || "5.0";
     next.excise_rate = next.excise_rate || "0";
     next.payout_schedule = next.payout_schedule || "Weekly";
@@ -478,6 +480,7 @@ function SettingsPage() {
         { key: "matching_min_stock_pct", label: "Matching min stock %" },
         { key: "default_po_approval_levels", label: "Default PO approval levels", options: APPROVAL_LEVELS },
         { key: "delivery_options", label: "Delivery options", options: DELIVERY_OPTIONS, multiple: true },
+        { key: "delivery_otp_min_aed", label: "Delivery code from (AED)" },
       ],
     },
     {
