@@ -40,6 +40,7 @@ function mapPayment(r: any) {
         ? String(r.createdAt).slice(0, 10)
         : "—",
     paidAt: r.paidAt ? String(r.paidAt).replace("T", " ").slice(0, 19) : "—",
+    when: r.paidAt ? String(r.paidAt).replace("T", " ").slice(0, 19) : "—",
     status: str(r.status, "pending"),
   };
 }
@@ -77,21 +78,14 @@ function PaymentsPage() {
       disableCrud
       icon={<CreditCard className="h-5 w-5 text-primary" />}
       viewFields={[
+        { key: "invoice", label: "Invoice" },
+        { key: "organization", label: "Organization" },
+        { key: "method", label: "Method" },
+        { key: "amount", label: "Paid" },
+        { key: "when", label: "Paid at" },
+        { key: "status", label: "Status" },
         { key: "id", label: "Payment ID" },
         { key: "providerRef", label: "Provider ref" },
-        { key: "invoice", label: "Invoice" },
-        { key: "method", label: "Method" },
-        { key: "provider", label: "Provider" },
-        { key: "currency", label: "Currency" },
-        { key: "subtotal", label: "Actual value" },
-        { key: "vatRate", label: "VAT %" },
-        { key: "vat", label: "VAT amount" },
-        { key: "amount", label: "Paid amount" },
-        { key: "fee", label: "Fee" },
-        { key: "organization", label: "Organization" },
-        { key: "date", label: "Date" },
-        { key: "paidAt", label: "Paid at" },
-        { key: "status", label: "Status" },
       ]}
       loadDetail={async (row) => {
         if (!row.invoiceId) return row;

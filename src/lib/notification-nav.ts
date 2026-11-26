@@ -79,7 +79,7 @@ export function notificationNavTarget(input: {
   if (payloadId(data, "disputeId")) return { to: "/disputes" };
   if (payloadId(data, "ticketId") || payloadId(data, "supportTicketId")) return { to: "/support" };
   if (payloadId(data, "walletId") || payloadId(data, "withdrawalId")) return { to: "/wallets" };
-  if (payloadId(data, "referralId")) return { to: "/referrals" };
+  if (payloadId(data, "referralId")) return { to: "/rewards" };
 
   if (orgId && (orgType === "supplier" || text.includes("supplier"))) {
     return { to: "/suppliers", search: { open: orgId } };
@@ -105,7 +105,7 @@ export function notificationNavTarget(input: {
   if (/support|ticket/.test(text)) return { to: "/support" };
   if (/wallet|withdraw/.test(text)) return { to: "/wallets" };
   if (/reward/.test(text)) return { to: "/rewards" };
-  if (/referral/.test(text)) return { to: "/referrals" };
+  if (/referral/.test(text)) return { to: "/rewards" };
   if (/approval/.test(text)) return { to: "/approvals" };
   if (/supplier/.test(text)) return { to: "/suppliers" };
   if (/restaurant/.test(text)) return { to: "/restaurants" };

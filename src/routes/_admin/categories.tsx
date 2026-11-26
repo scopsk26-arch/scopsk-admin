@@ -126,7 +126,7 @@ function CategoriesPage() {
   );
 
   const productTotals = useQuery({
-    queryKey: ["catalog", "category-product-totals"],
+    queryKey: ["catalog", "category-product-totals", "by-category"],
     queryFn: async () => {
       const [products, categories] = await Promise.all([
         walkPages("/catalog/products"),
@@ -378,7 +378,11 @@ function CategoriesPage() {
           {
             key: "products",
             label: "Products",
-            render: (r) => String(productTotals.data?.get(r.id) ?? r.products),
+            render: (r) => {
+              const totals = productTotals.data;
+              const count = totals instanceof Map ? totals.get(r.id) : undefined;
+              return String(count ?? r.products);
+            },
           },
           { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
           {
@@ -439,12 +443,11 @@ function CategoriesPage() {
           if (!o) setSubParent(null);
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add subcategory</DialogTitle>
             <DialogDescription>
-              Creates a child under{" "}
-              <span className="font-medium text-foreground">{subParent?.name}</span>.
+              This sits under {subParent?.name}. Restaurants see it inside that category.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">

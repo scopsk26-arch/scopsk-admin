@@ -85,39 +85,50 @@ export function ProductReviewDialog({
         <DialogHeader>
           <DialogTitle>{row?.name || "Product review"}</DialogTitle>
           <DialogDescription>
-            This product is pending. Approve puts it on the live list. Reject keeps it hidden.
+            Approve puts this product on the live list. Reject keeps it hidden.
           </DialogDescription>
         </DialogHeader>
         {row ? (
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
-              <span>
-                {row.category || "No category"} · {row.halal ? "Marked Halal" : "Not marked Halal"}
-                {row.sku ? ` · ${row.sku}` : ""}
-              </span>
-              <StatusBadge status="pending" />
+            <div className="flex justify-end"><StatusBadge status="pending" /></div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                ["Category", row.category || "None"],
+                ["Item code", row.sku || "None"],
+                ["Halal", row.halal ? "Marked Halal" : "Not marked"],
+                ["Sizes", row.variants?.length ? String(row.variants.length) : "None"],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
+                  <div className="mt-1 text-sm font-medium">{value}</div>
+                </div>
+              ))}
             </div>
             {(row.reasons || []).length ? (
-              <ul className="text-sm text-destructive list-disc pl-4">
-                {(row.reasons || []).map((line) => <li key={line}>{reviewReason(line)}</li>)}
-              </ul>
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+                {(row.reasons || []).map((line) => <p key={line}>{reviewReason(line)}</p>)}
+              </div>
             ) : null}
-            <Textarea
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              placeholder="Reason, only needed if you reject"
-            />
+            <div>
+              <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Reason</div>
+              <Textarea
+                className="mt-1"
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder="Required only when you reject"
+              />
+            </div>
             {blocked ? (
               <p className="text-sm text-destructive">
                 Flagged non-Halal. Approve is disabled. Reject this product.
               </p>
             ) : null}
-            <div className="flex gap-2">
-              <Button type="button" disabled={Boolean(busy) || blocked} onClick={() => decide("approve")}>
-                {busy === "approve" ? "Approving…" : "Approve"}
-              </Button>
+            <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => decide("reject")}>
                 {busy === "reject" ? "Rejecting…" : "Reject"}
+              </Button>
+              <Button type="button" disabled={Boolean(busy) || blocked} onClick={() => decide("approve")}>
+                {busy === "approve" ? "Approving…" : "Approve"}
               </Button>
             </div>
           </div>
