@@ -152,19 +152,8 @@ function PurchaseOrdersPage() {
       viewFields={[
         { key: "number", label: "PO #" },
         { key: "orderNumber", label: "Order" },
-        { key: "restaurant", label: "Buyer" },
-        { key: "supplier", label: "Supplier" },
-        { key: "rfq", label: "Request" },
-        { key: "itemCount", label: "Line items" },
-        { key: "subtotal", label: "Actual value" },
-        { key: "vatRate", label: "VAT %" },
-        { key: "vat", label: "VAT amount" },
-        { key: "commission", label: "Commission" },
-        { key: "amount", label: "Total (incl. VAT)" },
-        { key: "currency", label: "Currency" },
-        { key: "created", label: "Created" },
-        { key: "acceptedAt", label: "Supplier accepted" },
         { key: "status", label: "Status" },
+        { key: "created", label: "Created" },
       ]}
       loadDetail={async (row) => fetchPurchaseOrderDetail(row.id)}
       renderView={(detail) => (

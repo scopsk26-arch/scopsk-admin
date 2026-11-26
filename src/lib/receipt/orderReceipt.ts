@@ -14,6 +14,7 @@ export type OrderReceiptItem = {
   quantity: number;
   unit_price: number;
   total_price: number;
+  unit?: string;
 };
 
 export type OrderPayload = {
@@ -152,6 +153,7 @@ export function buildStaffReceiptPayload(detail: Record<string, any>): OrderPayl
         quantity,
         unit_price: unit,
         total_price: line,
+        unit: text(item.unit ?? item.product?.unit?.name ?? item.product?.unit?.symbol),
       };
     }),
     subtotal_amount: subtotal,
@@ -183,9 +185,10 @@ function receiptHtml(order: OrderPayload): string {
   const currency = order.currency || "AED";
   const rows = order.items
     .map((item) => {
+      const unitLabel = text(item.unit);
       const unit =
         item.unit_price > 0
-          ? `<div class="unit">${esc(money(item.unit_price, currency))} each</div>`
+          ? `<div class="unit">${esc(money(item.unit_price, currency))}${unitLabel ? ` / ${esc(unitLabel)}` : ""}</div>`
           : "";
       return `<tr>
         <td>${esc(item.name)}${unit}</td>

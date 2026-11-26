@@ -502,6 +502,12 @@ export function PurchaseOrderDetailView({
   const firstDelivery = deliveries[0];
   const firstInvoice = invoices[0];
   const paymentId = firstInvoice?.payments?.[0]?.id ?? firstInvoice?.payment?.id;
+  const meta = (detail?.metadata || {}) as Record<string, unknown>;
+  const commissions = (meta.commissions || {}) as Record<string, unknown>;
+  const supplierPrices = (meta.supplierUnitPrices || {}) as Record<string, unknown>;
+  const finance = extractFinanceBreakdown(detail);
+  const supplierSubtotal = num(meta.supplierSubtotal);
+  const supplierPayout = num(meta.supplierPayout);
   const steps = [
     { name: "Quote request", to: "/rfqs" as const, id: detail?.rfqId ?? detail?.rfq?.id },
     { name: "Order", to: "/purchase-orders" as const, id: detail?.id },
@@ -509,53 +515,91 @@ export function PurchaseOrderDetailView({
     { name: "Invoice", to: "/invoices" as const, id: firstInvoice?.id },
     { name: "Payment", to: "/payments" as const, id: paymentId },
   ];
+  const moneyTiles = [
+    { label: "Restaurant pays", value: money(detail.total), hint: "Invoice total" },
+    { label: "Supplier price", value: supplierSubtotal > 0 ? money(supplierSubtotal) : "—", hint: "Before VAT" },
+    { label: "Supplier payout", value: supplierPayout > 0 ? money(supplierPayout) : "—", hint: "Wallet credit" },
+    { label: "VAT", value: finance.vatRate > 0 ? `${money(finance.tax)} · ${finance.vatRate}%` : money(finance.tax), hint: "On restaurant price" },
+    { label: "Restaurant commission", value: money(finance.restaurantCommission), hint: finance.restaurantRate > 0 ? `${finance.restaurantRate}% inside the price` : "Inside the price" },
+    { label: "Supplier commission", value: money(finance.supplierCommission), hint: finance.supplierRate > 0 ? `${finance.supplierRate}% of supplier price` : "Platform fee" },
+  ];
 
   return (
     <>
-      {onPrint ? (
-        <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {steps.map((step, index) => (
+            <span key={step.name} className="inline-flex items-center gap-1.5">
+              {index > 0 ? <span className="text-muted-foreground/70">→</span> : null}
+              <Link
+                to={step.to}
+                title={step.id ? `Open ${step.name}` : step.name}
+                className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium hover:bg-muted"
+              >
+                {step.name}
+              </Link>
+            </span>
+          ))}
+        </div>
+        {onPrint ? (
           <button
             type="button"
             onClick={onPrint}
             disabled={printing}
             className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60"
           >
-            {printing ? "Printing…" : "Print Receipt"}
+            {printing ? "Printing…" : "Print receipt"}
           </button>
+        ) : null}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-border bg-muted/20 p-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Restaurant</div>
+          <div className="mt-1 text-sm font-semibold">{str(detail.buyerOrg?.name, "—")}</div>
+          <div className="mt-2 text-xs text-muted-foreground">Request {str(detail.rfq?.number ?? detail.rfqId, "—")}</div>
+          <div className="text-xs text-muted-foreground">Accepted {iso(detail.acceptedAt)}</div>
         </div>
-      ) : null}
-      <div className="flex flex-wrap items-center gap-1 text-sm">
-        {steps.map((step, index) => (
-          <span key={step.name} className="inline-flex items-center gap-1">
-            {index > 0 ? <span className="text-muted-foreground">→</span> : null}
-            <Link
-              to={step.to}
-              title={step.id ? `Open ${step.name}` : step.name}
-              className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium hover:bg-muted"
-            >
-              {step.name}
-            </Link>
-          </span>
+        <div className="rounded-lg border border-border bg-muted/20 p-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Supplier</div>
+          <div className="mt-1 text-sm font-semibold">{str(detail.supplierOrg?.name, "—")}</div>
+          <div className="mt-2 text-xs text-muted-foreground">Quote {str(detail.quotation?.number ?? detail.quotationId, "—")}</div>
+          <div className="text-xs text-muted-foreground">{str(detail.currency, "AED")}</div>
+        </div>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        {moneyTiles.map((tile) => (
+          <div key={tile.label} className="rounded-lg border border-border px-3 py-2.5">
+            <div className="text-[11px] font-medium text-muted-foreground">{tile.label}</div>
+            <div className="mt-1 text-sm font-semibold tabular-nums">{tile.value}</div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">{tile.hint}</div>
+          </div>
         ))}
       </div>
-      <DetailSection title="Parties & links">
-        <div className="grid gap-3 sm:grid-cols-2 text-sm">
-          <div><span className="text-muted-foreground">Buyer: </span>{str(detail.buyerOrg?.name, "—")}</div>
-          <div><span className="text-muted-foreground">Supplier: </span>{str(detail.supplierOrg?.name, "—")}</div>
-          <div><span className="text-muted-foreground">Request: </span>{str(detail.rfq?.number ?? detail.rfqId, "—")}</div>
-          <div><span className="text-muted-foreground">Currency: </span>{str(detail.currency, "AED")}</div>
-          <div><span className="text-muted-foreground">Total (incl. VAT): </span>{money(detail.total)}</div>
-        </div>
-      </DetailSection>
-      <FinanceBreakdownSection detail={detail} />
+      {num(commissions.totalAmount) > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Platform keeps {money(commissions.totalAmount)} across both commissions. These amounts stay in admin and are not printed on the restaurant or supplier documents.
+        </p>
+      ) : null}
+
       <DetailSection title="Line items">
         <DetailTable
           rows={items}
           columns={[
             { key: "product", label: "Product", render: (r) => productName(r) },
-            { key: "qty", label: "Qty", render: (r) => str(r.quantity, "—") },
-            { key: "price", label: "Unit price", render: (r) => money(r.unitPrice) },
-            { key: "total", label: "Line total", render: (r) => money(r.lineTotal ?? r.total) },
+            { key: "qty", label: "Qty", render: (r) => {
+              const unit = str(r.unit ?? r.product?.unit?.symbol ?? r.product?.unit?.name, "");
+              const qty = str(r.quantity, "—");
+              return unit && unit !== "—" ? `${qty} ${unit}` : qty;
+            } },
+            { key: "supplier", label: "Supplier price", render: (r) => {
+              const raw = supplierPrices[String(r.id)] ?? supplierPrices[String(r.productId ?? "")];
+              const own = num(raw && typeof raw === "object" ? (raw as { unitPrice?: unknown }).unitPrice : raw);
+              return own > 0 ? money(own) : "—";
+            } },
+            { key: "price", label: "Restaurant price", render: (r) => money(r.unitPrice) },
+            { key: "total", label: "Line total", className: "text-right", render: (r) => money(r.lineTotal ?? r.total) },
           ]}
         />
       </DetailSection>
