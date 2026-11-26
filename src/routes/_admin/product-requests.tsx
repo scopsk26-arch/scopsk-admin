@@ -83,8 +83,8 @@ function ProductRequestsPage() {
           });
         if (!photos.length) return null;
         return (
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">Photo</div>
+          <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Photo</div>
             <div className="grid gap-3 sm:grid-cols-2">
               {photos.map((item: { id?: string; file?: { cdnUrl?: string | null } }) => (
                 <img

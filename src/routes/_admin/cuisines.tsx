@@ -68,7 +68,7 @@ function CuisinesPage() {
   const qc = useQueryClient();
   const { categories } = useAdminLookups(["categories"]);
   const catalogTotals = useQuery({
-    queryKey: ["catalog", "category-product-totals"],
+    queryKey: ["catalog", "category-product-totals", "by-cuisine"],
     queryFn: async () => {
       const [products, categoryRows] = await Promise.all([
         walkPages("/catalog/products"),
@@ -198,7 +198,9 @@ function CuisinesPage() {
           label: "Products",
           render: (r) => {
             const totals = catalogTotals.data;
-            if (!totals) return String(r.products);
+            const direct = totals?.direct instanceof Map ? totals.direct : null;
+            const childrenOf = totals?.childrenOf instanceof Map ? totals.childrenOf : null;
+            if (!direct || !childrenOf) return String(r.products);
             const ids = String(r.categoryIds || "")
               .split(",")
               .map((id) => id.trim())
@@ -208,8 +210,8 @@ function CuisinesPage() {
             const add = (id: string) => {
               if (!id || seen.has(id)) return;
               seen.add(id);
-              count += totals.direct.get(id) ?? 0;
-              for (const childId of totals.childrenOf.get(id) ?? []) add(childId);
+              count += direct.get(id) ?? 0;
+              for (const childId of childrenOf.get(id) ?? []) add(childId);
             };
             ids.forEach(add);
             return String(Math.max(count, r.products));

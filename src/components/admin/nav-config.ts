@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Store, Truck, FileText, ClipboardList,
   PackageCheck, Receipt, CreditCard, Percent, Boxes, FolderTree, PackagePlus,
   Landmark, LifeBuoy, Scale, ScrollText, Settings, UtensilsCrossed,
-  Warehouse, Search, Share2, Images, Wallet, Flag, BadgeCheck, ClipboardCheck, FileBadge, Shield,
+  Warehouse, Search, Images, Wallet, Flag, BadgeCheck, ClipboardCheck, FileBadge, Shield,
 } from "lucide-react";
 
 export type NavItem = {
@@ -36,7 +36,6 @@ export const navItems: NavItem[] = [
   { group: "Finance", title: "Commissions", to: "/commissions", icon: Percent },
   { group: "Finance", title: "Wallets", to: "/wallets", icon: Wallet },
   { group: "Finance", title: "Subscriptions", to: "/subscriptions", icon: BadgeCheck },
-  { group: "Finance", title: "Referrals", to: "/referrals", icon: Share2 },
 
   { group: "Catalog", title: "Products", to: "/catalog", icon: Boxes },
   { group: "Catalog", title: "Product review", to: "/product-review", icon: ClipboardCheck },

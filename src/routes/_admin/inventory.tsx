@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge } from "@/components/admin/DataPage";
 import { GenericJsonDetailView, ProductDetailView } from "@/components/admin/DetailViews";
-import { Warehouse } from "lucide-react";
+import { Plus, Trash2, Warehouse } from "lucide-react";
 import { fetchProductDetail, walkPages } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
@@ -13,6 +13,9 @@ import { toast } from "sonner";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_admin/inventory")({
   head: () => ({ meta: [{ title: "Stock — ScopsK" }] }),
@@ -35,6 +38,9 @@ type InventoryRow = {
 };
 
 type BulkResult = { line: number; status: "saved" | "skipped"; reason?: string };
+type DraftLine = { itemCode: string; productName: string; unitPrice: string; stock: string };
+
+const emptyLine = (): DraftLine => ({ itemCode: "", productName: "", unitPrice: "", stock: "" });
 
 function parseStockSheet(text: string) {
   const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
@@ -82,7 +88,8 @@ function InventoryPage() {
   const { restaurants, suppliers } = useAdminLookups(["restaurants", "suppliers"]);
   const [kind, setKind] = useState<"restaurant" | "supplier">("supplier");
   const [orgId, setOrgId] = useState<string>("");
-  const [sheet, setSheet] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [lines, setLines] = useState<DraftLine[]>([emptyLine()]);
   const [applying, setApplying] = useState(false);
   const [bulkNote, setBulkNote] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<BulkResult[]>([]);
@@ -125,22 +132,25 @@ function InventoryPage() {
     staleTime: 15_000,
   });
 
-  const downloadSheet = async () => {
+  const loadCurrentStock = async () => {
     if (!orgId || kind !== "supplier") return;
     const all = await walkPages("/suppliers/inventory", undefined, { "X-Organization-Id": orgId });
-    const lines = ["item code,product name,price,quantity"];
-    for (const row of all.rows) {
+    const next = all.rows.map((row) => {
       const mapped = mapInventory(row, selectedLabel, orgId);
-      const code = mapped.itemCode || (mapped.sku !== "—" ? mapped.sku : "");
-      lines.push([code, mapped.name, mapped.price ?? "", mapped.quantity].join(","));
-    }
-    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${selectedLabel.replace(/\s+/g, "-").toLowerCase()}-prices.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+      return {
+        itemCode: mapped.itemCode || (mapped.sku !== "—" ? mapped.sku : ""),
+        productName: mapped.name === "—" ? "" : mapped.name,
+        unitPrice: mapped.price == null ? "" : String(mapped.price),
+        stock: String(mapped.quantity),
+      };
+    });
+    setLines(next.length ? next : [emptyLine()]);
+    setBulkNote(null);
+    setSkipped([]);
+  };
+
+  const updateLine = (index: number, patch: Partial<DraftLine>) => {
+    setLines((current) => current.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   };
 
   const applySheet = async () => {
@@ -148,9 +158,17 @@ function InventoryPage() {
       toast.error("Select a supplier first");
       return;
     }
-    const rows = parseStockSheet(sheet);
+    const rows = lines
+      .map((line, index) => ({
+        line: index + 2,
+        itemCode: line.itemCode.trim(),
+        productName: line.productName.trim(),
+        unitPrice: line.unitPrice.trim(),
+        stock: line.stock.trim(),
+      }))
+      .filter((line) => line.itemCode || line.productName || line.unitPrice || line.stock);
     if (!rows.length) {
-      setBulkNote("The file is empty.");
+      setBulkNote("Add a price and quantity first.");
       setSkipped([]);
       return;
     }
@@ -165,6 +183,7 @@ function InventoryPage() {
       setSkipped((outcome.results || []).filter((row) => row.status === "skipped"));
       await qc.invalidateQueries({ queryKey: ["supplier-inventory", orgId] });
       toast.success(`${outcome.saved} saved. ${outcome.skipped} skipped.`);
+      if (!outcome.skipped) setSheetOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not apply the sheet");
     } finally {
@@ -174,17 +193,19 @@ function InventoryPage() {
 
   return (
     <div className="space-y-4">
-    {kind === "supplier" ? (
-      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-        <div>
-          <h2 className="font-semibold">Update supplier prices and stock</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Download this supplier’s sheet, edit the price and quantity, then paste it here or choose the file. An item code updates that supplier only. A blank item code with a catalog product name adds that product to their stock. This does not create a new catalog product.
-          </p>
-        </div>
+    <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Update prices and stock</DialogTitle>
+          <DialogDescription>
+            {orgId
+              ? `${selectedLabel}. Use the item code, or the SKU when the item code is blank, such as CAT-0018. Price and quantity update that supplier only.`
+              : "Select a supplier on the Stock page, then enter the price and quantity."}
+          </DialogDescription>
+        </DialogHeader>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" disabled={!orgId} onClick={() => downloadSheet().catch(() => toast.error("Could not download the sheet"))}>
-            Download sheet
+          <Button type="button" variant="outline" size="sm" disabled={!orgId} onClick={() => loadCurrentStock().catch(() => toast.error("Could not load this supplier’s stock"))}>
+            Load current stock
           </Button>
           <label className="inline-flex items-center">
             <input
@@ -195,18 +216,61 @@ function InventoryPage() {
                 const file = event.target.files?.[0];
                 event.target.value = "";
                 if (!file) return;
-                setSheet(await file.text());
+                const parsed = parseStockSheet(await file.text());
+                setLines(parsed.length
+                  ? parsed.map((row) => ({
+                    itemCode: row.itemCode,
+                    productName: row.productName,
+                    unitPrice: row.unitPrice,
+                    stock: row.stock,
+                  }))
+                  : [emptyLine()]);
+                setBulkNote(null);
+                setSkipped([]);
               }}
             />
-            <span className="inline-flex h-9 cursor-pointer items-center rounded-md border border-border px-3 text-sm font-medium">Choose CSV</span>
+            <span className="inline-flex h-8 cursor-pointer items-center rounded-md border border-border px-3 text-sm font-medium">Upload CSV</span>
           </label>
         </div>
-        <textarea
-          value={sheet}
-          onChange={(event) => setSheet(event.target.value)}
-          placeholder={"item code,product name,price,quantity\n,Basmati Rice 5kg,32,10"}
-          className="min-h-32 w-full rounded-md border border-border bg-background p-3 text-sm"
-        />
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/30 text-left">
+                <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Item code</th>
+                <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Product name</th>
+                <th className="px-3 py-2 text-xs font-semibold text-muted-foreground w-28">Price</th>
+                <th className="px-3 py-2 text-xs font-semibold text-muted-foreground w-28">Quantity</th>
+                <th className="w-10" />
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line, index) => (
+                <tr key={index} className="border-b border-border last:border-0">
+                  <td className="p-2">
+                    <input value={line.itemCode} onChange={(event) => updateLine(index, { itemCode: event.target.value })} placeholder="Optional" className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm" />
+                  </td>
+                  <td className="p-2">
+                    <input value={line.productName} onChange={(event) => updateLine(index, { productName: event.target.value })} placeholder="Basmati Rice 5kg" className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm" />
+                  </td>
+                  <td className="p-2">
+                    <input value={line.unitPrice} inputMode="decimal" onChange={(event) => updateLine(index, { unitPrice: event.target.value })} placeholder="32" className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm" />
+                  </td>
+                  <td className="p-2">
+                    <input value={line.stock} inputMode="decimal" onChange={(event) => updateLine(index, { stock: event.target.value })} placeholder="10" className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm" />
+                  </td>
+                  <td className="p-2">
+                    <button type="button" className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" onClick={() => setLines((current) => current.length === 1 ? [emptyLine()] : current.filter((_, i) => i !== index))} aria-label="Remove line">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => setLines((current) => [...current, emptyLine()])}>
+          <Plus className="h-4 w-4 mr-1.5" />Add line
+        </Button>
         {bulkNote ? <p className="text-sm font-medium">{bulkNote}</p> : null}
         {skipped.length ? (
           <ul className="text-sm text-destructive space-y-1">
@@ -215,17 +279,33 @@ function InventoryPage() {
             ))}
           </ul>
         ) : null}
-        <Button type="button" disabled={!orgId || applying} onClick={() => applySheet()}>
-          {applying ? "Saving…" : "Apply sheet"}
-        </Button>
-      </div>
-    ) : null}
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setSheetOpen(false)}>Cancel</Button>
+          <Button type="button" disabled={!orgId || applying} onClick={() => applySheet()}>
+            {applying ? "Saving…" : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     <DataPage
       title="Stock"
       description={kind === "supplier" ? "A supplier’s selling price and quantity." : "Stock levels for a restaurant."}
       icon={<Warehouse className="h-5 w-5 text-primary" />}
       entityName="Inventory item"
       disableCrud
+      headerActions={kind === "supplier" ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setBulkNote(null);
+            setSkipped([]);
+            setSheetOpen(true);
+          }}
+        >
+          Update prices
+        </Button>
+      ) : null}
       filters={
         <div className="flex flex-wrap gap-2">
           <Select
@@ -233,7 +313,7 @@ function InventoryPage() {
             onValueChange={(value) => {
               setKind(value as "restaurant" | "supplier");
               setOrgId("");
-              setSheet("");
+              setLines([emptyLine()]);
               setBulkNote(null);
               setSkipped([]);
             }}

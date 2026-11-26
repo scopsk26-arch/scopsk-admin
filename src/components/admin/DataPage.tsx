@@ -178,6 +178,7 @@ export function DataPage<T extends Record<string, any>>({
   disableCrud = false,
   hideView = false,
   hideExport = false,
+  headerActions,
   onCreate,
   onUpdate,
   onDelete,
@@ -224,6 +225,8 @@ export function DataPage<T extends Record<string, any>>({
   hideView?: boolean;
   /** Hide the header Export button (e.g. reports page uses per-row export). */
   hideExport?: boolean;
+  /** Buttons placed beside Export. */
+  headerActions?: ReactNode;
   onCreate?: (data: Record<string, any>) => Promise<T | void> | T | void;
   onUpdate?: (id: string, data: Record<string, any>, row: T) => Promise<T | void> | T | void;
   onDelete?: (id: string, row: T) => Promise<void> | void;
@@ -637,6 +640,7 @@ export function DataPage<T extends Record<string, any>>({
           </div>
         </div>
         <div className="flex gap-2">
+          {headerActions}
           {!hideExport && (
             <Button variant="outline" size="sm" onClick={() => void handleExport()}><Download className="h-4 w-4 mr-1.5" />Export</Button>
           )}
@@ -846,7 +850,7 @@ export function DataPage<T extends Record<string, any>>({
             <div className="py-10 text-center text-sm text-muted-foreground">Loading details…</div>
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-6 px-1 py-1 max-h-[calc(90vh-11.5rem)]">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {displayViewFields.map((f) => {
                   // Use list-row primitives for the grid. GET /:id often replaces
                   // strings (e.g. organization name) with nested objects, which
@@ -876,9 +880,10 @@ export function DataPage<T extends Record<string, any>>({
                       display = formatViewValue(raw, f);
                     }
                   }
+                  const wide = displayViewFields.length === 1 || f.type === "image" || f.type === "textarea";
                   return (
-                    <div key={f.key} className={cn(displayViewFields.length === 1 && "sm:col-span-2")}>
-                      <div className="text-xs font-medium text-muted-foreground">{f.label}</div>
+                    <div key={f.key} className={cn("rounded-lg border border-border bg-muted/20 px-3 py-2.5", wide && "sm:col-span-2")}>
+                      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{f.label}</div>
                       <div className="mt-1 text-sm font-medium break-words">{display}</div>
                     </div>
                   );

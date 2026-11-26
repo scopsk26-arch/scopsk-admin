@@ -238,7 +238,7 @@ function CatalogPage() {
           key: "sku",
           label: "Item code",
           type: "readonly",
-          placeholder: "Auto: CATEGORY + product ID (on create)",
+          placeholder: "Filled in when the product is saved",
         },
         {
           key: "name",

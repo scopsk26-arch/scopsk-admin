@@ -35,55 +35,26 @@ export function FinanceBreakdownSection({
   const f = extractFinanceBreakdown(detail);
   if (!(f.subtotal > 0 || f.total > 0 || f.tax > 0 || f.commission > 0)) return null;
 
+  const tiles = [
+    { label: "Order value", value: AED(f.subtotal) },
+    { label: "VAT", value: f.vatRate > 0 ? `${f.vatRate}% · ${AED(f.tax)}` : AED(f.tax) },
+    ...(f.shipping > 0 ? [{ label: "Shipping", value: AED(f.shipping) }] : []),
+    { label: "Supplier commission", value: f.supplierRate > 0 ? `${f.supplierRate}% · ${AED(f.supplierCommission)}` : AED(f.supplierCommission) },
+    { label: "Restaurant commission", value: f.restaurantRate > 0 ? `${f.restaurantRate}% · ${AED(f.restaurantCommission)}` : AED(f.restaurantCommission) },
+    { label: "Platform total", value: AED(f.commission) },
+    { label: "Invoice total", value: AED(f.total) },
+  ];
+
   return (
     <DetailSection title={title}>
-      <div className="grid gap-3 sm:grid-cols-2 text-sm">
-        <div>
-          <span className="text-muted-foreground">Actual order value (subtotal): </span>
-          {AED(f.subtotal)}
-        </div>
-        <div>
-          <span className="text-muted-foreground">VAT rate: </span>
-          {f.vatRate > 0 ? `${f.vatRate}%` : "—"}
-        </div>
-        <div>
-          <span className="text-muted-foreground">VAT amount: </span>
-          {AED(f.tax)}
-        </div>
-        {f.shipping > 0 ? (
-          <div>
-            <span className="text-muted-foreground">Shipping: </span>
-            {AED(f.shipping)}
+      <div className="grid gap-2 sm:grid-cols-2">
+        {tiles.map((tile) => (
+          <div key={tile.label} className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{tile.label}</div>
+            <div className="mt-1 text-sm font-semibold tabular-nums">{tile.value}</div>
           </div>
-        ) : null}
-        <div>
-          <span className="text-muted-foreground">Commission (platform): </span>
-          {AED(f.commission)}
-        </div>
-        {(f.supplierCommission > 0 || f.restaurantCommission > 0) && (
-          <>
-            <div>
-              <span className="text-muted-foreground">
-                Supplier commission{f.supplierRate ? ` (${f.supplierRate}%)` : ""}:{" "}
-              </span>
-              {AED(f.supplierCommission)}
-            </div>
-            <div>
-              <span className="text-muted-foreground">
-                Restaurant commission{f.restaurantRate ? ` (${f.restaurantRate}%)` : ""}:{" "}
-              </span>
-              {AED(f.restaurantCommission)}
-            </div>
-          </>
-        )}
-        <div className="sm:col-span-2 font-medium">
-          <span className="text-muted-foreground">Total (incl. VAT): </span>
-          {AED(f.total)}
-        </div>
+        ))}
       </div>
-      <p className="text-xs text-muted-foreground mt-2">
-        Commission is platform-internal and is not shown on customer invoices. Totals above include VAT from Settings.
-      </p>
     </DetailSection>
   );
 }
@@ -756,27 +727,7 @@ export function PaymentDetailView({ detail }: { detail: any }) {
       : detail;
 
   return (
-    <>
-      <DetailSection title="Payment">
-        <div className="grid gap-3 sm:grid-cols-2 text-sm">
-          <div><span className="text-muted-foreground">Payment ID: </span>{str(detail.id, "—")}</div>
-          <div><span className="text-muted-foreground">Provider ref: </span>{str(detail.providerRef, "—")}</div>
-          <div><span className="text-muted-foreground">Invoice: </span>{str(inv.number ?? detail.invoice, "—")}</div>
-          <div><span className="text-muted-foreground">Method: </span>{str(detail.method, "—")}</div>
-          <div><span className="text-muted-foreground">Paid amount: </span>{money(detail.amount)}</div>
-          {num(detail.fee) > 0 ? (
-            <div><span className="text-muted-foreground">Fee: </span>{money(detail.fee)}</div>
-          ) : null}
-          {detail.provider && detail.provider !== "—" ? (
-            <div><span className="text-muted-foreground">Provider: </span>{str(detail.provider)}</div>
-          ) : null}
-          <div><span className="text-muted-foreground">Organization: </span>{str(detail.organization, "—")}</div>
-          <div><span className="text-muted-foreground">Paid at: </span>{str(detail.paidAt, "—")}</div>
-          <div><span className="text-muted-foreground">Status: </span>{statusCell(detail.status)}</div>
-        </div>
-      </DetailSection>
-      <FinanceBreakdownSection detail={financeSource} title="Linked invoice pricing (VAT & commission)" />
-    </>
+    <FinanceBreakdownSection detail={financeSource} title="Invoice and commissions" />
   );
 }
 
