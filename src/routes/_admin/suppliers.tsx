@@ -22,6 +22,8 @@ import {
   WEEKDAY_OPTIONS,
   areaOptions,
   categoryOptions,
+  countryOptions,
+  emirateOptions,
 } from "@/lib/org-app-fields";
 import { api, asArray } from "@/lib/api/client";
 
@@ -39,6 +41,8 @@ function SuppliersPage() {
   const lookups = useMemo(
     () => ({
       dubaiArea: areaOptions(),
+      city: emirateOptions(),
+      country: countryOptions(),
       coverageAreas: areaOptions(),
       categories: categoryOptions(),
       workingDays: WEEKDAY_OPTIONS,
@@ -104,8 +108,8 @@ function SuppliersPage() {
           placeholder: "Select area…",
         },
         { key: "address", label: "Building & street", type: "text" },
-        { key: "city", label: "City / emirate", type: "text" },
-        { key: "country", label: "Country", type: "text" },
+        { key: "city", label: "City / emirate", type: "searchable", placeholder: "Select emirate…" },
+        { key: "country", label: "Country", type: "searchable", placeholder: "Select country…" },
         {
           key: "coverageAreas",
           label: "Coverage areas",

@@ -174,7 +174,7 @@ class AdminSocketManager {
       auth: { token },
       transports: ["websocket", "polling"],
       reconnection: true,
-      reconnectionAttempts: 12,
+      reconnectionAttempts: 3,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 15000,
     });

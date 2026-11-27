@@ -15,6 +15,9 @@ function mapRow(r: any) {
   const invoiced = num(r.invoiced ?? r.total);
   const outstanding = num(r.outstanding);
   const paid = num(r.paid);
+  const dueDate = r.dueDate ? String(r.dueDate).slice(0, 10) : "—";
+  const duePast = dueDate !== "—" && new Date(`${dueDate}T23:59:59`).getTime() < Date.now();
+  const overdue = outstanding > 0 && (Boolean(r.overdue) || duePast || String(r.status).toLowerCase() === "overdue");
   return {
     id: str(r.id),
     invoiceNumber: str(r.invoiceNumber ?? r.number, "—"),
@@ -24,9 +27,9 @@ function mapRow(r: any) {
     invoiced,
     outstanding,
     paid,
-    overdue: Boolean(r.overdue),
-    dueDate: r.dueDate ? String(r.dueDate).slice(0, 10) : "—",
-    status: str(r.status, "issued"),
+    overdue,
+    dueDate,
+    status: overdue ? "overdue" : str(r.status, "issued"),
     currency: str(r.currency, "AED"),
   };
 }

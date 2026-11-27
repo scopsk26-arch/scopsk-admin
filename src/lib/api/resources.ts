@@ -1,4 +1,5 @@
 import { api, asArray, num, str } from "@/lib/api/client";
+import { normalizeCountry } from "@/lib/org-app-fields";
 import { formatDubaiDate, formatDubaiDateTime } from "@/lib/dubai-time";
 
 /** Stable empty list for useQuery defaults (avoids re-render loops). */
@@ -244,7 +245,7 @@ export function mapOrgRow(r: any, type: "restaurant" | "supplier") {
     || branchList.find((item: { name?: string }) => item?.name)
     || null;
   const city = str(r.city ?? profile.businessCity ?? branch?.city, "");
-  const country = str(r.country ?? profile.businessCountry ?? branch?.country, "");
+  const country = normalizeCountry(str(r.country ?? profile.businessCountry ?? branch?.country, ""));
   return {
     id: str(r.id),
     name: str(r.name, "Untitled"),

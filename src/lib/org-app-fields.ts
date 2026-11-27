@@ -63,8 +63,36 @@ export function supplierSellingTermsLabel(value: unknown): string {
   return SUPPLIER_SELLING_TERM_OPTIONS.find((option) => option.value === key)?.label || "—";
 }
 
+export const UAE_EMIRATES = [
+  "Abu Dhabi",
+  "Ajman",
+  "Dubai",
+  "Fujairah",
+  "Ras Al Khaimah",
+  "Sharjah",
+  "Umm Al Quwain",
+];
+
+export const COUNTRIES = ["United Arab Emirates"];
+
 export function areaOptions() {
   return DUBAI_AREAS.map((value) => ({ value, label: value }));
+}
+
+export function emirateOptions() {
+  return UAE_EMIRATES.map((value) => ({ value, label: value }));
+}
+
+export function countryOptions() {
+  return COUNTRIES.map((value) => ({ value, label: value }));
+}
+
+export function normalizeCountry(value: unknown): string {
+  const text = String(value ?? "").trim();
+  const key = text.toLowerCase().replace(/\./g, "").replace(/\s+/g, " ");
+  if (!key) return "";
+  if (key === "uae" || key.startsWith("united arab")) return "United Arab Emirates";
+  return text;
 }
 
 export function categoryOptions() {

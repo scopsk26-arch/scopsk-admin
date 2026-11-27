@@ -2,9 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { pagedListProps, usePagedList } from "@/hooks/usePagedList";
 import { DataPage, StatusBadge, AED } from "@/components/admin/DataPage";
-import { GenericJsonDetailView } from "@/components/admin/DetailViews";
 import { BadgeCheck } from "lucide-react";
-import { fetchSubscriptionDetail } from "@/lib/api/resources";
 import { api, num, str } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
 
@@ -18,15 +16,18 @@ function mapSub(r: any) {
     id: str(r.id),
     customer: str(r.organization?.name ?? r.customerName ?? r.organizationId, "—"),
     organizationId: str(r.organizationId ?? r.organization?.id, ""),
-    plan: str(r.plan?.name ?? r.planName ?? r.planCode ?? r.plan, "—"),
-    planCode: str(r.planCode ?? r.plan?.code ?? "basic"),
+    plan: str(r.planName ?? r.plan?.name ?? r.planCode ?? r.plan, "—"),
+    planCode: str(r.planCode ?? r.plan?.code ?? ""),
+    owner: str(r.ownerEmail ?? r.ownerName, "—"),
+    type: str(r.organization?.type, "—").replace(/_/g, " "),
     mrr: num(r.mrr ?? r.amount ?? r.price),
     renews: r.renewsAt
       ? String(r.renewsAt).slice(0, 10)
       : r.currentPeriodEnd
         ? String(r.currentPeriodEnd).slice(0, 10)
         : "—",
-    status: str(r.status, "active"),
+    daysLeft: r.daysLeft == null ? "—" : String(r.daysLeft),
+    status: str(r.status, "expired"),
   };
 }
 
@@ -60,7 +61,20 @@ function SubscriptionsPage() {
           type: "searchable",
           selectOptions: orgs.map((o) => ({ value: o.value, label: o.label })),
         },
-        { key: "planCode", label: "Plan code", required: true, type: "text", placeholder: "basic" },
+        {
+          key: "planCode",
+          label: "Plan",
+          required: true,
+          type: "select",
+          options: [
+            "restaurant_basic",
+            "restaurant_growth",
+            "restaurant_pro",
+            "supplier_basic",
+            "supplier_trade",
+            "supplier_partner",
+          ],
+        },
         { key: "mrr", label: "MRR", required: true, type: "number" },
         {
           key: "status",
@@ -71,22 +85,15 @@ function SubscriptionsPage() {
         },
       ]}
       viewFields={[
-        { key: "id", label: "Subscription" },
-        { key: "customer", label: "Customer" },
+        { key: "customer", label: "Business" },
+        { key: "type", label: "Type" },
+        { key: "owner", label: "Account" },
         { key: "plan", label: "Plan" },
-        { key: "planCode", label: "Plan code" },
-        { key: "mrr", label: "MRR" },
+        { key: "mrr", label: "Monthly amount" },
         { key: "renews", label: "Renews" },
+        { key: "daysLeft", label: "Days left" },
         { key: "status", label: "Status" },
       ]}
-      loadDetail={async (row) => {
-        try {
-          return await fetchSubscriptionDetail(row.id);
-        } catch {
-          return row;
-        }
-      }}
-      renderView={(detail) => <GenericJsonDetailView detail={detail} />}
       kpis={[
         { label: "Active subs", value: String(active), tone: "success" },
         { label: "MRR", value: AED(mrr), tone: "info" },
@@ -100,7 +107,7 @@ function SubscriptionsPage() {
       ]}
       rows={rows}
       serverPagination={pagedListProps(list)}
-      searchKeys={["id", "customer", "plan"]}
+      searchKeys={["id", "customer", "owner", "plan", "type"]}
       emptyHint={
         isLoading
           ? "Loading…"
@@ -117,12 +124,15 @@ function SubscriptionsPage() {
         },
         {
           key: "customer",
-          label: "Customer",
+          label: "Business",
           render: (r) => <span className="font-medium">{r.customer}</span>,
         },
+        { key: "type", label: "Type" },
+        { key: "owner", label: "Account" },
         { key: "plan", label: "Plan" },
-        { key: "mrr", label: "MRR", render: (r) => AED(r.mrr) },
+        { key: "mrr", label: "Monthly", render: (r) => AED(r.mrr) },
         { key: "renews", label: "Renews" },
+        { key: "daysLeft", label: "Days left" },
         { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
       ]}
       onCreate={async (data) => {

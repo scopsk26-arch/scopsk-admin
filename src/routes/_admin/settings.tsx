@@ -566,7 +566,7 @@ function SettingsPage() {
                       />
                     ) : choices ? (
                       <Select
-                        value={current || undefined}
+                        value={current}
                         onValueChange={(value) => setForm((prev) => ({ ...prev, [f.key]: value }))}
                       >
                         <SelectTrigger className="mt-1">
