@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { DataPage } from "@/components/admin/DataPage";
@@ -6,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { api, asArray, num, str } from "@/lib/api/client";
 import { flattenForExport } from "@/lib/admin-export";
 import { toast } from "sonner";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_admin/reports")({
   head: () => ({ meta: [{ title: "Reports & BI — ScopsK" }] }),
@@ -149,7 +153,10 @@ function ReportDetailView({ detail, row }: { detail: any; row?: ReportRow }) {
   );
 }
 
+const REPORT_CATEGORIES = ["Orders", "Catalog", "Finance"] as const;
+
 function ReportsPage() {
+  const [category, setCategory] = useState("all");
   const { data: rows = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["reports"],
     queryFn: async () => {
@@ -242,11 +249,26 @@ function ReportsPage() {
 
   return (
     <DataPage
-      title="Business reports"
+      title="Reports"
       description="Download marketplace and finance reports as PDF."
       icon={<BarChart3 className="h-5 w-5 text-primary" />}
+      entityName="Report"
+      viewDescription="Totals for the selected report."
       disableCrud
       hideExport
+      filters={
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger className="h-9 w-[180px]">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            {REPORT_CATEGORIES.map((item) => (
+              <SelectItem key={item} value={item}>{item}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      }
       viewFields={[
         { key: "name", label: "Report" },
         { key: "category", label: "Category" },
@@ -284,7 +306,7 @@ function ReportsPage() {
           value: String(num((rows.find((r) => r.id === "catalog")?.payload as any)?.products)),
         },
       ]}
-      rows={rows}
+      rows={category === "all" ? rows : rows.filter((row) => row.category === category)}
       searchKeys={["id", "name", "category", "owner"]}
       emptyHint={isLoading ? "Loading…" : isError ? "Failed to load reports." : "No reports available."}
       columns={[

@@ -19,7 +19,7 @@ import {
 } from "@/lib/api/resources";
 import { api, asArray } from "@/lib/api/client";
 import { useAdminLookups } from "@/hooks/useAdminLookups";
-import { PAYMENT_TERM_OPTIONS, areaOptions } from "@/lib/org-app-fields";
+import { PAYMENT_TERM_OPTIONS, areaOptions, countryOptions, emirateOptions } from "@/lib/org-app-fields";
 
 type OrgDoc = { id?: string; type: string; url?: string; fileName?: string; status?: string };
 
@@ -36,7 +36,12 @@ function RestaurantsPage() {
   const { open: openId } = Route.useSearch();
   const { cuisines: cuisineOptions } = useAdminLookups(["cuisines"]);
   const cuisineLookups = useMemo(
-    () => ({ cuisineIds: cuisineOptions, dubaiArea: areaOptions() }),
+    () => ({
+      cuisineIds: cuisineOptions,
+      dubaiArea: areaOptions(),
+      city: emirateOptions(),
+      country: countryOptions(),
+    }),
     [cuisineOptions],
   );
   const queryClient = useQueryClient();
@@ -99,8 +104,8 @@ function RestaurantsPage() {
           placeholder: "Select area…",
         },
         { key: "address", label: "Building & street", type: "text" },
-        { key: "city", label: "City / emirate", type: "text" },
-        { key: "country", label: "Country", type: "text" },
+        { key: "city", label: "City / emirate", type: "searchable", placeholder: "Select emirate…" },
+        { key: "country", label: "Country", type: "searchable", placeholder: "Select country…" },
         {
           key: "cuisineIds",
           label: "Cuisines",
